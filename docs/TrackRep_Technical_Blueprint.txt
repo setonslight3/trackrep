@@ -1,0 +1,127 @@
+TrackRep Technical Blueprint
+
+TrackRep • Developed by Setons
+
+Recommended Stack
+
+Kotlin + Jetpack Compose.
+
+CameraX for camera access and lifecycle.
+
+On-device pose estimation for body landmarks.
+
+Room for structured local data.
+
+DataStore for settings/preferences.
+
+WorkManager and appropriate Android scheduling APIs for reminders.
+
+Gemini API for Track AI.
+
+Git/GitHub and GitHub Releases for source and APK distribution.
+
+Architecture
+
+Presentation: Compose screens and state.
+
+Domain: workout generation, progression, scheduling, exercise rules and AI action validation.
+
+Data: Room repositories and DataStore.
+
+Vision: CameraX → pose landmarks → exercise analyzer → tracking events.
+
+AI: Track service → Gemini → validated structured commands → domain actions.
+
+Never allow Gemini to write directly to the database.
+
+Vision Pipeline
+
+CameraX supplies frames.
+
+Pose estimation produces body landmarks and confidence.
+
+Exercise analyzers derive angles, distances, movement phases and states.
+
+Exercise-specific state machines identify repetitions.
+
+Form rules produce targeted feedback.
+
+Metrics become structured local events.
+
+Tracking loss must produce a safe 'tracking lost' state instead of invented reps.
+
+Push-up MVP
+
+Calibrate a starting position.
+
+Track relevant shoulders, elbows, hips, knees and feet.
+
+Detect descent, bottom and ascent phases.
+
+Count completed repetitions with hysteresis/state transitions to prevent double counts.
+
+Classify completed, partial and invalid reps.
+
+Measure rep duration and range of motion.
+
+Detect sustained performance degradation rather than treating a single noisy frame as fatigue.
+
+Camera Setup
+
+Show exercise-specific positioning instructions.
+
+Use approximately 5–7 normal steps as an initial push-up distance guide, then validate framing automatically.
+
+Check full-body visibility, landmark confidence and acceptable framing.
+
+Give clear move closer/farther/reposition-phone feedback.
+
+Start countdown only after calibration passes.
+
+Track AI Contract
+
+Gemini receives structured context, not raw camera video by default.
+
+Use a schema-validated action layer.
+
+Supported actions include creating/modifying workouts, replacing exercises, changing reps/sets/rest, rescheduling and explaining changes.
+
+Reject unknown or unsafe actions.
+
+Keep API secrets out of GitHub.
+
+Core Data Model
+
+UserProfile: goals, level, equipment, preferences and schedule.
+
+Exercise: muscles, equipment, difficulty, movement type, tracking capability and instructions.
+
+WorkoutPlan: date, type, exercises and targets.
+
+WorkoutSession: start/end, completion and subjective difficulty.
+
+ExerciseSet: targets, completed reps, duration, rest and camera metrics.
+
+FormEvent: timestamp, issue, confidence and severity.
+
+ScheduleEvent: planned, moved, skipped or completed.
+
+AIActionLog: request summary, action, result and timestamp.
+
+Backup metadata: schema version and export timestamp.
+
+Performance, Security and Testing
+
+Keep inference off the UI thread.
+
+Use efficient frame processing, confidence thresholds and temporal smoothing.
+
+Test rep state machines and prerecorded clips.
+
+Test distance, lighting, clothing, pauses, partial reps and tracking loss.
+
+Test repeatedly on the Infinix Smart 9.
+
+Do not expand the exercise library until the vision foundation is stable.
+
+Do not hard-code API keys in the public repository.

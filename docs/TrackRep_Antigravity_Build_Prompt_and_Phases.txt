@@ -1,0 +1,179 @@
+TrackRep Antigravity Build Prompt & Phased Plan
+
+TrackRep • Developed by Setons
+
+Master Build Instruction
+
+Build TrackRep phase-by-phase. After every phase, build/run the app, test it on the target Android device where possible, fix issues, and only then continue. Never build the entire app in one pass.
+
+Non-Negotiable Rules
+
+App: TrackRep. AI: Track. Developer: Setons.
+
+Android first; target Infinix Smart 9.
+
+Kotlin + Compose, CameraX, on-device pose detection, Room, DataStore and Gemini.
+
+Local-first. No cloud database/account initially.
+
+Raw camera video is not sent to Gemini by default.
+
+API secrets never enter source control.
+
+Track uses a controlled, schema-validated action layer.
+
+Phase 0 — Project Foundation
+
+Create Android project and Git repository.
+
+Set TrackRep identity and Compose navigation.
+
+Implement black/gold dark theme and white/red light theme.
+
+Verify build and install on the target phone.
+
+Phase 1 — Camera Foundation
+
+Add CameraX preview and permission flow.
+
+Create camera tutorial/setup screen.
+
+Add stable phone-position guidance.
+
+Create live framing/calibration state.
+
+Acceptance: stable preview and correct permission behavior on the target phone.
+
+Phase 2 — Pose Detection
+
+Integrate a suitable on-device pose estimator.
+
+Show landmark/debug information in development mode.
+
+Track landmark confidence and tracking loss.
+
+Do not count exercises yet.
+
+Acceptance: stable landmarks during ordinary push-up footage.
+
+Phase 3 — Push-up Analyzer
+
+Implement push-up movement state machine.
+
+Count valid reps and reject partial/invalid reps.
+
+Implement range-of-motion and basic alignment checks.
+
+Measure rep timing.
+
+Acceptance: test against repeated live/prerecorded footage and investigate false positives/negatives.
+
+Phase 4 — Live Track Coach
+
+Add live counter and exercise state UI.
+
+Add targeted form feedback.
+
+Add tracking-lost state.
+
+Add exercise and rest timers.
+
+Add performance/fatigue indicators based on multiple reps.
+
+Acceptance: complete a real workout test on the target phone without crashes or unusable lag.
+
+Phase 5 — Squat + Plank
+
+Reuse the vision framework.
+
+Implement squat reps, range and form analysis.
+
+Implement plank timing and basic alignment.
+
+Add exercise-specific camera setup guidance.
+
+Acceptance: each exercise has dedicated tests.
+
+Phase 6 — Exercise Library + Workout Engine
+
+Create a structured full-body exercise catalog.
+
+Add bodyweight-first alternatives and equipment metadata.
+
+Implement five difficulty levels.
+
+Generate balanced workouts with recovery rules.
+
+Phase 7 — Local History + Adaptive Engine
+
+Implement Room storage.
+
+Record sessions, sets, reps, timing, ratings and camera metrics.
+
+Implement progression rules.
+
+Implement missed-workout/rescheduling logic with recovery safeguards.
+
+Acceptance: future workouts demonstrably adapt to prior performance.
+
+Phase 8 — Track AI
+
+Integrate Gemini through a dedicated service.
+
+Create structured context and validated action schema.
+
+Implement workout modification, exercise replacement, target adjustment, rescheduling and explanations.
+
+Build Track conversation UI.
+
+Acceptance: natural-language requests safely change the app.
+
+Phase 9 — Onboarding + Scheduling
+
+Build complete onboarding and equipment selection.
+
+Add morning/evening scheduling, rest days and reminders.
+
+Implement missed-session handling.
+
+Acceptance: a new user can complete setup and receive a coherent first week.
+
+Phase 10 — Progress + Export/Import
+
+Build progress dashboard and history.
+
+Implement versioned backup export/import with validation and migration.
+
+Add readable workout-sharing export.
+
+Acceptance: data exported from one installation restores correctly in another.
+
+Phase 11 — Release Hardening
+
+Profile performance on the target phone.
+
+Review privacy and permissions.
+
+Test AI failures and network/API errors.
+
+Remove debug UI.
+
+Create release APK and GitHub release notes.
+
+Initially publish only the APK architecture appropriate for the target device; add broader ABI variants later.
+
+Definition of Done
+
+Clean build and no critical crashes.
+
+Camera tracking fails safely rather than inventing results.
+
+Track cannot execute unapproved actions.
+
+Local data survives restarts.
+
+Backup is versioned and validated.
+
+Target device performance is acceptable.
+
+Each phase has been manually tested before the next phase begins.

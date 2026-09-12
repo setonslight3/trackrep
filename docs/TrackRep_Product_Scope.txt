@@ -1,0 +1,109 @@
+TrackRep Product Scope
+
+TrackRep • Developed by Setons
+
+Product Vision
+
+TrackRep is a local-first Android workout app focused on full-body muscle development. Its defining feature is Track, an adaptive AI assistant combined with live camera-based exercise tracking.
+
+Initial Scope
+
+Android only initially, targeting the Infinix Smart 9. One APK for the first test release.
+
+Future releases can add broader Android ABI support, iOS and possibly desktop.
+
+No account or cloud database initially. Workout data stays on the device.
+
+Users can export/import a versioned backup file to move their data.
+
+Gemini powers Track's reasoning and conversation; exercise vision/counting is primarily on-device.
+
+Dark theme: black + gold. Light theme: white + red.
+
+Onboarding
+
+Goal, with full-body muscle development as the primary goal.
+
+Five experience levels: Beginner, Novice, Intermediate, Advanced, Expert.
+
+Equipment: no equipment, some equipment, or full gym; custom equipment can be entered.
+
+Available days, preferred morning/evening time and workout duration.
+
+Optional live camera tracking and required permissions only when needed.
+
+All preferences remain editable later.
+
+Workout System
+
+Balanced training across chest, shoulders, arms, back, core, glutes, quads, hamstrings and calves.
+
+Bodyweight exercises are always available; equipment-aware alternatives are selected when equipment exists.
+
+Plans account for level, equipment, recovery, preferences and previous performance.
+
+Rest days and muscle recovery are protected by scheduling rules.
+
+Adaptive AI
+
+After each session: Too Easy, Just Right, Difficult, or Could Not Complete.
+
+Optional reasons for difficulty or skipping.
+
+Camera metrics can influence progression: reps, partial reps, range of motion, rep speed, form consistency and fatigue indicators.
+
+Missed sessions can be rescheduled without creating excessive workout stacking.
+
+Track explains meaningful changes to the plan.
+
+Track AI
+
+Conversational assistant for questions, exercise explanations, plan changes and scheduling.
+
+Controlled actions: create/modify workout, replace exercise, change reps/sets/rest, reschedule, add rest day and set reminders.
+
+AI actions use approved application functions, not unrestricted database access.
+
+Track reports what it changed and why.
+
+Track does not diagnose injuries or provide medical treatment.
+
+Live Camera Coach
+
+TrackRep's signature feature.
+
+Exercise-specific camera instructions and a short setup tutorial.
+
+Live preview validates approximate framing, body visibility, angle and tracking confidence.
+
+Initial MVP exercises: push-up first, then squat and plank.
+
+Live rep counting, partial/invalid rep detection, basic form feedback, range-of-motion analysis, rep timing and performance/fatigue indicators.
+
+Feedback should be specific, such as 'Keep your hips aligned'.
+
+Camera processing should remain on-device where technically feasible.
+
+Timers, Progress and Backup
+
+Rep-based exercises show live progress; timed exercises have an exercise timer; rest periods have a separate timer.
+
+Store workout history, progression and camera-derived metrics locally.
+
+Export/import versioned backups. Optional readable workout sharing.
+
+No cloud account required initially.
+
+Privacy and Future Scope
+
+Camera permission only for camera tracking. Notifications only when enabled.
+
+Explain sensitive permissions clearly.
+
+Do not upload raw camera footage by default.
+
+Future: more exercises, wider Android support, iOS, optional encrypted cloud sync, wearables and desktop companion.
+
+MVP Success Criterion
+
+TrackRep must demonstrate reliable, understandable live tracking for the first supported exercise on the target phone before the full product is completed.
