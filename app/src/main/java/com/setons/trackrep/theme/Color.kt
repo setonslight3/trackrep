@@ -2,19 +2,19 @@ package com.setons.trackrep.theme
 
 import androidx.compose.ui.graphics.Color
 
-// TrackRep Dark Theme: Black + Gold
+// TrackRep Dark Theme: Black + Luxury Gold
 val DarkBackground = Color(0xFF000000)
-val DarkSurface = Color(0xFF121212)
-val DarkSurfaceVariant = Color(0xFF1C1C1C)
-val DarkPrimaryGold = Color(0xFFFFD700)       // Vivid Gold
-val DarkOnPrimaryGold = Color(0xFF000000)
-val DarkSecondaryGold = Color(0xFFDFB15B)     // Warm Amber Gold
-val DarkOnSecondary = Color(0xFF000000)
-val DarkTertiaryGold = Color(0xFFC5A059)      // Muted Gold
+val DarkSurface = Color(0xFF0D0D0D)
+val DarkSurfaceVariant = Color(0xFF17140F)
+val DarkPrimaryGold = Color(0xFFD4AF37)       // Metallic Luxury Gold
+val DarkOnPrimaryGold = Color(0xFF0C0A04)
+val DarkSecondaryGold = Color(0xFFE5C378)     // Champagne Gold highlight
+val DarkOnSecondary = Color(0xFF0C0A04)
+val DarkTertiaryGold = Color(0xFFB88E3E)      // Burnished Antique Gold
 val DarkOnBackground = Color(0xFFF5F5F5)
-val DarkOnSurface = Color(0xFFE8E8E8)
-val DarkOutlineGold = Color(0xFF53451E)
-val DarkCardBorder = Color(0xFF352C16)
+val DarkOnSurface = Color(0xFFECECEC)
+val DarkOutlineGold = Color(0xFF5A4927)       // Luxury Gold border
+val DarkCardBorder = Color(0xFF332918)
 
 // TrackRep Light Theme: White + Red
 val LightBackground = Color(0xFFFFFFFF)

@@ -19,4 +19,21 @@ class ThemeAndNavigationTest {
             assertNotNull(key)
         }
     }
+
+    @Test
+    fun testExerciseFramingModes() {
+        val modes = com.setons.trackrep.camera.ExerciseFramingMode.values()
+        assertEquals(3, modes.size)
+        val pushUp = com.setons.trackrep.camera.ExerciseFramingMode.PUSH_UP
+        assertEquals("Push-up", pushUp.displayName)
+        assertEquals("5–7 normal paces", pushUp.recommendedDistance)
+    }
+
+    @Test
+    fun testFramingStatusPassing() {
+        val aligned = com.setons.trackrep.camera.FramingStatus.FRAMING_ALIGNED
+        val calibrating = com.setons.trackrep.camera.FramingStatus.CALIBRATING
+        assertEquals(true, aligned.isPassing)
+        assertEquals(false, calibrating.isPassing)
+    }
 }

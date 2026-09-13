@@ -1,5 +1,9 @@
 package com.setons.trackrep.screens.coach
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,216 +24,309 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.setons.trackrep.camera.CameraLens
+import com.setons.trackrep.camera.CameraPreview
+import com.setons.trackrep.camera.ExerciseFramingMode
+import com.setons.trackrep.camera.FramingOverlay
+import com.setons.trackrep.camera.FramingStatus
 import com.setons.trackrep.theme.SuccessGreen
 
 @Composable
 fun CoachScreen(
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+    }
+
+    var showTutorial by remember { mutableStateOf(false) }
+    var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
+    var selectedExercise by remember { mutableStateOf(ExerciseFramingMode.PUSH_UP) }
+    var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
+
+    if (showTutorial) {
+        CameraTutorialDialog(onDismiss = { showTutorial = false })
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Header
-        Column {
-            Text(
-                text = "Live Camera Coach",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "On-Device Real-Time Form Analysis & Rep Counting",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
+        // Header with Tutorial & Lens Switch
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Live Camera Coach",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "Phase 1 • CameraX Foundation & Calibration",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = { showTutorial = true }) {
+                    Icon(
+                        imageVector = Icons.Default.HelpOutline,
+                        contentDescription = "Setup Tutorial",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                if (hasCameraPermission) {
+                    IconButton(onClick = {
+                        selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.FlipCameraAndroid,
+                            contentDescription = "Switch Camera",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
 
-        ElevatedCard(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(240.dp)
+        // Exercise Mode Selector Tabs (Push-up [Phase 3 MVP], Squat, Plank)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
+            ExerciseFramingMode.values().forEach { mode ->
+                val isSelected = mode == selectedExercise
+                Surface(
+                    onClick = {
+                        selectedExercise = mode
+                        framingStatus = FramingStatus.CALIBRATING
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = mode.displayName,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        // Camera Feed / Permission Request Card
+        if (!hasCameraPermission) {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
                 Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(20.dp)
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                CircleShape
-                            ),
+                            .size(72.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Camera",
+                            contentDescription = "Camera Permission",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(36.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Camera Foundation (Phase 1)",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = "Camera Access Required",
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = "CameraX preview and framing calibration will be integrated in Phase 1.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        text = "TrackRep requires camera access exclusively for real-time, on-device pose estimation and rep counting. Video footage is processed in RAM and is never recorded or uploaded to the cloud.",
+                        style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 4.dp)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth(0.85f)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        } else {
+            // Active Live Camera View with Framing Guide Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Color.Black, RoundedCornerShape(16.dp))
+            ) {
+                CameraPreview(
+                    lens = selectedLens,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                FramingOverlay(
+                    exerciseMode = selectedExercise,
+                    framingStatus = framingStatus,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Live Calibration Control Strip
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        framingStatus = when (framingStatus) {
+                            FramingStatus.CALIBRATING -> FramingStatus.TOO_CLOSE
+                            FramingStatus.TOO_CLOSE -> FramingStatus.FRAMING_ALIGNED
+                            FramingStatus.FRAMING_ALIGNED -> FramingStatus.COUNTDOWN
+                            FramingStatus.COUNTDOWN -> FramingStatus.CALIBRATING
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = "Test Calibration State",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        framingStatus = FramingStatus.FRAMING_ALIGNED
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Confirm Framing", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
 
-        // Camera Setup Guidance (From Blueprint)
-        Text(
-            text = "Camera Setup Guidelines",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        OutlinedCard(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.outlinedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GuidanceRow(
-                    icon = Icons.Default.Straighten,
-                    title = "Distance: 5–7 Normal Steps",
-                    description = "Position phone 5 to 7 steps away to ensure head, hips, and feet are fully framed."
-                )
-                GuidanceRow(
-                    icon = Icons.Default.Speed,
-                    title = "Stable Phone Angle",
-                    description = "Lean the phone slightly against a wall or water bottle at ground or knee height."
-                )
-                GuidanceRow(
-                    icon = Icons.Default.CheckCircle,
-                    title = "Lighting & Background",
-                    description = "Ensure clear contrast between clothing and background for optimal pose landmarks."
-                )
-            }
-        }
-
-        // On-Device Privacy Badge
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
+        // On-Device Privacy Banner
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Lock,
+                    imageVector = Icons.Default.Shield,
                     contentDescription = null,
-                    tint = SuccessGreen
+                    tint = SuccessGreen,
+                    modifier = Modifier.size(16.dp)
                 )
-                Column {
-                    Text(
-                        text = "100% On-Device Processing",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Zero camera streaming. Video frames are processed locally and discarded immediately.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
+                Text(
+                    text = "100% On-Device • Optimized for Infinix Smart 9 • Zero cloud latency",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
             }
-        }
-    }
-}
-
-@Composable
-private fun GuidanceRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String
-) {
-    Row(
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 2.dp)
-        )
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-            )
         }
     }
 }
