@@ -75,6 +75,9 @@ import kotlinx.coroutines.delay
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
 import androidx.compose.runtime.mutableLongStateOf
+import com.setons.trackrep.exercise.pushup.PushUpAnalyzer
+import com.setons.trackrep.exercise.pushup.PushUpLiveOverlay
+import com.setons.trackrep.exercise.pushup.PushUpLiveTelemetry
 import com.setons.trackrep.review.TimestampedPose
 import com.setons.trackrep.video.VideoRecorderManager
 import java.io.File
@@ -118,6 +121,10 @@ fun CoachScreen(
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
 
+    // Phase 3: Push-up Movement Analyzer & Live Telemetry
+    val pushUpAnalyzer = remember { PushUpAnalyzer() }
+    var livePushUpTelemetry by remember { mutableStateOf(PushUpLiveTelemetry()) }
+
     fun toggleRecording() {
         if (isRecording) {
             isRecording = false
@@ -132,35 +139,33 @@ fun CoachScreen(
                 SessionReviewRepository.generatePosesForExercise(selectedExercise.displayName, duration)
             }
 
-            val flaws = listOf(
-                FormFlaw(
-                    timestampMs = (duration * 1000L * 0.25).toLong(),
-                    title = if (selectedExercise == ExerciseFramingMode.PUSH_UP) "Hands Bent Inward / Misaligned" else "Knees Caving In",
-                    description = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
-                        "Wrists rotated inward placing torque on forearms and shoulders."
-                        else "Knees collapsed slightly inward during the bottom descent.",
-                    correctionTip = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
-                        "Rotate hands outward 10–15° with index fingers pointing forward."
-                        else "Push knees outward in line with your 2nd and 3rd toes."
-                ),
-                FormFlaw(
-                    timestampMs = (duration * 1000L * 0.65).toLong(),
-                    title = if (selectedExercise == ExerciseFramingMode.PUSH_UP) "Elbow Flare Angle" else "Hip Hinge Loss",
-                    description = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
-                        "Elbow flared beyond 75° relative to torso."
-                        else "Back rounded slightly at peak depth.",
-                    correctionTip = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
-                        "Tuck elbows to 45° relative to your ribs to protect rotator cuffs."
-                        else "Brace core tight and maintain a neutral lumbar spine."
+            // Real rep count & flaws from PushUpAnalyzer if Push-up, else fallback
+            val validReps = pushUpAnalyzer.liveTelemetry.validRepCount
+            val finalRepCount = if (selectedExercise == ExerciseFramingMode.PUSH_UP && validReps > 0) {
+                validReps
+            } else {
+                (duration / 3).coerceAtLeast(1)
+            }
+
+            val flaws = if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
+                pushUpAnalyzer.getSummaryFlaws()
+            } else {
+                listOf(
+                    FormFlaw(
+                        timestampMs = (duration * 1000L * 0.25).toLong(),
+                        title = "Form Check: Alignment",
+                        description = "Posture deviated slightly during set midpoint.",
+                        correctionTip = "Focus on keeping a neutral spine and controlled descent tempo."
+                    )
                 )
-            )
+            }
 
             val newSession = RecordedWorkoutSession(
                 id = newSessionId,
                 exerciseName = "${selectedExercise.displayName} Set",
                 videoPath = capturedFile?.takeIf { it.exists() && it.length() > 0 }?.absolutePath,
                 durationSeconds = duration,
-                repCount = (duration / 3).coerceAtLeast(1),
+                repCount = finalRepCount,
                 dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
                 detectedFlaws = flaws,
                 recordedPoses = finalPoses
@@ -168,8 +173,14 @@ fun CoachScreen(
 
             SessionReviewRepository.addSession(newSession)
             lastRecordedSessionId = newSessionId
-            android.widget.Toast.makeText(context, "Workout set recorded! Tap 'Watch Replay' to inspect.", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(
+                context,
+                "Set recorded: $finalRepCount reps! Tap 'Watch Replay' to inspect.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         } else {
+            pushUpAnalyzer.reset()
+            livePushUpTelemetry = PushUpLiveTelemetry()
             recordedPoses.clear()
             recordingStartTimeMs = System.currentTimeMillis()
             val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
@@ -215,6 +226,10 @@ fun CoachScreen(
                 lens = selectedLens,
                 onPoseDetected = { pose ->
                     currentPose = pose
+                    if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
+                        val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
+                        livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                    }
                     if (isRecording) {
                         val elapsed = System.currentTimeMillis() - recordingStartTimeMs
                         val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
@@ -240,6 +255,14 @@ fun CoachScreen(
                 isFrontCamera = selectedLens == CameraLens.FRONT,
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Real-Time Push-up Rep Counter & Depth HUD
+            if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
+                PushUpLiveOverlay(
+                    telemetry = livePushUpTelemetry,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             // Floating Top Controls in Fullscreen
             Row(
@@ -547,6 +570,10 @@ fun CoachScreen(
                         lens = selectedLens,
                         onPoseDetected = { pose ->
                             currentPose = pose
+                            if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
+                                val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
+                                livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                            }
                             if (isRecording) {
                                 val elapsed = System.currentTimeMillis() - recordingStartTimeMs
                                 val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
@@ -570,6 +597,14 @@ fun CoachScreen(
                         isFrontCamera = selectedLens == CameraLens.FRONT,
                         modifier = Modifier.fillMaxSize()
                     )
+
+                    // Real-Time Push-up Rep Counter & Depth HUD
+                    if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
+                        PushUpLiveOverlay(
+                            telemetry = livePushUpTelemetry,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     // Quick Fullscreen Expansion Overlay Chip
                     Surface(
