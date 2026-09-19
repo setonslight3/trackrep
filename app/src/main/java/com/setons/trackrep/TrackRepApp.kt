@@ -36,7 +36,9 @@ import com.setons.trackrep.navigation.CoachNavKey
 import com.setons.trackrep.navigation.HistoryNavKey
 import com.setons.trackrep.navigation.HomeNavKey
 import com.setons.trackrep.navigation.ProfileNavKey
+import com.setons.trackrep.navigation.SessionReviewNavKey
 import com.setons.trackrep.navigation.TrackAiNavKey
+import com.setons.trackrep.review.SessionPlaybackScreen
 import com.setons.trackrep.screens.coach.CoachScreen
 import com.setons.trackrep.screens.history.HistoryScreen
 import com.setons.trackrep.screens.home.HomeScreen
@@ -53,62 +55,67 @@ fun TrackRepApp() {
     TrackRepTheme(darkTheme = isDarkTheme) {
         val backStack = rememberNavBackStack(HomeNavKey)
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
+        val isFullscreenDestination = currentDestination is SessionReviewNavKey
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "TrackRep",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                if (!isFullscreenDestination) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "TrackRep",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.primary
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.primary
                     )
-                )
+                }
             },
             bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp
-                ) {
-                    val navItems = listOf(
-                        Triple(HomeNavKey, "Today", Icons.Default.Home),
-                        Triple(CoachNavKey, "Coach", Icons.Default.FitnessCenter),
-                        Triple(TrackAiNavKey, "Track AI", Icons.Default.AutoAwesome),
-                        Triple(HistoryNavKey, "History", Icons.Default.History),
-                        Triple(ProfileNavKey, "Profile", Icons.Default.Person)
-                    )
-
-                    navItems.forEach { (key, label, icon) ->
-                        val isSelected = currentDestination == key
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = {
-                                if (currentDestination != key) {
-                                    while (backStack.size > 1) {
-                                        backStack.removeLastOrNull()
-                                    }
-                                    if (key != HomeNavKey) {
-                                        backStack.add(key)
-                                    }
-                                }
-                            },
-                            icon = { Icon(icon, contentDescription = label) },
-                            label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            )
+                if (!isFullscreenDestination) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp
+                    ) {
+                        val navItems = listOf(
+                            Triple(HomeNavKey, "Today", Icons.Default.Home),
+                            Triple(CoachNavKey, "Coach", Icons.Default.FitnessCenter),
+                            Triple(TrackAiNavKey, "Track AI", Icons.Default.AutoAwesome),
+                            Triple(HistoryNavKey, "History", Icons.Default.History),
+                            Triple(ProfileNavKey, "Profile", Icons.Default.Person)
                         )
+
+                        navItems.forEach { (key, label, icon) ->
+                            val isSelected = currentDestination == key
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = {
+                                    if (currentDestination != key) {
+                                        while (backStack.size > 1) {
+                                            backStack.removeLastOrNull()
+                                        }
+                                        if (key != HomeNavKey) {
+                                            backStack.add(key)
+                                        }
+                                    }
+                                },
+                                icon = { Icon(icon, contentDescription = label) },
+                                label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -116,7 +123,7 @@ fun TrackRepApp() {
             NavDisplay(
                 backStack = backStack,
                 onBack = { backStack.removeLastOrNull() },
-                modifier = Modifier.padding(innerPadding),
+                modifier = if (isFullscreenDestination) Modifier else Modifier.padding(innerPadding),
                 entryProvider = entryProvider {
                     entry<HomeNavKey> {
                         HomeScreen(
@@ -135,18 +142,34 @@ fun TrackRepApp() {
                         )
                     }
                     entry<CoachNavKey> {
-                        CoachScreen()
+                        CoachScreen(
+                            onNavigateToPlayback = { sessionId ->
+                                backStack.add(SessionReviewNavKey(sessionId))
+                            }
+                        )
                     }
                     entry<TrackAiNavKey> {
                         TrackAiScreen()
                     }
                     entry<HistoryNavKey> {
-                        HistoryScreen()
+                        HistoryScreen(
+                            onNavigateToPlayback = { sessionId ->
+                                backStack.add(SessionReviewNavKey(sessionId))
+                            }
+                        )
                     }
                     entry<ProfileNavKey> {
                         ProfileScreen(
                             isDarkTheme = isDarkTheme,
                             onToggleTheme = { isDarkTheme = it }
+                        )
+                    }
+                    entry<SessionReviewNavKey> { key ->
+                        SessionPlaybackScreen(
+                            sessionId = key.sessionId,
+                            onNavigateBack = {
+                                backStack.removeLastOrNull()
+                            }
                         )
                     }
                 }

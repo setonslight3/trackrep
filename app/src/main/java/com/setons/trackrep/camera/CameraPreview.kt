@@ -1,6 +1,7 @@
 package com.setons.trackrep.camera
 
 import android.view.ViewGroup
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -13,11 +14,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.setons.trackrep.pose.PoseDetectorProcessor
+import com.setons.trackrep.pose.TrackedPose
+import java.util.concurrent.Executors
 
 @Composable
 fun CameraPreview(
     lens: CameraLens,
     modifier: Modifier = Modifier,
+    onPoseDetected: (TrackedPose) -> Unit = {},
     onCameraReady: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -37,6 +42,10 @@ fun CameraPreview(
     DisposableEffect(lens) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         val executor = ContextCompat.getMainExecutor(context)
+        val analysisExecutor = Executors.newSingleThreadExecutor()
+        val poseProcessor = PoseDetectorProcessor { pose ->
+            onPoseDetected(pose)
+        }
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
@@ -44,16 +53,22 @@ fun CameraPreview(
                 it.surfaceProvider = previewView.surfaceProvider
             }
 
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+
+            imageAnalysis.setAnalyzer(analysisExecutor, poseProcessor)
+
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     lens.selector,
-                    preview
+                    preview,
+                    imageAnalysis
                 )
                 onCameraReady()
             } catch (e: Exception) {
-                // Safely handle camera bind error
                 e.printStackTrace()
             }
         }, executor)
@@ -62,6 +77,8 @@ fun CameraPreview(
             try {
                 val cameraProvider = cameraProviderFuture.get()
                 cameraProvider.unbindAll()
+                poseProcessor.close()
+                analysisExecutor.shutdown()
             } catch (e: Exception) {
                 // Ignore during disposal
             }

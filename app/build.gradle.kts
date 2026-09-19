@@ -88,4 +88,12 @@ dependencies {
   implementation(libs.androidx.camera.camera2)
   implementation(libs.androidx.camera.lifecycle)
   implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.camera.video)
+
+  // ML Kit Pose Detection (Phase 2 On-Device Vision)
+  implementation(libs.com.google.mlkit.pose.detection)
+
+  // Media3 Video Playback
+  implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.ui)
 }

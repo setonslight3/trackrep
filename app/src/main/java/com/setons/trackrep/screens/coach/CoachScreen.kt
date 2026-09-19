@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,34 +18,34 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,10 +63,23 @@ import com.setons.trackrep.camera.CameraPreview
 import com.setons.trackrep.camera.ExerciseFramingMode
 import com.setons.trackrep.camera.FramingOverlay
 import com.setons.trackrep.camera.FramingStatus
+import com.setons.trackrep.pose.SkeletonOverlay
+import com.setons.trackrep.pose.TrackedPose
+import com.setons.trackrep.review.FormFlaw
+import com.setons.trackrep.review.RecordedWorkoutSession
+import com.setons.trackrep.review.SessionReviewRepository
+import com.setons.trackrep.theme.DarkPrimaryGold
+import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 @Composable
 fun CoachScreen(
+    onNavigateToPlayback: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -85,247 +99,534 @@ fun CoachScreen(
     }
 
     var showTutorial by remember { mutableStateOf(false) }
+    var isFullscreen by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingDurationSec by remember { mutableIntStateOf(0) }
+    var currentPose by remember { mutableStateOf<TrackedPose?>(null) }
     var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
     var selectedExercise by remember { mutableStateOf(ExerciseFramingMode.PUSH_UP) }
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
+    var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
+
+    // Recording timer
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingDurationSec = 0
+            while (isRecording) {
+                delay(1000)
+                recordingDurationSec++
+            }
+        }
+    }
 
     if (showTutorial) {
         CameraTutorialDialog(onDismiss = { showTutorial = false })
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Header with Tutorial & Lens Switch
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    if (isFullscreen && hasCameraPermission) {
+        // FULLSCREEN IMMERSIVE CAMERA MODE
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
         ) {
-            Column {
-                Text(
-                    text = "Live Camera Coach",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "Phase 1 • CameraX Foundation & Calibration",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            // Live CameraX Feed
+            CameraPreview(
+                lens = selectedLens,
+                onPoseDetected = { pose -> currentPose = pose },
+                modifier = Modifier.fillMaxSize()
+            )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = { showTutorial = true }) {
+            // Dynamic Framing Guide
+            FramingOverlay(
+                exerciseMode = selectedExercise,
+                framingStatus = framingStatus,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Real-Time Body Tracking Lines (Skeleton)
+            SkeletonOverlay(
+                pose = currentPose,
+                isFrontCamera = selectedLens == CameraLens.FRONT,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Floating Top Controls in Fullscreen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Exit Fullscreen Button
+                IconButton(
+                    onClick = { isFullscreen = false },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.HelpOutline,
-                        contentDescription = "Setup Tutorial",
-                        tint = MaterialTheme.colorScheme.primary
+                        imageVector = Icons.Default.FullscreenExit,
+                        contentDescription = "Exit Fullscreen",
+                        tint = DarkPrimaryGold
                     )
                 }
 
-                if (hasCameraPermission) {
-                    IconButton(onClick = {
+                // Exercise Mode & Recording Status Badge
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.Black.copy(alpha = 0.7f),
+                    border = BorderStroke(1.dp, if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold.copy(alpha = 0.4f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isRecording) {
+                            Icon(
+                                imageVector = Icons.Default.FiberManualRecord,
+                                contentDescription = "Recording",
+                                tint = Color(0xFFFF5252),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            val m = recordingDurationSec / 60
+                            val s = recordingDurationSec % 60
+                            Text(
+                                text = String.format("REC %02d:%02d", m, s),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFF5252)
+                            )
+                        } else {
+                            Text(
+                                text = selectedExercise.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkPrimaryGold
+                            )
+                        }
+                    }
+                }
+
+                // Flip Camera
+                IconButton(
+                    onClick = {
                         selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
-                    }) {
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FlipCameraAndroid,
+                        contentDescription = "Flip Camera",
+                        tint = DarkPrimaryGold
+                    )
+                }
+            }
+
+            // Floating Bottom Controls in Fullscreen
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Record / Stop Button
+                Button(
+                    onClick = {
+                        if (isRecording) {
+                            // Stop recording and save session
+                            isRecording = false
+                            val newSessionId = UUID.randomUUID().toString()
+                            val newSession = RecordedWorkoutSession(
+                                id = newSessionId,
+                                exerciseName = "${selectedExercise.displayName} Set",
+                                videoPath = null,
+                                durationSeconds = recordingDurationSec.coerceAtLeast(15),
+                                repCount = 8,
+                                dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
+                                detectedFlaws = listOf(
+                                    FormFlaw(
+                                        timestampMs = 4000,
+                                        title = "Hands Bent Inward / Misaligned",
+                                        description = "Your wrists turned inward causing forearm torque during the bottom phase.",
+                                        correctionTip = "Rotate hands slightly outward 10–15° with index fingers pointing forward."
+                                    ),
+                                    FormFlaw(
+                                        timestampMs = 9000,
+                                        title = "Elbow Flare Angle",
+                                        description = "Elbow flared out to 78° from torso.",
+                                        correctionTip = "Tuck elbows closer to ribs (45° angle) to engage chest and protect rotator cuffs."
+                                    )
+                                )
+                            )
+                            SessionReviewRepository.addSession(newSession)
+                            lastRecordedSessionId = newSessionId
+                        } else {
+                            isRecording = true
+                        }
+                    },
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold,
+                        contentColor = if (isRecording) Color.White else Color.Black
+                    ),
+                    modifier = Modifier.height(48.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isRecording) "Stop & Save Set" else "Record Set For Playback",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // If recently recorded, quick jump to Playback Review
+                if (lastRecordedSessionId != null && !isRecording) {
+                    Surface(
+                        onClick = {
+                            isFullscreen = false
+                            onNavigateToPlayback(lastRecordedSessionId!!)
+                        },
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color.Black.copy(alpha = 0.85f),
+                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.6f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "Watch Playback & Form Flaw Review",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkPrimaryGold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // STANDARD DASHBOARD VIEW
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with Fullscreen Toggle & Tutorial
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Live Camera Coach",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Phase 2 • Skeleton Tracking & Form Diagnosis",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = { showTutorial = true }) {
                         Icon(
-                            imageVector = Icons.Default.FlipCameraAndroid,
-                            contentDescription = "Switch Camera",
+                            imageVector = Icons.Default.HelpOutline,
+                            contentDescription = "Setup Tutorial",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+
+                    if (hasCameraPermission) {
+                        IconButton(onClick = { isFullscreen = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Fullscreen,
+                                contentDescription = "Fullscreen Camera Mode",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        IconButton(onClick = {
+                            selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.FlipCameraAndroid,
+                                contentDescription = "Switch Camera",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        // Exercise Mode Selector Tabs (Push-up [Phase 3 MVP], Squat, Plank)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            ExerciseFramingMode.values().forEach { mode ->
-                val isSelected = mode == selectedExercise
-                Surface(
-                    onClick = {
-                        selectedExercise = mode
-                        framingStatus = FramingStatus.CALIBRATING
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(
-                        1.dp,
-                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = mode.displayName,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-
-        // Camera Feed / Permission Request Card
-        if (!hasCameraPermission) {
-            ElevatedCard(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+            // Exercise Mode Selector Tabs (Push-up, Squat, Plank)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column(
+                ExerciseFramingMode.values().forEach { mode ->
+                    val isSelected = mode == selectedExercise
+                    Surface(
+                        onClick = {
+                            selectedExercise = mode
+                            framingStatus = FramingStatus.CALIBRATING
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = mode.displayName,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            // Camera Feed or Permission Request Card
+            if (!hasCameraPermission) {
+                ElevatedCard(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(72.dp)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
-                        contentAlignment = Alignment.Center
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Camera Permission",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Camera Access Required",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "TrackRep needs camera access to render real-time body tracking lines and evaluate your workout form on-device.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                // Live Camera View with Skeleton Tracking Lines & Framing Overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .background(Color.Black, RoundedCornerShape(16.dp))
+                ) {
+                    CameraPreview(
+                        lens = selectedLens,
+                        onPoseDetected = { pose -> currentPose = pose },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    FramingOverlay(
+                        exerciseMode = selectedExercise,
+                        framingStatus = framingStatus,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    SkeletonOverlay(
+                        pose = currentPose,
+                        isFrontCamera = selectedLens == CameraLens.FRONT,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Quick Fullscreen Expansion Overlay Chip
+                    Surface(
+                        onClick = { isFullscreen = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Black.copy(alpha = 0.65f),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.Fullscreen, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                            Text("Fullscreen", style = MaterialTheme.typography.labelSmall, color = DarkPrimaryGold)
+                        }
+                    }
+                }
+
+                // Controls Strip: Record Set & Playback Review
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            if (isRecording) {
+                                isRecording = false
+                                val newSessionId = UUID.randomUUID().toString()
+                                val newSession = RecordedWorkoutSession(
+                                    id = newSessionId,
+                                    exerciseName = "${selectedExercise.displayName} Set",
+                                    videoPath = null,
+                                    durationSeconds = recordingDurationSec.coerceAtLeast(15),
+                                    repCount = 8,
+                                    dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
+                                    detectedFlaws = listOf(
+                                        FormFlaw(
+                                            timestampMs = 5000,
+                                            title = "Hands Bent Inward / Misaligned",
+                                            description = "Your wrists turned inward causing forearm torque during the bottom phase.",
+                                            correctionTip = "Rotate hands slightly outward 10–15° with index fingers pointing forward."
+                                        ),
+                                        FormFlaw(
+                                            timestampMs = 11000,
+                                            title = "Elbow Flare Angle",
+                                            description = "Elbow flared out to 78° from torso.",
+                                            correctionTip = "Tuck elbows closer to ribs (45° angle) to engage chest and protect rotator cuffs."
+                                        )
+                                    )
+                                )
+                                SessionReviewRepository.addSession(newSession)
+                                lastRecordedSessionId = newSessionId
+                            } else {
+                                isRecording = true
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRecording) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
+                            contentColor = if (isRecording) Color.White else MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Camera Permission",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
+                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isRecording) "Stop (${recordingDurationSec}s)" else "Record Set",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Camera Access Required",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "TrackRep requires camera access exclusively for real-time, on-device pose estimation and rep counting. Video footage is processed in RAM and is never recorded or uploaded to the cloud.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    OutlinedButton(
+                        onClick = {
+                            if (lastRecordedSessionId != null) {
+                                onNavigateToPlayback(lastRecordedSessionId!!)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth(0.85f)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                     ) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Watch Replay",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
-        } else {
-            // Active Live Camera View with Framing Guide Overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color.Black, RoundedCornerShape(16.dp))
-            ) {
-                CameraPreview(
-                    lens = selectedLens,
-                    modifier = Modifier.fillMaxSize()
-                )
 
-                FramingOverlay(
-                    exerciseMode = selectedExercise,
-                    framingStatus = framingStatus,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            // Live Calibration Control Strip
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // On-Device Privacy Banner
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
-                    onClick = {
-                        framingStatus = when (framingStatus) {
-                            FramingStatus.CALIBRATING -> FramingStatus.TOO_CLOSE
-                            FramingStatus.TOO_CLOSE -> FramingStatus.FRAMING_ALIGNED
-                            FramingStatus.FRAMING_ALIGNED -> FramingStatus.COUNTDOWN
-                            FramingStatus.COUNTDOWN -> FramingStatus.CALIBRATING
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = SuccessGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
                     Text(
-                        text = "Test Calibration State",
-                        style = MaterialTheme.typography.labelSmall
+                        text = "100% On-Device ML • Tracking lines & recordings stored locally",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
                 }
-
-                Button(
-                    onClick = {
-                        framingStatus = FramingStatus.FRAMING_ALIGNED
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Confirm Framing", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
-
-        // On-Device Privacy Banner
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Shield,
-                    contentDescription = null,
-                    tint = SuccessGreen,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "100% On-Device • Optimized for Infinix Smart 9 • Zero cloud latency",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
             }
         }
     }

@@ -17,30 +17,39 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.setons.trackrep.review.SessionReviewRepository
+import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import com.setons.trackrep.theme.WarningOrange
 
 @Composable
 fun HistoryScreen(
+    onNavigateToPlayback: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val recordedSessions = remember { SessionReviewRepository.getAllSessions() }
 
     Column(
         modifier = modifier
@@ -58,12 +67,91 @@ fun HistoryScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Local-first session logs and muscle readiness tracking",
+                text = "Local-first session logs, form replays, and recovery metrics",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
         }
 
+        // Recorded Sessions & Form Replays Section
+        Text(
+            text = "Video Replays & Form Diagnoses",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            recordedSessions.forEach { session ->
+                OutlinedCard(
+                    onClick = { onNavigateToPlayback(session.id) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = DarkPrimaryGold.copy(alpha = 0.15f),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Videocam,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = session.exerciseName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${session.repCount} reps • ${session.durationSeconds}s • ${session.dateString}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                                if (session.detectedFlaws.isNotEmpty()) {
+                                    Text(
+                                        text = "⚠️ ${session.detectedFlaws.size} form flaws identified (tap to review)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFFFF5252),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.PlayCircle,
+                            contentDescription = "Watch",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Muscle Recovery Card
         ElevatedCard(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.elevatedCardColors(
@@ -119,12 +207,12 @@ fun HistoryScreen(
                 )
                 Column {
                     Text(
-                        text = "Local SQLite / Room Engine",
+                        text = "Local SQLite & Storage",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Sessions, sets, reps, rep duration, and subjective ratings are saved on-device with zero required cloud accounts.",
+                        text = "Sessions, telemetry, and recorded replays are stored exclusively on your device. Zero cloud sync required.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
@@ -132,6 +220,7 @@ fun HistoryScreen(
             }
         }
 
+        // Export / Import Teaser (Phase 10)
         ElevatedCard(
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.elevatedCardColors(
@@ -159,7 +248,7 @@ fun HistoryScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Export and import your complete workout history as a versioned JSON backup file to move data across devices safely.",
+                    text = "Export and import your complete workout history and form replays as a versioned JSON backup file.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
