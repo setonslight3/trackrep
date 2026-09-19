@@ -125,6 +125,17 @@ fun CoachScreen(
     val pushUpAnalyzer = remember { PushUpAnalyzer() }
     var livePushUpTelemetry by remember { mutableStateOf(PushUpLiveTelemetry()) }
 
+    // Motion sticks green flash on completed action/rep
+    var isRepCompletedFlash by remember { mutableStateOf(false) }
+
+    LaunchedEffect(livePushUpTelemetry.validRepCount) {
+        if (livePushUpTelemetry.validRepCount > 0) {
+            isRepCompletedFlash = true
+            delay(700)
+            isRepCompletedFlash = false
+        }
+    }
+
     fun toggleRecording() {
         if (isRecording) {
             isRecording = false
@@ -160,6 +171,9 @@ fun CoachScreen(
                 )
             }
 
+            val completedReps = pushUpAnalyzer.getCompletedReps()
+            val validTimestamps = completedReps.filter { it.isValid }.map { it.endTimestampMs }
+
             val newSession = RecordedWorkoutSession(
                 id = newSessionId,
                 exerciseName = "${selectedExercise.displayName} Set",
@@ -168,7 +182,8 @@ fun CoachScreen(
                 repCount = finalRepCount,
                 dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
                 detectedFlaws = flaws,
-                recordedPoses = finalPoses
+                recordedPoses = finalPoses,
+                completedRepTimestamps = validTimestamps
             )
 
             SessionReviewRepository.addSession(newSession)
@@ -253,6 +268,7 @@ fun CoachScreen(
             SkeletonOverlay(
                 pose = currentPose,
                 isFrontCamera = selectedLens == CameraLens.FRONT,
+                isSuccessFlash = isRepCompletedFlash,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -595,6 +611,7 @@ fun CoachScreen(
                     SkeletonOverlay(
                         pose = currentPose,
                         isFrontCamera = selectedLens == CameraLens.FRONT,
+                        isSuccessFlash = isRepCompletedFlash,
                         modifier = Modifier.fillMaxSize()
                     )
 

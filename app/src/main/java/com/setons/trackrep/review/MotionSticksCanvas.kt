@@ -25,6 +25,7 @@ fun MotionSticksCanvas(
     poses: List<TimestampedPose>,
     currentPositionMs: Long,
     isFrontCamera: Boolean = false,
+    completedRepTimestamps: List<Long> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     // Find closest recorded pose to current timeline position
@@ -33,6 +34,11 @@ fun MotionSticksCanvas(
         else {
             poses.minByOrNull { Math.abs(it.timestampMs - currentPositionMs) }?.pose
         }
+    }
+
+    // Flash motion sticks green when playhead is at or near a completed rep timestamp
+    val isRepFlash = remember(completedRepTimestamps, currentPositionMs) {
+        completedRepTimestamps.any { Math.abs(it - currentPositionMs) <= 450L }
     }
 
     Box(
@@ -44,6 +50,7 @@ fun MotionSticksCanvas(
             SkeletonOverlay(
                 pose = currentPose,
                 isFrontCamera = isFrontCamera,
+                isSuccessFlash = isRepFlash,
                 modifier = Modifier.fillMaxSize()
             )
         } else {

@@ -28,7 +28,8 @@ data class RecordedWorkoutSession(
     val repCount: Int,
     val dateString: String,
     val detectedFlaws: List<FormFlaw>,
-    val recordedPoses: List<TimestampedPose> = emptyList()
+    val recordedPoses: List<TimestampedPose> = emptyList(),
+    val completedRepTimestamps: List<Long> = emptyList()
 )
 
 object SessionReviewRepository {
@@ -66,7 +67,8 @@ object SessionReviewRepository {
                         correctionTip = "Lower down smoothly until your chest is approximately 2–3 inches off the ground before pressing up."
                     )
                 ),
-                recordedPoses = samplePoses
+                recordedPoses = samplePoses,
+                completedRepTimestamps = listOf(3000L, 6000L, 9000L, 12000L, 15000L, 18000L, 21000L, 23500L)
             )
         )
     }

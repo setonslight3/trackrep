@@ -141,6 +141,7 @@ fun SessionPlaybackScreen(
                     exerciseName = session.exerciseName,
                     poses = poses,
                     durationSeconds = session.durationSeconds,
+                    completedRepTimestamps = session.completedRepTimestamps,
                     onProgress = { p -> exportProgress = p }
                 )
                 isExporting = false
@@ -426,6 +427,7 @@ fun SessionPlaybackScreen(
                             MotionSticksCanvas(
                                 poses = session.recordedPoses,
                                 currentPositionMs = currentPositionMs.toLong(),
+                                completedRepTimestamps = session.completedRepTimestamps,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

@@ -32,11 +32,10 @@ object MotionSticksVideoExporter {
         outputFile: File,
         poses: List<TimestampedPose>,
         durationSeconds: Int,
+        completedRepTimestamps: List<Long> = emptyList(),
         onProgress: (Float) -> Unit = {}
     ): Boolean = withContext(Dispatchers.IO) {
-        if (poses.isEmpty()) return@withContext false
-
-        val width = 480
+        val width = 480  // 16:9 SD, guaranteed multiple of 16
         val height = 848 // 16:9 SD, guaranteed multiple of 16
         val totalDurationSec = durationSeconds.coerceIn(3, 120)
         val totalFrames = totalDurationSec * FRAME_RATE
@@ -87,6 +86,29 @@ object MotionSticksVideoExporter {
                 style = Paint.Style.STROKE
                 strokeCap = Paint.Cap.ROUND
             }
+
+            // Green flash paints for completed reps
+            val greenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFF00E676.toInt() // Radiant Neon Green
+                strokeWidth = 8f
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+            }
+            val greenGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0x8869F0AE.toInt()
+                strokeWidth = 18f
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+            }
+            val greenJointOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xAA00E676.toInt()
+                style = Paint.Style.FILL
+            }
+            val flashVignettePaint = Paint().apply {
+                color = 0x2500E676.toInt()
+                style = Paint.Style.FILL
+            }
+
             val jointOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = 0x88D4AF37.toInt()
                 style = Paint.Style.FILL
@@ -119,6 +141,16 @@ object MotionSticksVideoExporter {
                 // Render frame onto pitch black canvas
                 canvas.drawColor(android.graphics.Color.BLACK)
 
+                // Check if this frame is near a completed rep
+                val isRepFlash = completedRepTimestamps.any { abs(it - timestampMs) <= 450L }
+                if (isRepFlash) {
+                    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), flashVignettePaint)
+                }
+
+                val activeLimbPaint = if (isRepFlash) greenPaint else goldPaint
+                val activeLimbGlowPaint = if (isRepFlash) greenGlowPaint else goldGlowPaint
+                val activeJointOuter = if (isRepFlash) greenJointOuterPaint else jointOuterPaint
+
                 if (currentPose != null && currentPose.isTrackingValid) {
                     fun drawLimb(startType: Int, endType: Int) {
                         val s = currentPose.landmarks[startType]
@@ -128,8 +160,8 @@ object MotionSticksVideoExporter {
                             val sy = s.y * height
                             val ex = e.x * width
                             val ey = e.y * height
-                            canvas.drawLine(sx, sy, ex, ey, goldGlowPaint)
-                            canvas.drawLine(sx, sy, ex, ey, goldPaint)
+                            canvas.drawLine(sx, sy, ex, ey, activeLimbGlowPaint)
+                            canvas.drawLine(sx, sy, ex, ey, activeLimbPaint)
                         }
                     }
 
@@ -158,12 +190,13 @@ object MotionSticksVideoExporter {
                         PoseLandmark.LEFT_KNEE, PoseLandmark.RIGHT_KNEE,
                         PoseLandmark.LEFT_ANKLE, PoseLandmark.RIGHT_ANKLE
                     )
+                    val nodeRadius = if (isRepFlash) 13f else 10f
                     for (jt in joints) {
                         val lm = currentPose.landmarks[jt]
                         if (lm != null && lm.inFrameLikelihood >= 0.35f) {
                             val cx = lm.x * width
                             val cy = lm.y * height
-                            canvas.drawCircle(cx, cy, 10f, jointOuterPaint)
+                            canvas.drawCircle(cx, cy, nodeRadius, activeJointOuter)
                             canvas.drawCircle(cx, cy, 4f, jointInnerPaint)
                         }
                     }

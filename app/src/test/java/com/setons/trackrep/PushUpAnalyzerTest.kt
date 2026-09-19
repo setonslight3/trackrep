@@ -200,4 +200,24 @@ class PushUpAnalyzerTest {
         assertEquals(PushUpPhase.UNKNOWN, analyzer.liveTelemetry.currentPhase)
         assertTrue(analyzer.getCompletedReps().isEmpty())
     }
+
+    @Test
+    fun testRepCompletionTimestampForGreenFlash() {
+        // Simulate a complete rep
+        analyzer.processPose(mockPose(160.0), 1000L)
+        analyzer.processPose(mockPose(135.0), 1200L)
+        analyzer.processPose(mockPose(88.0), 1500L)
+        analyzer.processPose(mockPose(110.0), 1800L)
+        val finalTelemetry = analyzer.processPose(mockPose(155.0), 2400L)
+
+        // Verifies that a valid rep records end timestamp for green flash triggering
+        assertEquals(1, finalTelemetry.validRepCount)
+        val lastRep = finalTelemetry.lastCompletedRep
+        assertNotNull(lastRep)
+        assertEquals(2400L, lastRep?.endTimestampMs)
+
+        val completedTimestamps = analyzer.getCompletedReps().filter { it.isValid }.map { it.endTimestampMs }
+        assertEquals(1, completedTimestamps.size)
+        assertEquals(2400L, completedTimestamps[0])
+    }
 }

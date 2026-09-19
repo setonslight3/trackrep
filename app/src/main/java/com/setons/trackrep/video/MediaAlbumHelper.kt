@@ -100,6 +100,7 @@ object MediaAlbumHelper {
         exerciseName: String,
         poses: List<com.setons.trackrep.review.TimestampedPose>,
         durationSeconds: Int,
+        completedRepTimestamps: List<Long> = emptyList(),
         onProgress: (Float) -> Unit = {}
     ): Boolean {
         if (poses.isEmpty()) {
@@ -112,6 +113,7 @@ object MediaAlbumHelper {
             outputFile = cacheFile,
             poses = poses,
             durationSeconds = durationSeconds,
+            completedRepTimestamps = completedRepTimestamps,
             onProgress = onProgress
         )
 
