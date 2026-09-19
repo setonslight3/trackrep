@@ -1,11 +1,16 @@
 package com.setons.trackrep.camera
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -106,37 +111,53 @@ fun FramingOverlay(
             )
         }
 
-        // Live Framing Guidance Badge
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.Black.copy(alpha = 0.78f),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-        ) {
-            Text(
-                text = framingStatus.message,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (framingStatus.isPassing) SuccessGreen else DarkSecondaryGold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+        // Live Framing Guidance Badge (Floats safely below top HUD when calibration/alignment needed)
+        if (!framingStatus.isPassing) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.Black.copy(alpha = 0.85f),
+                border = BorderStroke(1.dp, DarkSecondaryGold.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 64.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = DarkSecondaryGold,
+                        modifier = Modifier.size(6.dp)
+                    ) {}
+                    Text(
+                        text = framingStatus.message,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkSecondaryGold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
 
-        // Distance & Angle Hint Banner at Bottom
+        // Distance & Angle Compact Hint Pill at Bottom
         Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color.Black.copy(alpha = 0.70f),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black.copy(alpha = 0.72f),
+            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 12.dp)
         ) {
             Text(
-                text = "📏 Distance: ${exerciseMode.recommendedDistance}  •  📐 Angle: ${exerciseMode.angleTip}",
+                text = "📏 ${exerciseMode.recommendedDistance}  •  📐 ${exerciseMode.angleTip}",
                 style = MaterialTheme.typography.labelSmall,
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
             )
         }
     }

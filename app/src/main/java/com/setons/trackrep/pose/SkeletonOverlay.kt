@@ -184,54 +184,5 @@ fun SkeletonOverlay(
                 }
             }
         }
-
-        // Live Dynamic Angle & Form Correction HUD
-        if (pose != null && pose.isTrackingValid) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                androidx.compose.foundation.layout.Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "POSE TELEMETRY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = DarkSecondaryGold,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    )
-                    if (pose.leftElbowAngle != null || pose.rightElbowAngle != null) {
-                        val elbowAngle = pose.leftElbowAngle ?: pose.rightElbowAngle ?: 0.0
-                        Text(
-                            text = "Elbow Angle: ${elbowAngle.toInt()}°",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    if (pose.hipAlignmentAngle != null) {
-                        Text(
-                            text = "Hip Line: ${pose.hipAlignmentAngle.toInt()}°",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    if (pose.formIssues.isNotEmpty()) {
-                        Text(
-                            text = "⚠️ " + pose.formIssues.first(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = flawColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-            }
-        }
     }
 }

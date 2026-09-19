@@ -272,11 +272,13 @@ fun CoachScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Real-Time Push-up Rep Counter & Depth HUD
+            // Real-Time Push-up Rep Counter & Depth HUD (Offset safely below top controls)
             if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
                 PushUpLiveOverlay(
                     telemetry = livePushUpTelemetry,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 68.dp)
                 )
             }
 
@@ -424,7 +426,7 @@ fun CoachScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header with Fullscreen Toggle & Tutorial
+            // Modern Athletic Header with Clean Action Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -432,43 +434,64 @@ fun CoachScreen(
             ) {
                 Column {
                     Text(
-                        text = "Live Camera Coach",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        text = "AI Motion Coach",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "Phase 2 • Skeleton Tracking & Form Diagnosis",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "Real-time posture & form tracking",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f)
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = { showTutorial = true }) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { showTutorial = true },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.HelpOutline,
-                            contentDescription = "Setup Tutorial",
-                            tint = MaterialTheme.colorScheme.primary
+                            contentDescription = "Setup Guide",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     if (hasCameraPermission) {
-                        IconButton(onClick = { isFullscreen = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Fullscreen,
-                                contentDescription = "Fullscreen Camera Mode",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
-                        }) {
+                        IconButton(
+                            onClick = {
+                                selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.FlipCameraAndroid,
                                 contentDescription = "Switch Camera",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { isFullscreen = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Fullscreen,
+                                contentDescription = "Fullscreen",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -623,51 +646,35 @@ fun CoachScreen(
                         )
                     }
 
-                    // Quick Fullscreen Expansion Overlay Chip
-                    Surface(
-                        onClick = { isFullscreen = true },
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Black.copy(alpha = 0.65f),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(Icons.Default.Fullscreen, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
-                            Text("Fullscreen", style = MaterialTheme.typography.labelSmall, color = DarkPrimaryGold)
-                        }
-                    }
                 }
 
                 // Controls Strip: Record Set & Playback Review
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
                         onClick = { toggleRecording() },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRecording) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
+                            containerColor = if (isRecording) Color(0xFFFF3B30) else MaterialTheme.colorScheme.primary,
                             contentColor = if (isRecording) Color.White else MaterialTheme.colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isRecording) "Stop (${recordingDurationSec}s)" else "Record Set",
+                            text = if (isRecording) "Stop Set (${recordingDurationSec}s)" else "Start Set",
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.labelMedium
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
 
@@ -677,15 +684,25 @@ fun CoachScreen(
                                 onNavigateToPlayback(lastRecordedSessionId!!)
                             }
                         },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
-                        Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.PlayCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Watch Replay",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "Replay",
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -693,27 +710,29 @@ fun CoachScreen(
                 }
             }
 
-            // On-Device Privacy Banner
+            // On-Device Privacy Banner (Polished Athletic Minimal)
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
                         tint = SuccessGreen,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp)
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "100% On-Device ML • Tracking lines & recordings stored locally",
+                        text = "100% On-Device AI • Video & poses never leave your phone",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
