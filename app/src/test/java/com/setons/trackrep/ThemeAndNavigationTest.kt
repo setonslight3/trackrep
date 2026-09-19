@@ -57,9 +57,37 @@ class ThemeAndNavigationTest {
 
     @Test
     fun testSessionReviewRepository() {
-        val sessions = com.setons.trackrep.review.SessionReviewRepository.getAllSessions()
-        assertEquals(true, sessions.isNotEmpty())
-        val first = sessions.first()
-        assertEquals(true, first.detectedFlaws.isNotEmpty())
+        val sample = com.setons.trackrep.review.SessionReviewRepository.getSessionById("sample_session_1")
+        assertNotNull(sample)
+        assertEquals(true, sample!!.detectedFlaws.isNotEmpty())
+        assertEquals(true, sample.recordedPoses.isNotEmpty())
+    }
+
+    @Test
+    fun testSessionReviewRepositoryVideoUpdate() {
+        val testSession = com.setons.trackrep.review.RecordedWorkoutSession(
+            id = "test_update_id",
+            exerciseName = "Push-up Set",
+            videoPath = null,
+            durationSeconds = 15,
+            repCount = 5,
+            dateString = "Sep 19, 5:00 PM",
+            detectedFlaws = emptyList(),
+            recordedPoses = emptyList()
+        )
+        com.setons.trackrep.review.SessionReviewRepository.addSession(testSession)
+        assertEquals(null, com.setons.trackrep.review.SessionReviewRepository.getSessionById("test_update_id")?.videoPath)
+
+        com.setons.trackrep.review.SessionReviewRepository.updateVideoPath("test_update_id", "/path/to/recorded_set.mp4")
+        assertEquals("/path/to/recorded_set.mp4", com.setons.trackrep.review.SessionReviewRepository.getSessionById("test_update_id")?.videoPath)
+    }
+
+    @Test
+    fun testSyntheticPosesGeneration() {
+        val poses = com.setons.trackrep.review.SessionReviewRepository.generatePosesForExercise("Push-up", 10)
+        assertEquals(true, poses.isNotEmpty())
+        assertEquals(0L, poses.first().timestampMs)
+        assertEquals(true, poses.last().timestampMs >= 10000L)
+        assertEquals(true, poses.first().pose.isTrackingValid)
     }
 }

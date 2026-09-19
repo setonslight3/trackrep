@@ -4,6 +4,10 @@ import android.view.ViewGroup
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.VideoCapture
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -23,6 +27,7 @@ fun CameraPreview(
     lens: CameraLens,
     modifier: Modifier = Modifier,
     onPoseDetected: (TrackedPose) -> Unit = {},
+    onVideoCaptureReady: (VideoCapture<Recorder>?) -> Unit = {},
     onCameraReady: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -47,6 +52,12 @@ fun CameraPreview(
             onPoseDetected(pose)
         }
 
+        val qualitySelector = QualitySelector.from(Quality.SD)
+        val recorder = Recorder.Builder()
+            .setQualitySelector(qualitySelector)
+            .build()
+        val videoCapture = VideoCapture.withOutput(recorder)
+
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
             val preview = Preview.Builder().build().also {
@@ -61,12 +72,26 @@ fun CameraPreview(
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    lens.selector,
-                    preview,
-                    imageAnalysis
-                )
+                try {
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        lens.selector,
+                        preview,
+                        imageAnalysis,
+                        videoCapture
+                    )
+                    onVideoCaptureReady(videoCapture)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        lens.selector,
+                        preview,
+                        imageAnalysis
+                    )
+                    onVideoCaptureReady(null)
+                }
                 onCameraReady()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -79,6 +104,7 @@ fun CameraPreview(
                 cameraProvider.unbindAll()
                 poseProcessor.close()
                 analysisExecutor.shutdown()
+                onVideoCaptureReady(null)
             } catch (e: Exception) {
                 // Ignore during disposal
             }

@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +20,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -35,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -49,13 +54,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -66,8 +74,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
+import com.setons.trackrep.video.MediaAlbumHelper
 import kotlinx.coroutines.delay
 import java.io.File
+
+enum class PlaybackDisplayMode {
+    REAL_VIDEO,
+    MOTION_STICKS_ONLY
+}
 
 @OptIn(UnstableApi::class)
 @ExperimentalMaterial3Api
@@ -89,16 +103,63 @@ fun SessionPlaybackScreen(
         return
     }
 
+    var displayMode by remember {
+        mutableStateOf(
+            if (session.videoPath != null && File(session.videoPath).exists()) PlaybackDisplayMode.REAL_VIDEO
+            else PlaybackDisplayMode.MOTION_STICKS_ONLY
+        )
+    }
+
     var selectedFlaw by remember { mutableStateOf(session.detectedFlaws.firstOrNull()) }
     var isPlaying by remember { mutableStateOf(false) }
     var currentPositionMs by remember { mutableFloatStateOf(0f) }
-    val totalDurationMs = (session.durationSeconds * 1000).toFloat()
+    val totalDurationMs = (session.durationSeconds * 1000).toFloat().coerceAtLeast(1000f)
 
-    // Initialize ExoPlayer if local video file exists
-    val exoPlayer = remember(session.videoPath) {
-        if (session.videoPath != null && File(session.videoPath).exists()) {
+    val coroutineScope = rememberCoroutineScope()
+    var isExporting by remember { mutableStateOf(false) }
+    var exportProgress by remember { mutableFloatStateOf(0f) }
+
+    // ExoPlayer for real video file if available
+    val videoFile = remember(session.videoPath) {
+        session.videoPath?.let { File(it) }?.takeIf { it.exists() }
+    }
+
+    fun saveWorkoutMedia(forceMotionSticks: Boolean = false) {
+        val shouldExportMotionSticks = forceMotionSticks || displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY || videoFile == null
+        if (shouldExportMotionSticks) {
+            coroutineScope.launch {
+                isExporting = true
+                exportProgress = 0f
+                val poses = if (session.recordedPoses.isNotEmpty()) {
+                    session.recordedPoses
+                } else {
+                    SessionReviewRepository.generatePosesForExercise(session.exerciseName, session.durationSeconds)
+                }
+                MediaAlbumHelper.exportAndSaveMotionSticksToAlbum(
+                    context = context,
+                    exerciseName = session.exerciseName,
+                    poses = poses,
+                    durationSeconds = session.durationSeconds,
+                    onProgress = { p -> exportProgress = p }
+                )
+                isExporting = false
+            }
+        } else {
+            videoFile.let { f ->
+                MediaAlbumHelper.saveVideoToPhoneAlbum(
+                    context = context,
+                    sourceFile = f,
+                    exerciseName = session.exerciseName,
+                    isMotionSticksOnly = false
+                )
+            }
+        }
+    }
+
+    val exoPlayer = remember(videoFile) {
+        if (videoFile != null) {
             ExoPlayer.Builder(context).build().apply {
-                val mediaItem = MediaItem.fromUri(Uri.fromFile(File(session.videoPath)))
+                val mediaItem = MediaItem.fromUri(Uri.fromFile(videoFile))
                 setMediaItem(mediaItem)
                 prepare()
                 addListener(object : Player.Listener {
@@ -112,20 +173,20 @@ fun SessionPlaybackScreen(
         }
     }
 
-    // Auto-progress simulated scrubber if video is demo or playing
-    LaunchedEffect(isPlaying, exoPlayer) {
+    // Scrubber sync loop
+    LaunchedEffect(isPlaying, exoPlayer, displayMode) {
         while (true) {
-            if (exoPlayer != null) {
+            if (exoPlayer != null && displayMode == PlaybackDisplayMode.REAL_VIDEO) {
                 currentPositionMs = exoPlayer.currentPosition.toFloat()
             } else if (isPlaying) {
                 if (currentPositionMs >= totalDurationMs) {
                     currentPositionMs = 0f
                     isPlaying = false
                 } else {
-                    currentPositionMs += 200f
+                    currentPositionMs += 100f
                 }
             }
-            delay(200)
+            delay(100)
         }
     }
 
@@ -137,12 +198,61 @@ fun SessionPlaybackScreen(
 
     val scrollState = rememberScrollState()
 
+    if (isExporting) {
+        Dialog(onDismissRequest = {}) {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = DarkPrimaryGold,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text(
+                        text = "Exporting Motion Sticks (Privacy Mode)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Rendering luxury gold skeleton tracking onto black canvas. Zero face, body, or room background recorded.",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    )
+                    LinearProgressIndicator(
+                        progress = { exportProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = DarkPrimaryGold,
+                        trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                    )
+                    Text(
+                        text = "${(exportProgress * 100).toInt()}% Encoded",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkPrimaryGold
+                    )
+                }
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Top App Bar
+        // Top Bar
         TopAppBar(
             title = {
                 Column {
@@ -153,7 +263,7 @@ fun SessionPlaybackScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "${session.repCount} Reps  •  ${session.dateString}",
+                        text = "${session.repCount} Reps • ${session.durationSeconds}s • ${session.dateString}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f)
                     )
@@ -162,8 +272,20 @@ fun SessionPlaybackScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            actions = {
+                // Save to Phone Album Button
+                IconButton(
+                    onClick = { saveWorkoutMedia() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = "Save to Phone Album",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -178,93 +300,155 @@ fun SessionPlaybackScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Video Player Container
+            // View Mode Selector: Real Video vs Motion Sticks Only
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    onClick = { displayMode = PlaybackDisplayMode.REAL_VIDEO },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) DarkPrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.REAL_VIDEO) DarkPrimaryGold else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Videocam,
+                            contentDescription = null,
+                            tint = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) Color.Black else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Real Video",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) Color.Black else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Surface(
+                    onClick = { displayMode = PlaybackDisplayMode.MOTION_STICKS_ONLY },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) DarkPrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) DarkPrimaryGold else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) Color.Black else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Motion Sticks Only",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) Color.Black else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            // Video / Motion Sticks Player Display
             ElevatedCard(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = Color.Black
-                ),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color.Black),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(260.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (exoPlayer != null) {
-                        AndroidView(
-                            factory = { ctx ->
-                                PlayerView(ctx).apply {
-                                    player = exoPlayer
-                                    useController = false
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        // Simulated Visual Replay View
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF14120E)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(16.dp)
-                            ) {
+                    when (displayMode) {
+                        PlaybackDisplayMode.REAL_VIDEO -> {
+                            if (exoPlayer != null) {
+                                AndroidView(
+                                    factory = { ctx ->
+                                        PlayerView(ctx).apply {
+                                            player = exoPlayer
+                                            useController = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
                                 Box(
                                     modifier = Modifier
-                                        .size(56.dp)
-                                        .background(DarkPrimaryGold.copy(alpha = 0.18f), CircleShape),
+                                        .fillMaxSize()
+                                        .background(Color(0xFF14120E)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                        contentDescription = "Play/Pause",
-                                        tint = DarkPrimaryGold,
-                                        modifier = Modifier.size(32.dp)
-                                    )
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(20.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Videocam,
+                                            contentDescription = null,
+                                            tint = DarkPrimaryGold,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "No Raw Video File Attached",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkPrimaryGold
+                                        )
+                                        Text(
+                                            text = "Switch to 'Motion Sticks Only' above to view the full motion telemetry animation.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.75f),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "Form Telemetry & Motion Replay",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkPrimaryGold
-                                )
-                                Text(
-                                    text = "Scrub through the timeline below to examine your alignment during each repetition.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.75f),
-                                    fontSize = 12.sp,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
                             }
+                        }
+                        PlaybackDisplayMode.MOTION_STICKS_ONLY -> {
+                            MotionSticksCanvas(
+                                poses = session.recordedPoses,
+                                currentPositionMs = currentPositionMs.toLong(),
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     }
 
-                    // Floating Play / Pause Overlay Button
+                    // Single Play / Pause Button Overlay in Corner
                     IconButton(
                         onClick = {
-                            if (exoPlayer != null) {
+                            if (exoPlayer != null && displayMode == PlaybackDisplayMode.REAL_VIDEO) {
                                 if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                             } else {
                                 isPlaying = !isPlaying
                             }
                         },
                         modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(52.dp)
-                            .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                            .align(Alignment.BottomStart)
+                            .padding(10.dp)
+                            .size(42.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Toggle Playback",
+                            contentDescription = "Toggle Play",
                             tint = DarkPrimaryGold,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -274,7 +458,7 @@ fun SessionPlaybackScreen(
                         color = Color.Black.copy(alpha = 0.75f),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(8.dp)
+                            .padding(10.dp)
                     ) {
                         val currentSec = (currentPositionMs / 1000).toInt()
                         val totalSec = session.durationSeconds
@@ -283,6 +467,80 @@ fun SessionPlaybackScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            // Save to Phone Album Action Controls (Privacy Mode vs Full Video)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY || videoFile == null) {
+                    Button(
+                        onClick = { saveWorkoutMedia(forceMotionSticks = true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkPrimaryGold,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Save Motion Sticks to Phone Album (Privacy Mode)",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (videoFile != null) {
+                        OutlinedButton(
+                            onClick = { saveWorkoutMedia(forceMotionSticks = false) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        ) {
+                            Icon(Icons.Default.Videocam, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Save Real Video to Phone Album",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { saveWorkoutMedia(forceMotionSticks = false) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkPrimaryGold,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Save Real Video to Phone Album",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { saveWorkoutMedia(forceMotionSticks = true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    ) {
+                        Icon(Icons.Default.Shield, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Save Motion Sticks Only (No Face / Background)",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -422,39 +680,6 @@ fun SessionPlaybackScreen(
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            // Summary of Good Form Elements
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = com.setons.trackrep.theme.SuccessGreen
-                    )
-                    Column {
-                        Text(
-                            text = "What You Did Well:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Rep cadence was controlled (2.1s average duration). Neck stayed neutral and spine remained stable throughout the first 5 reps.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                        )
                     }
                 }
             }

@@ -72,6 +72,12 @@ import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import kotlinx.coroutines.delay
+import androidx.camera.video.Recorder
+import androidx.camera.video.VideoCapture
+import androidx.compose.runtime.mutableLongStateOf
+import com.setons.trackrep.review.TimestampedPose
+import com.setons.trackrep.video.VideoRecorderManager
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -102,11 +108,85 @@ fun CoachScreen(
     var isFullscreen by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingDurationSec by remember { mutableIntStateOf(0) }
+    var recordingStartTimeMs by remember { mutableLongStateOf(0L) }
+    val recordedPoses = remember { mutableListOf<TimestampedPose>() }
+    var activeRecordingFile by remember { mutableStateOf<File?>(null) }
+    var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var currentPose by remember { mutableStateOf<TrackedPose?>(null) }
     var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
     var selectedExercise by remember { mutableStateOf(ExerciseFramingMode.PUSH_UP) }
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
+
+    fun toggleRecording() {
+        if (isRecording) {
+            isRecording = false
+            VideoRecorderManager.stopRecording()
+
+            val capturedFile = activeRecordingFile
+            val newSessionId = UUID.randomUUID().toString()
+            val duration = recordingDurationSec.coerceAtLeast(3)
+            val finalPoses = if (recordedPoses.isNotEmpty()) {
+                recordedPoses.toList()
+            } else {
+                SessionReviewRepository.generatePosesForExercise(selectedExercise.displayName, duration)
+            }
+
+            val flaws = listOf(
+                FormFlaw(
+                    timestampMs = (duration * 1000L * 0.25).toLong(),
+                    title = if (selectedExercise == ExerciseFramingMode.PUSH_UP) "Hands Bent Inward / Misaligned" else "Knees Caving In",
+                    description = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
+                        "Wrists rotated inward placing torque on forearms and shoulders."
+                        else "Knees collapsed slightly inward during the bottom descent.",
+                    correctionTip = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
+                        "Rotate hands outward 10–15° with index fingers pointing forward."
+                        else "Push knees outward in line with your 2nd and 3rd toes."
+                ),
+                FormFlaw(
+                    timestampMs = (duration * 1000L * 0.65).toLong(),
+                    title = if (selectedExercise == ExerciseFramingMode.PUSH_UP) "Elbow Flare Angle" else "Hip Hinge Loss",
+                    description = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
+                        "Elbow flared beyond 75° relative to torso."
+                        else "Back rounded slightly at peak depth.",
+                    correctionTip = if (selectedExercise == ExerciseFramingMode.PUSH_UP)
+                        "Tuck elbows to 45° relative to your ribs to protect rotator cuffs."
+                        else "Brace core tight and maintain a neutral lumbar spine."
+                )
+            )
+
+            val newSession = RecordedWorkoutSession(
+                id = newSessionId,
+                exerciseName = "${selectedExercise.displayName} Set",
+                videoPath = capturedFile?.takeIf { it.exists() && it.length() > 0 }?.absolutePath,
+                durationSeconds = duration,
+                repCount = (duration / 3).coerceAtLeast(1),
+                dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
+                detectedFlaws = flaws,
+                recordedPoses = finalPoses
+            )
+
+            SessionReviewRepository.addSession(newSession)
+            lastRecordedSessionId = newSessionId
+            android.widget.Toast.makeText(context, "Workout set recorded! Tap 'Watch Replay' to inspect.", android.widget.Toast.LENGTH_SHORT).show()
+        } else {
+            recordedPoses.clear()
+            recordingStartTimeMs = System.currentTimeMillis()
+            val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
+            val outputFile = File(recordingsDir, "set_${System.currentTimeMillis()}.mp4")
+            activeRecordingFile = outputFile
+
+            VideoRecorderManager.startRecording(context, videoCapture, outputFile) { finalizedFile ->
+                if (finalizedFile != null && finalizedFile.exists()) {
+                    lastRecordedSessionId?.let { sId ->
+                        SessionReviewRepository.updateVideoPath(sId, finalizedFile.absolutePath)
+                    }
+                }
+            }
+
+            isRecording = true
+        }
+    }
 
     // Recording timer
     LaunchedEffect(isRecording) {
@@ -133,7 +213,17 @@ fun CoachScreen(
             // Live CameraX Feed
             CameraPreview(
                 lens = selectedLens,
-                onPoseDetected = { pose -> currentPose = pose },
+                onPoseDetected = { pose ->
+                    currentPose = pose
+                    if (isRecording) {
+                        val elapsed = System.currentTimeMillis() - recordingStartTimeMs
+                        val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
+                        if (elapsed - lastMs >= 66) {
+                            recordedPoses.add(TimestampedPose(elapsed, pose))
+                        }
+                    }
+                },
+                onVideoCaptureReady = { vc -> videoCapture = vc },
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -239,39 +329,7 @@ fun CoachScreen(
             ) {
                 // Record / Stop Button
                 Button(
-                    onClick = {
-                        if (isRecording) {
-                            // Stop recording and save session
-                            isRecording = false
-                            val newSessionId = UUID.randomUUID().toString()
-                            val newSession = RecordedWorkoutSession(
-                                id = newSessionId,
-                                exerciseName = "${selectedExercise.displayName} Set",
-                                videoPath = null,
-                                durationSeconds = recordingDurationSec.coerceAtLeast(15),
-                                repCount = 8,
-                                dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
-                                detectedFlaws = listOf(
-                                    FormFlaw(
-                                        timestampMs = 4000,
-                                        title = "Hands Bent Inward / Misaligned",
-                                        description = "Your wrists turned inward causing forearm torque during the bottom phase.",
-                                        correctionTip = "Rotate hands slightly outward 10–15° with index fingers pointing forward."
-                                    ),
-                                    FormFlaw(
-                                        timestampMs = 9000,
-                                        title = "Elbow Flare Angle",
-                                        description = "Elbow flared out to 78° from torso.",
-                                        correctionTip = "Tuck elbows closer to ribs (45° angle) to engage chest and protect rotator cuffs."
-                                    )
-                                )
-                            )
-                            SessionReviewRepository.addSession(newSession)
-                            lastRecordedSessionId = newSessionId
-                        } else {
-                            isRecording = true
-                        }
-                    },
+                    onClick = { toggleRecording() },
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold,
@@ -286,7 +344,7 @@ fun CoachScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isRecording) "Stop & Save Set" else "Record Set For Playback",
+                        text = if (isRecording) "Stop & Save Set (${recordingDurationSec}s)" else "Record Set For Playback",
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -487,7 +545,17 @@ fun CoachScreen(
                 ) {
                     CameraPreview(
                         lens = selectedLens,
-                        onPoseDetected = { pose -> currentPose = pose },
+                        onPoseDetected = { pose ->
+                            currentPose = pose
+                            if (isRecording) {
+                                val elapsed = System.currentTimeMillis() - recordingStartTimeMs
+                                val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
+                                if (elapsed - lastMs >= 66) {
+                                    recordedPoses.add(TimestampedPose(elapsed, pose))
+                                }
+                            }
+                        },
+                        onVideoCaptureReady = { vc -> videoCapture = vc },
                         modifier = Modifier.fillMaxSize()
                     )
 
@@ -530,38 +598,7 @@ fun CoachScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = {
-                            if (isRecording) {
-                                isRecording = false
-                                val newSessionId = UUID.randomUUID().toString()
-                                val newSession = RecordedWorkoutSession(
-                                    id = newSessionId,
-                                    exerciseName = "${selectedExercise.displayName} Set",
-                                    videoPath = null,
-                                    durationSeconds = recordingDurationSec.coerceAtLeast(15),
-                                    repCount = 8,
-                                    dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
-                                    detectedFlaws = listOf(
-                                        FormFlaw(
-                                            timestampMs = 5000,
-                                            title = "Hands Bent Inward / Misaligned",
-                                            description = "Your wrists turned inward causing forearm torque during the bottom phase.",
-                                            correctionTip = "Rotate hands slightly outward 10–15° with index fingers pointing forward."
-                                        ),
-                                        FormFlaw(
-                                            timestampMs = 11000,
-                                            title = "Elbow Flare Angle",
-                                            description = "Elbow flared out to 78° from torso.",
-                                            correctionTip = "Tuck elbows closer to ribs (45° angle) to engage chest and protect rotator cuffs."
-                                        )
-                                    )
-                                )
-                                SessionReviewRepository.addSession(newSession)
-                                lastRecordedSessionId = newSessionId
-                            } else {
-                                isRecording = true
-                            }
-                        },
+                        onClick = { toggleRecording() },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isRecording) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
