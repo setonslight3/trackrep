@@ -42,8 +42,14 @@ import com.setons.trackrep.theme.SuccessGreen
 @Composable
 fun PushUpLiveOverlay(
     telemetry: PushUpLiveTelemetry,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    setNumber: Int = 1,
+    elapsedSeconds: Int = 0,
+    fatigueLevel: FatigueLevel = FatigueLevel.FRESH
 ) {
+    val minutes = elapsedSeconds / 60
+    val seconds = elapsedSeconds % 60
+    val formattedTimer = "%02d:%02d".format(minutes, seconds)
     Box(modifier = modifier.fillMaxSize()) {
         // UNIFIED ATHLETIC TOP HUD STRIP: Left Pill (Reps & Phase) + Right Pill (Depth Meter & Angle)
         Row(
@@ -117,6 +123,43 @@ fun PushUpLiveOverlay(
                             color = phaseColor,
                             fontSize = 9.sp
                         )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "SET $setNumber • $formattedTimer",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 8.sp
+                            )
+                            if (fatigueLevel != FatigueLevel.FRESH) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = when (fatigueLevel) {
+                                        FatigueLevel.MODERATE -> DarkPrimaryGold.copy(alpha = 0.25f)
+                                        FatigueLevel.HIGH -> Color(0xFFFF7043).copy(alpha = 0.25f)
+                                        FatigueLevel.EXHAUSTED -> Color(0xFFEF5350).copy(alpha = 0.25f)
+                                        else -> Color.Transparent
+                                    }
+                                ) {
+                                    Text(
+                                        text = fatigueLevel.label,
+                                        color = when (fatigueLevel) {
+                                            FatigueLevel.MODERATE -> DarkPrimaryGold
+                                            FatigueLevel.HIGH -> Color(0xFFFF7043)
+                                            FatigueLevel.EXHAUSTED -> Color(0xFFEF5350)
+                                            else -> Color.White
+                                        },
+                                        fontSize = 7.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

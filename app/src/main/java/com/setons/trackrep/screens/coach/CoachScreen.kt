@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,6 +61,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.setons.trackrep.coach.AdaptiveSetRating
+import com.setons.trackrep.coach.CoachStatusOverlay
+import com.setons.trackrep.coach.CoachVoiceManager
+import com.setons.trackrep.coach.CompletedSetSummary
+import com.setons.trackrep.coach.SetLifecycleState
+import com.setons.trackrep.coach.SetSummaryDialog
+import com.setons.trackrep.coach.TrackingRecoveryManager
+import com.setons.trackrep.coach.TrackingState
+import com.setons.trackrep.coach.WorkoutSetManager
+import com.setons.trackrep.exercise.pushup.FatigueDetector
+import com.setons.trackrep.exercise.pushup.FatigueLevel
 import com.setons.trackrep.camera.CameraLens
 import com.setons.trackrep.camera.CameraPreview
 import com.setons.trackrep.camera.ExerciseFramingMode
@@ -121,18 +135,75 @@ fun CoachScreen(
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
 
-    // Phase 3: Push-up Movement Analyzer & Live Telemetry
+    // Phase 3 & 4: Push-up Movement Analyzer & Live Telemetry
     val pushUpAnalyzer = remember { PushUpAnalyzer() }
     var livePushUpTelemetry by remember { mutableStateOf(PushUpLiveTelemetry()) }
 
-    // Motion sticks green flash on completed action/rep
+    // Phase 4: Voice Coach, Fatigue Tracking & Workout Set Lifecycle
+    val voiceManager = remember { CoachVoiceManager(context) }
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceManager.shutdown()
+        }
+    }
+
+    val setManager = remember { WorkoutSetManager() }
+    val fatigueDetector = remember { FatigueDetector() }
+    val trackingRecoveryManager = remember {
+        TrackingRecoveryManager(
+            onTrackingLost = {
+                setManager.pauseForTrackingLost()
+                voiceManager.speakStatus("Tracking paused. Step back into frame", isUrgent = true)
+            },
+            onTrackingRecovered = {
+                setManager.resumeFromTrackingLost()
+                voiceManager.speakStatus("Tracking resumed!", isUrgent = true)
+            }
+        )
+    }
+
+    var trackingState by remember { mutableStateOf<TrackingState>(TrackingState.Tracking) }
+    var showSummaryDialog by remember { mutableStateOf(false) }
+    var activeSetSummary by remember { mutableStateOf<CompletedSetSummary?>(null) }
+
+    // Master Set & Rest Ticker
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000L)
+            val restEnded = setManager.tickTimer()
+            if (restEnded) {
+                voiceManager.speakStatus("Rest finished! Ready for Set ${setManager.setNumber}", isUrgent = true)
+            }
+        }
+    }
+
+    // Motion sticks green flash & spoken rep count on completed action/rep
     var isRepCompletedFlash by remember { mutableStateOf(false) }
 
     LaunchedEffect(livePushUpTelemetry.validRepCount) {
         if (livePushUpTelemetry.validRepCount > 0) {
             isRepCompletedFlash = true
+            voiceManager.speakRep(livePushUpTelemetry.validRepCount)
+
+            // Measure concentric velocity for fatigue detection
+            val lastRep = livePushUpTelemetry.lastCompletedRep
+            if (lastRep != null) {
+                val concentricMs = (lastRep.endTimestampMs - lastRep.bottomTimestampMs).coerceAtLeast(100L)
+                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
+                if (cue != null) {
+                    voiceManager.speakFormCue(cue)
+                }
+            }
             delay(700)
             isRepCompletedFlash = false
+        }
+    }
+
+    // Spoken form correction cues (debounced)
+    LaunchedEffect(livePushUpTelemetry.activeWarning) {
+        val warning = livePushUpTelemetry.activeWarning
+        if (warning != null && isRecording) {
+            voiceManager.speakFormCue(warning)
         }
     }
 
@@ -188,16 +259,28 @@ fun CoachScreen(
 
             SessionReviewRepository.addSession(newSession)
             lastRecordedSessionId = newSessionId
-            android.widget.Toast.makeText(
-                context,
-                "Set recorded: $finalRepCount reps! Tap 'Watch Replay' to inspect.",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+
+            // Phase 4: Workout set completion & summary
+            val summary = setManager.completeSet(
+                validReps = finalRepCount,
+                partialReps = pushUpAnalyzer.liveTelemetry.partialRepCount,
+                averageDepthDegrees = pushUpAnalyzer.getAverageDepthDegrees(),
+                formConsistencyPercent = fatigueDetector.formConsistencyScore,
+                fatigueLevel = fatigueDetector.currentFatigueLevel
+            )
+            activeSetSummary = summary
+            showSummaryDialog = true
+            voiceManager.speakStatus("Set complete! Great work.", isUrgent = true)
         } else {
             pushUpAnalyzer.reset()
             livePushUpTelemetry = PushUpLiveTelemetry()
             recordedPoses.clear()
             recordingStartTimeMs = System.currentTimeMillis()
+            fatigueDetector.reset()
+            trackingRecoveryManager.reset()
+            setManager.startSet()
+            voiceManager.speakStatus("Set ${setManager.setNumber} started. Let's go!", isUrgent = true)
+
             val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
             val outputFile = File(recordingsDir, "set_${System.currentTimeMillis()}.mp4")
             activeRecordingFile = outputFile
@@ -241,6 +324,13 @@ fun CoachScreen(
                 lens = selectedLens,
                 onPoseDetected = { pose ->
                     currentPose = pose
+                    if (isRecording) {
+                        val state = trackingRecoveryManager.processFrame(pose)
+                        trackingState = state
+                        if (state is TrackingState.Recovering) {
+                            voiceManager.speakCountdown(state.countdownSeconds)
+                        }
+                    }
                     if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
                         val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
                         livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
@@ -276,11 +366,29 @@ fun CoachScreen(
             if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
                 PushUpLiveOverlay(
                     telemetry = livePushUpTelemetry,
+                    setNumber = setManager.setNumber,
+                    elapsedSeconds = setManager.activeElapsedSeconds,
+                    fatigueLevel = fatigueDetector.currentFatigueLevel,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 68.dp)
                 )
             }
+
+            // Phase 4: Coach Status Overlay in Fullscreen
+            CoachStatusOverlay(
+                trackingState = trackingState,
+                setLifecycleState = setManager.state,
+                restRemainingSeconds = setManager.restRemainingSeconds,
+                onSkipRest = {
+                    setManager.skipRest()
+                    voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
+                },
+                onAddRest = {
+                    setManager.addRestSeconds(30)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
 
             // Floating Top Controls in Fullscreen
             Row(
@@ -291,18 +399,37 @@ fun CoachScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Exit Fullscreen Button
-                IconButton(
-                    onClick = { isFullscreen = false },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                // Left Controls: Exit Fullscreen + Mute Audio Toggle
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FullscreenExit,
-                        contentDescription = "Exit Fullscreen",
-                        tint = DarkPrimaryGold
-                    )
+                    IconButton(
+                        onClick = { isFullscreen = false },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FullscreenExit,
+                            contentDescription = "Exit Fullscreen",
+                            tint = DarkPrimaryGold
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { voiceManager.toggleMute() },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            contentDescription = if (voiceManager.isMuted) "Unmute Voice" else "Mute Voice",
+                            tint = if (voiceManager.isMuted) Color.White.copy(alpha = 0.5f) else DarkPrimaryGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 // Exercise Mode & Recording Status Badge
@@ -482,6 +609,20 @@ fun CoachScreen(
                         }
 
                         IconButton(
+                            onClick = { voiceManager.toggleMute() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                contentDescription = if (voiceManager.isMuted) "Unmute Voice" else "Mute Voice",
+                                tint = if (voiceManager.isMuted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        IconButton(
                             onClick = { isFullscreen = true },
                             modifier = Modifier
                                 .size(36.dp)
@@ -609,6 +750,13 @@ fun CoachScreen(
                         lens = selectedLens,
                         onPoseDetected = { pose ->
                             currentPose = pose
+                            if (isRecording) {
+                                val state = trackingRecoveryManager.processFrame(pose)
+                                trackingState = state
+                                if (state is TrackingState.Recovering) {
+                                    voiceManager.speakCountdown(state.countdownSeconds)
+                                }
+                            }
                             if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
                                 val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
                                 livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
@@ -642,9 +790,27 @@ fun CoachScreen(
                     if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
                         PushUpLiveOverlay(
                             telemetry = livePushUpTelemetry,
+                            setNumber = setManager.setNumber,
+                            elapsedSeconds = setManager.activeElapsedSeconds,
+                            fatigueLevel = fatigueDetector.currentFatigueLevel,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                    // Phase 4: Coach Status Overlay in Non-Fullscreen
+                    CoachStatusOverlay(
+                        trackingState = trackingState,
+                        setLifecycleState = setManager.state,
+                        restRemainingSeconds = setManager.restRemainingSeconds,
+                        onSkipRest = {
+                            setManager.skipRest()
+                            voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
+                        },
+                        onAddRest = {
+                            setManager.addRestSeconds(30)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
 
                 }
 
@@ -672,7 +838,7 @@ fun CoachScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isRecording) "Stop Set (${recordingDurationSec}s)" else "Start Set",
+                            text = if (isRecording) "Stop Set ${setManager.setNumber} (${recordingDurationSec}s)" else "Start Set ${setManager.setNumber}",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -736,6 +902,28 @@ fun CoachScreen(
                     )
                 }
             }
+        }
+    }
+
+    // Phase 4: Post-Set Performance Summary & Adaptive Difficulty Survey Dialog
+    activeSetSummary?.let { summary ->
+        if (showSummaryDialog) {
+            SetSummaryDialog(
+                summary = summary,
+                onStartRest = { rating ->
+                    showSummaryDialog = false
+                    setManager.startRest(60)
+                    voiceManager.speakStatus("Take 60 seconds rest", isUrgent = true)
+                },
+                onSkipToNextSet = { rating ->
+                    showSummaryDialog = false
+                    setManager.skipRest()
+                    voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
+                },
+                onDismiss = {
+                    showSummaryDialog = false
+                }
+            )
         }
     }
 }

@@ -204,6 +204,11 @@ class PushUpAnalyzer {
 
     fun getCompletedReps(): List<PushUpRep> = completedRepsList.toList()
 
+    fun getAverageDepthDegrees(): Float {
+        if (completedRepsList.isEmpty()) return 90f
+        return completedRepsList.map { it.minElbowAngle }.average().toFloat()
+    }
+
     /**
      * Generates a curated list of form flaws for post-workout review.
      * If the user performed with perfect technique, supplies positive reinforcement.
