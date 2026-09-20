@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
@@ -92,6 +95,12 @@ import androidx.compose.runtime.mutableLongStateOf
 import com.setons.trackrep.exercise.pushup.PushUpAnalyzer
 import com.setons.trackrep.exercise.pushup.PushUpLiveOverlay
 import com.setons.trackrep.exercise.pushup.PushUpLiveTelemetry
+import com.setons.trackrep.exercise.squat.SquatAnalyzer
+import com.setons.trackrep.exercise.squat.SquatLiveOverlay
+import com.setons.trackrep.exercise.squat.SquatLiveTelemetry
+import com.setons.trackrep.exercise.plank.PlankAnalyzer
+import com.setons.trackrep.exercise.plank.PlankLiveOverlay
+import com.setons.trackrep.exercise.plank.PlankLiveTelemetry
 import com.setons.trackrep.review.TimestampedPose
 import com.setons.trackrep.video.VideoRecorderManager
 import java.io.File
@@ -135,9 +144,14 @@ fun CoachScreen(
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
 
-    // Phase 3 & 4: Push-up Movement Analyzer & Live Telemetry
+    // Phase 3, 4 & 5: Multi-Exercise Movement Analyzers & Live Telemetry
     val pushUpAnalyzer = remember { PushUpAnalyzer() }
+    val squatAnalyzer = remember { SquatAnalyzer() }
+    val plankAnalyzer = remember { PlankAnalyzer() }
+
     var livePushUpTelemetry by remember { mutableStateOf(PushUpLiveTelemetry()) }
+    var liveSquatTelemetry by remember { mutableStateOf(SquatLiveTelemetry()) }
+    var livePlankTelemetry by remember { mutableStateOf(PlankLiveTelemetry()) }
 
     // Phase 4: Voice Coach, Fatigue Tracking & Workout Set Lifecycle
     val voiceManager = remember { CoachVoiceManager(context) }
@@ -180,12 +194,12 @@ fun CoachScreen(
     // Motion sticks green flash & spoken rep count on completed action/rep
     var isRepCompletedFlash by remember { mutableStateOf(false) }
 
+    // Push-up Rep Completion Listener
     LaunchedEffect(livePushUpTelemetry.validRepCount) {
         if (livePushUpTelemetry.validRepCount > 0) {
             isRepCompletedFlash = true
             voiceManager.speakRep(livePushUpTelemetry.validRepCount)
 
-            // Measure concentric velocity for fatigue detection
             val lastRep = livePushUpTelemetry.lastCompletedRep
             if (lastRep != null) {
                 val concentricMs = (lastRep.endTimestampMs - lastRep.bottomTimestampMs).coerceAtLeast(100L)
@@ -199,10 +213,51 @@ fun CoachScreen(
         }
     }
 
+    // Squat Rep Completion Listener
+    LaunchedEffect(liveSquatTelemetry.validRepCount) {
+        if (liveSquatTelemetry.validRepCount > 0) {
+            isRepCompletedFlash = true
+            voiceManager.speakRep(liveSquatTelemetry.validRepCount)
+
+            val lastRep = liveSquatTelemetry.lastCompletedRep
+            if (lastRep != null) {
+                val concentricMs = lastRep.concentricDurationMs.coerceAtLeast(100L)
+                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
+                if (cue != null) {
+                    voiceManager.speakFormCue(cue)
+                }
+            }
+            delay(700)
+            isRepCompletedFlash = false
+        }
+    }
+
     // Spoken form correction cues (debounced)
     LaunchedEffect(livePushUpTelemetry.activeWarning) {
         val warning = livePushUpTelemetry.activeWarning
-        if (warning != null && isRecording) {
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PUSH_UP) {
+            voiceManager.speakFormCue(warning)
+        }
+    }
+
+    LaunchedEffect(liveSquatTelemetry.activeWarning) {
+        val warning = liveSquatTelemetry.activeWarning
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.SQUAT) {
+            voiceManager.speakFormCue(warning)
+        }
+    }
+
+    // Plank milestones & form warnings
+    LaunchedEffect(livePlankTelemetry.milestoneVoiceCue) {
+        val cue = livePlankTelemetry.milestoneVoiceCue
+        if (cue != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
+            voiceManager.speakStatus(cue, isUrgent = false)
+        }
+    }
+
+    LaunchedEffect(livePlankTelemetry.activeWarning) {
+        val warning = livePlankTelemetry.activeWarning
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
             voiceManager.speakFormCue(warning)
         }
     }
@@ -221,29 +276,47 @@ fun CoachScreen(
                 SessionReviewRepository.generatePosesForExercise(selectedExercise.displayName, duration)
             }
 
-            // Real rep count & flaws from PushUpAnalyzer if Push-up, else fallback
-            val validReps = pushUpAnalyzer.liveTelemetry.validRepCount
-            val finalRepCount = if (selectedExercise == ExerciseFramingMode.PUSH_UP && validReps > 0) {
+            val validReps: Int
+            val partialCount: Int
+            val avgDepth: Float
+            val formScore: Int
+            val flaws: List<FormFlaw>
+            val validTimestamps: List<Long>
+
+            when (selectedExercise) {
+                ExerciseFramingMode.PUSH_UP -> {
+                    validReps = pushUpAnalyzer.liveTelemetry.validRepCount
+                    partialCount = pushUpAnalyzer.liveTelemetry.partialRepCount
+                    avgDepth = pushUpAnalyzer.getAverageDepthDegrees()
+                    formScore = fatigueDetector.formConsistencyScore
+                    flaws = pushUpAnalyzer.getSummaryFlaws()
+                    validTimestamps = pushUpAnalyzer.getCompletedReps().filter { it.isValid }.map { it.endTimestampMs }
+                }
+                ExerciseFramingMode.SQUAT -> {
+                    validReps = squatAnalyzer.liveTelemetry.validRepCount
+                    partialCount = squatAnalyzer.liveTelemetry.partialRepCount
+                    avgDepth = squatAnalyzer.getAverageDepthDegrees()
+                    formScore = fatigueDetector.formConsistencyScore
+                    flaws = squatAnalyzer.getSummaryFlaws()
+                    validTimestamps = squatAnalyzer.getCompletedReps().filter { it.isValid }.map { it.endTimestampMs }
+                }
+                ExerciseFramingMode.PLANK -> {
+                    validReps = plankAnalyzer.getTotalHoldSeconds()
+                    partialCount = 0
+                    avgDepth = (plankAnalyzer.liveTelemetry.hipAlignmentAngle ?: 180.0).toFloat()
+                    formScore = plankAnalyzer.getSolidHoldPercentage()
+                    flaws = plankAnalyzer.getSummaryFlaws()
+                    validTimestamps = emptyList()
+                }
+            }
+
+            val finalRepCount = if (selectedExercise == ExerciseFramingMode.PLANK) {
+                validReps
+            } else if (validReps > 0) {
                 validReps
             } else {
                 (duration / 3).coerceAtLeast(1)
             }
-
-            val flaws = if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
-                pushUpAnalyzer.getSummaryFlaws()
-            } else {
-                listOf(
-                    FormFlaw(
-                        timestampMs = (duration * 1000L * 0.25).toLong(),
-                        title = "Form Check: Alignment",
-                        description = "Posture deviated slightly during set midpoint.",
-                        correctionTip = "Focus on keeping a neutral spine and controlled descent tempo."
-                    )
-                )
-            }
-
-            val completedReps = pushUpAnalyzer.getCompletedReps()
-            val validTimestamps = completedReps.filter { it.isValid }.map { it.endTimestampMs }
 
             val newSession = RecordedWorkoutSession(
                 id = newSessionId,
@@ -260,12 +333,12 @@ fun CoachScreen(
             SessionReviewRepository.addSession(newSession)
             lastRecordedSessionId = newSessionId
 
-            // Phase 4: Workout set completion & summary
+            // Phase 4 & 5: Workout set completion & summary
             val summary = setManager.completeSet(
                 validReps = finalRepCount,
-                partialReps = pushUpAnalyzer.liveTelemetry.partialRepCount,
-                averageDepthDegrees = pushUpAnalyzer.getAverageDepthDegrees(),
-                formConsistencyPercent = fatigueDetector.formConsistencyScore,
+                partialReps = partialCount,
+                averageDepthDegrees = avgDepth,
+                formConsistencyPercent = formScore,
                 fatigueLevel = fatigueDetector.currentFatigueLevel
             )
             activeSetSummary = summary
@@ -273,13 +346,17 @@ fun CoachScreen(
             voiceManager.speakStatus("Set complete! Great work.", isUrgent = true)
         } else {
             pushUpAnalyzer.reset()
+            squatAnalyzer.reset()
+            plankAnalyzer.reset()
             livePushUpTelemetry = PushUpLiveTelemetry()
+            liveSquatTelemetry = SquatLiveTelemetry()
+            livePlankTelemetry = PlankLiveTelemetry()
             recordedPoses.clear()
             recordingStartTimeMs = System.currentTimeMillis()
             fatigueDetector.reset()
             trackingRecoveryManager.reset()
             setManager.startSet()
-            voiceManager.speakStatus("Set ${setManager.setNumber} started. Let's go!", isUrgent = true)
+            voiceManager.speakStatus("${selectedExercise.displayName} Set ${setManager.setNumber} started. Let's go!", isUrgent = true)
 
             val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
             val outputFile = File(recordingsDir, "set_${System.currentTimeMillis()}.mp4")
@@ -331,9 +408,17 @@ fun CoachScreen(
                             voiceManager.speakCountdown(state.countdownSeconds)
                         }
                     }
-                    if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
-                        val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
-                        livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                    val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
+                    when (selectedExercise) {
+                        ExerciseFramingMode.PUSH_UP -> {
+                            livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                        }
+                        ExerciseFramingMode.SQUAT -> {
+                            liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
+                        }
+                        ExerciseFramingMode.PLANK -> {
+                            livePlankTelemetry = plankAnalyzer.processPose(pose, frameTime)
+                        }
                     }
                     if (isRecording) {
                         val elapsed = System.currentTimeMillis() - recordingStartTimeMs
@@ -362,17 +447,40 @@ fun CoachScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Real-Time Push-up Rep Counter & Depth HUD (Offset safely below top controls)
-            if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
-                PushUpLiveOverlay(
-                    telemetry = livePushUpTelemetry,
-                    setNumber = setManager.setNumber,
-                    elapsedSeconds = setManager.activeElapsedSeconds,
-                    fatigueLevel = fatigueDetector.currentFatigueLevel,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 68.dp)
-                )
+            // Real-Time Exercise HUD Overlay (Offset safely below top controls)
+            when (selectedExercise) {
+                ExerciseFramingMode.PUSH_UP -> {
+                    PushUpLiveOverlay(
+                        telemetry = livePushUpTelemetry,
+                        setNumber = setManager.setNumber,
+                        elapsedSeconds = setManager.activeElapsedSeconds,
+                        fatigueLevel = fatigueDetector.currentFatigueLevel,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 68.dp)
+                    )
+                }
+                ExerciseFramingMode.SQUAT -> {
+                    SquatLiveOverlay(
+                        telemetry = liveSquatTelemetry,
+                        setNumber = setManager.setNumber,
+                        elapsedSeconds = setManager.activeElapsedSeconds,
+                        fatigueLevel = fatigueDetector.currentFatigueLevel,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 68.dp)
+                    )
+                }
+                ExerciseFramingMode.PLANK -> {
+                    PlankLiveOverlay(
+                        telemetry = livePlankTelemetry,
+                        setNumber = setManager.setNumber,
+                        elapsedSeconds = setManager.activeElapsedSeconds,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 68.dp)
+                    )
+                }
             }
 
             // Phase 4: Coach Status Overlay in Fullscreen
@@ -434,9 +542,17 @@ fun CoachScreen(
 
                 // Exercise Mode & Recording Status Badge
                 Surface(
+                    onClick = {
+                        if (!isRecording) {
+                            val modes = ExerciseFramingMode.values()
+                            val nextIndex = (modes.indexOf(selectedExercise) + 1) % modes.size
+                            selectedExercise = modes[nextIndex]
+                            framingStatus = FramingStatus.CALIBRATING
+                        }
+                    },
                     shape = RoundedCornerShape(20.dp),
-                    color = Color.Black.copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold.copy(alpha = 0.4f))
+                    color = Color.Black.copy(alpha = 0.75f),
+                    border = BorderStroke(1.dp, if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold.copy(alpha = 0.6f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -459,6 +575,12 @@ fun CoachScreen(
                                 color = Color(0xFFFF5252)
                             )
                         } else {
+                            val icon = when (selectedExercise) {
+                                ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
+                                ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
+                                ExerciseFramingMode.PLANK -> Icons.Default.Timer
+                            }
+                            Icon(icon, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(14.dp))
                             Text(
                                 text = selectedExercise.displayName,
                                 style = MaterialTheme.typography.labelSmall,
@@ -639,34 +761,55 @@ fun CoachScreen(
                 }
             }
 
-            // Exercise Mode Selector Tabs (Push-up, Squat, Plank)
+            // Exercise Mode Selector Tabs (Push-up, Squat, Plank) - High Contrast Redesign
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ExerciseFramingMode.values().forEach { mode ->
                     val isSelected = mode == selectedExercise
+                    val icon = when (mode) {
+                        ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
+                        ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
+                        ExerciseFramingMode.PLANK -> Icons.Default.Timer
+                    }
                     Surface(
                         onClick = {
                             selectedExercise = mode
                             framingStatus = FramingStatus.CALIBRATING
                         },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) DarkPrimaryGold else Color(0xFF222222),
                         border = BorderStroke(
-                            1.dp,
-                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            1.5.dp,
+                            if (isSelected) DarkPrimaryGold else DarkPrimaryGold.copy(alpha = 0.5f)
                         ),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp)
                     ) {
-                        Text(
-                            text = mode.displayName,
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = if (isSelected) Color.Black else DarkPrimaryGold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = mode.displayName,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) Color.Black else Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -757,9 +900,17 @@ fun CoachScreen(
                                     voiceManager.speakCountdown(state.countdownSeconds)
                                 }
                             }
-                            if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
-                                val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
-                                livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                            val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
+                            when (selectedExercise) {
+                                ExerciseFramingMode.PUSH_UP -> {
+                                    livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                                }
+                                ExerciseFramingMode.SQUAT -> {
+                                    liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
+                                }
+                                ExerciseFramingMode.PLANK -> {
+                                    livePlankTelemetry = plankAnalyzer.processPose(pose, frameTime)
+                                }
                             }
                             if (isRecording) {
                                 val elapsed = System.currentTimeMillis() - recordingStartTimeMs
@@ -786,15 +937,34 @@ fun CoachScreen(
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    // Real-Time Push-up Rep Counter & Depth HUD
-                    if (selectedExercise == ExerciseFramingMode.PUSH_UP) {
-                        PushUpLiveOverlay(
-                            telemetry = livePushUpTelemetry,
-                            setNumber = setManager.setNumber,
-                            elapsedSeconds = setManager.activeElapsedSeconds,
-                            fatigueLevel = fatigueDetector.currentFatigueLevel,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    // Real-Time Exercise Live Overlay
+                    when (selectedExercise) {
+                        ExerciseFramingMode.PUSH_UP -> {
+                            PushUpLiveOverlay(
+                                telemetry = livePushUpTelemetry,
+                                setNumber = setManager.setNumber,
+                                elapsedSeconds = setManager.activeElapsedSeconds,
+                                fatigueLevel = fatigueDetector.currentFatigueLevel,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        ExerciseFramingMode.SQUAT -> {
+                            SquatLiveOverlay(
+                                telemetry = liveSquatTelemetry,
+                                setNumber = setManager.setNumber,
+                                elapsedSeconds = setManager.activeElapsedSeconds,
+                                fatigueLevel = fatigueDetector.currentFatigueLevel,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        ExerciseFramingMode.PLANK -> {
+                            PlankLiveOverlay(
+                                telemetry = livePlankTelemetry,
+                                setNumber = setManager.setNumber,
+                                elapsedSeconds = setManager.activeElapsedSeconds,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
 
                     // Phase 4: Coach Status Overlay in Non-Fullscreen

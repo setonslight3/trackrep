@@ -17,6 +17,9 @@ data class TrackedPose(
     val leftElbowAngle: Double? = null,
     val rightElbowAngle: Double? = null,
     val hipAlignmentAngle: Double? = null,
+    val leftKneeAngle: Double? = null,
+    val rightKneeAngle: Double? = null,
+    val torsoLeanAngle: Double? = null,
     val formIssues: List<String> = emptyList()
 )
 

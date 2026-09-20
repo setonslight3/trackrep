@@ -79,6 +79,28 @@ class PoseDetectorProcessor(
                     landmarksMap[PoseLandmark.RIGHT_ANKLE]
                 )
 
+                val leftKneeAngle = PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.LEFT_HIP],
+                    landmarksMap[PoseLandmark.LEFT_KNEE],
+                    landmarksMap[PoseLandmark.LEFT_ANKLE]
+                )
+
+                val rightKneeAngle = PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.RIGHT_HIP],
+                    landmarksMap[PoseLandmark.RIGHT_KNEE],
+                    landmarksMap[PoseLandmark.RIGHT_ANKLE]
+                )
+
+                val torsoLeanAngle = PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.LEFT_SHOULDER],
+                    landmarksMap[PoseLandmark.LEFT_HIP],
+                    landmarksMap[PoseLandmark.LEFT_KNEE]
+                ) ?: PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.RIGHT_SHOULDER],
+                    landmarksMap[PoseLandmark.RIGHT_HIP],
+                    landmarksMap[PoseLandmark.RIGHT_KNEE]
+                )
+
                 // Evaluate real-time form indicators
                 val issues = mutableListOf<String>()
                 if (hipAngle != null && hipAngle < 155.0) {
@@ -99,6 +121,9 @@ class PoseDetectorProcessor(
                         leftElbowAngle = leftElbowAngle,
                         rightElbowAngle = rightElbowAngle,
                         hipAlignmentAngle = hipAngle,
+                        leftKneeAngle = leftKneeAngle,
+                        rightKneeAngle = rightKneeAngle,
+                        torsoLeanAngle = torsoLeanAngle,
                         formIssues = issues
                     )
                 )
