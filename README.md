@@ -38,16 +38,16 @@
 | Phase | Description | Status |
 | :---: | :--- | :---: |
 | **0** | **Project Foundation** (Identity, Black/Gold & White/Red themes, Navigation 3, build setup) | ✅ Completed |
-| **1** | **Camera Foundation** (CameraX preview, runtime permissions, framing calibration) | ⏳ Upcoming |
-| **2** | **Pose Detection** (On-device landmark estimator, debug overlay, confidence tracking) | 📋 Planned |
-| **3** | **Push-up Analyzer** (Rep counting state machine, ROM, alignment, timing) | 📋 Planned |
-| **4** | **Live Track Coach** (Real-time counter UI, form feedback, fatigue indicators) | 📋 Planned |
-| **5** | **Squat + Plank** (Multi-exercise vision expansion) | 📋 Planned |
-| **6** | **Exercise Library + Workout Engine** (Catalog, 5 difficulty levels, balanced workouts) | 📋 Planned |
-| **7** | **Local History + Adaptive Engine** (Room DB, progression, recovery rules) | 📋 Planned |
-| **8** | **Track AI** (Gemini integration, schema-validated action layer, chat UI) | 📋 Planned |
-| **9** | **Onboarding + Scheduling** (User setup, morning/evening schedules, reminders) | 📋 Planned |
-| **10** | **Progress + Export/Import** (Dashboard, versioned JSON backup/restore) | 📋 Planned |
+| **1** | **Camera Foundation** (CameraX preview, runtime permissions, framing calibration) | ✅ Completed |
+| **2** | **Pose Detection** (On-device landmark estimator, debug overlay, confidence tracking) | ✅ Completed |
+| **3** | **Push-up Analyzer** (Rep counting state machine, ROM, alignment, timing) | ✅ Completed |
+| **4** | **Live Track Coach** (Real-time counter UI, form feedback, fatigue indicators) | ✅ Completed |
+| **5** | **Squat + Plank** (Multi-exercise vision expansion) | ✅ Completed |
+| **6** | **Exercise Library + Workout Engine** (Catalog, 5 difficulty levels, balanced workouts) | ✅ Completed |
+| **7** | **Local History + Adaptive Engine** (Room DB, progression, recovery rules) | ✅ Completed |
+| **8** | **Track AI** (Gemini integration, schema-validated action layer, chat UI) | ✅ Completed |
+| **9** | **Onboarding + Scheduling** (User setup, first week generator, reminders, missed sessions) | ✅ Completed |
+| **10** | **Progress + Export/Import** (Dashboard, versioned JSON backup/restore) | ⏳ Upcoming |
 | **11** | **Release Hardening** (Performance profiling on Infinix Smart 9, release APK) | 📋 Planned |
 
 ---
