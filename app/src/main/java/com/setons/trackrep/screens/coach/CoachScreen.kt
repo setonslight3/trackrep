@@ -55,7 +55,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.setons.trackrep.adaptive.AdaptiveRepository
+import com.setons.trackrep.adaptive.ProgressionAction
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -121,6 +125,7 @@ fun CoachScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -1104,7 +1109,7 @@ fun CoachScreen(
         }
     }
 
-    // Phase 4: Post-Set Performance Summary & Adaptive Difficulty Survey Dialog
+    // Phase 4 & 7: Post-Set Performance Summary & Adaptive Difficulty Survey Dialog
     activeSetSummary?.let { summary ->
         if (showSummaryDialog) {
             SetSummaryDialog(
@@ -1113,11 +1118,52 @@ fun CoachScreen(
                     showSummaryDialog = false
                     setManager.startRest(60)
                     voiceManager.speakStatus("Take 60 seconds rest", isUrgent = true)
+                    coroutineScope.launch {
+                        val exId = when (selectedExercise) {
+                            ExerciseFramingMode.PUSH_UP -> "push_up_standard"
+                            ExerciseFramingMode.SQUAT -> "squat_bodyweight"
+                            ExerciseFramingMode.PLANK -> "plank_standard"
+                        }
+                        val exName = when (selectedExercise) {
+                            ExerciseFramingMode.PUSH_UP -> "Standard Push-up"
+                            ExerciseFramingMode.SQUAT -> "Bodyweight Squat"
+                            ExerciseFramingMode.PLANK -> "Standard Plank"
+                        }
+                        val eval = AdaptiveRepository.recordCompletedSet(
+                            context = context,
+                            exerciseId = exId,
+                            exerciseName = exName,
+                            summary = summary,
+                            ratingString = rating.name
+                        )
+                        if (eval.action == ProgressionAction.OVERLOAD_INCREMENT) {
+                            voiceManager.speakStatus("Progressive overload unlocked", isUrgent = false)
+                        }
+                    }
                 },
                 onSkipToNextSet = { rating ->
                     showSummaryDialog = false
                     setManager.skipRest()
                     voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
+                    coroutineScope.launch {
+                        val exId = when (selectedExercise) {
+                            ExerciseFramingMode.PUSH_UP -> "push_up_standard"
+                            ExerciseFramingMode.SQUAT -> "squat_bodyweight"
+                            ExerciseFramingMode.PLANK -> "plank_standard"
+                        }
+                        val exName = when (selectedExercise) {
+                            ExerciseFramingMode.PUSH_UP -> "Standard Push-up"
+                            ExerciseFramingMode.SQUAT -> "Bodyweight Squat"
+                            ExerciseFramingMode.PLANK -> "Standard Plank"
+                        }
+                        AdaptiveRepository.recordCompletedSet(
+                            context = context,
+                            exerciseId = exId,
+                            exerciseName = exName,
+                            summary = summary,
+                            ratingString = rating.name
+                        )
+                    }
                 },
                 onDismiss = {
                     showSummaryDialog = false

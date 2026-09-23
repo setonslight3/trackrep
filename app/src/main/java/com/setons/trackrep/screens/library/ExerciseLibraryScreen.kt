@@ -52,10 +52,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.TrendingUp
+import com.setons.trackrep.adaptive.AdaptiveRepository
+import com.setons.trackrep.data.local.entity.ExerciseProgressionEntity
+import com.setons.trackrep.theme.SuccessGreen
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -702,6 +708,12 @@ fun ExerciseDetailDialog(
     onDismiss: () -> Unit,
     onLaunchCoach: (ExerciseFramingMode?) -> Unit
 ) {
+    val context = LocalContext.current
+    var progression by remember { mutableStateOf<ExerciseProgressionEntity?>(null) }
+    LaunchedEffect(exercise.id) {
+        progression = AdaptiveRepository.getProgressionForExercise(context, exercise.id)
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -768,6 +780,37 @@ fun ExerciseDetailDialog(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.8f)
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Personal Progression & PR Card (if trained before)
+                progression?.let { prog ->
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E281E),
+                        border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(18.dp))
+                                Column {
+                                    Text("Personal Record & Target", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SuccessGreen)
+                                    val prText = if (exercise.isIsometric) "PR: ${prog.personalRecordHoldSeconds}s hold" else "PR: ${prog.personalRecordReps} reps"
+                                    Text(prText, style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                }
+                            }
+                            Surface(shape = RoundedCornerShape(6.dp), color = SuccessGreen.copy(alpha = 0.2f)) {
+                                val targetText = if (exercise.isIsometric) "Target: ${prog.targetHoldSeconds}s" else "Target: ${prog.targetReps} reps"
+                                Text(targetText, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SuccessGreen, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
                             }
                         }
                     }

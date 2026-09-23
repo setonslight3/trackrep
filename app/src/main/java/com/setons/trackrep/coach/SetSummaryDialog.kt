@@ -216,7 +216,55 @@ fun SetSummaryDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Adaptive Progression Preview Banner
+                val adaptivePreview = remember(selectedRating, summary) {
+                    val isIso = summary.validReps == 0
+                    when (selectedRating) {
+                        AdaptiveSetRating.TOO_EASY -> if (summary.formConsistencyPercent >= 80) {
+                            "⚡ Progressive Overload: +${if (isIso) "10s Hold" else "2 Reps"} next session"
+                        } else {
+                            "🎯 Consolidating: Refine form consistency before advancing"
+                        }
+                        AdaptiveSetRating.JUST_RIGHT -> if (summary.formConsistencyPercent >= 85) {
+                            "⚡ Progressive Adaptation: +${if (isIso) "5s Hold" else "1 Rep"} next session"
+                        } else {
+                            "🎯 Balanced Target: Maintaining volume to lock in neuromuscular endurance"
+                        }
+                        AdaptiveSetRating.DIFFICULT -> "🛡️ Consolidate: Maintaining volume to build strength without overtraining"
+                        AdaptiveSetRating.COULD_NOT_COMPLETE -> "🛡️ Safety Back-off: Reducing volume to prioritize clean movement"
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1E1E1E),
+                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = null,
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = adaptivePreview,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Primary Rest Button
                 Button(
