@@ -20,11 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,15 +38,18 @@ import com.setons.trackrep.navigation.CoachNavKey
 import com.setons.trackrep.navigation.ExerciseLibraryNavKey
 import com.setons.trackrep.navigation.HistoryNavKey
 import com.setons.trackrep.navigation.HomeNavKey
+import com.setons.trackrep.navigation.OnboardingNavKey
 import com.setons.trackrep.navigation.ProfileNavKey
 import com.setons.trackrep.navigation.SessionReviewNavKey
 import com.setons.trackrep.navigation.TrackAiNavKey
 import com.setons.trackrep.review.SessionPlaybackScreen
+import com.setons.trackrep.schedule.UserProfileRepository
 import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.screens.coach.CoachScreen
 import com.setons.trackrep.screens.history.HistoryScreen
 import com.setons.trackrep.screens.home.HomeScreen
 import com.setons.trackrep.screens.library.ExerciseLibraryScreen
+import com.setons.trackrep.screens.onboarding.OnboardingScreen
 import com.setons.trackrep.screens.profile.ProfileScreen
 import com.setons.trackrep.screens.trackai.TrackAiScreen
 import com.setons.trackrep.theme.TrackRepTheme
@@ -54,11 +59,21 @@ import com.setons.trackrep.theme.TrackRepTheme
 fun TrackRepApp() {
     val systemInDark = isSystemInDarkTheme()
     var isDarkTheme by remember { mutableStateOf(systemInDark) }
+    val context = LocalContext.current
+    val repository = remember { UserProfileRepository.getInstance(context) }
 
     TrackRepTheme(darkTheme = isDarkTheme) {
         val backStack = rememberNavBackStack(HomeNavKey)
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
-        val isFullscreenDestination = currentDestination is SessionReviewNavKey
+        val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey
+
+        // If first launch, show onboarding
+        LaunchedEffect(Unit) {
+            val completed = repository.isOnboardingCompleted()
+            if (!completed) {
+                backStack.add(OnboardingNavKey)
+            }
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -188,7 +203,10 @@ fun TrackRepApp() {
                     entry<ProfileNavKey> {
                         ProfileScreen(
                             isDarkTheme = isDarkTheme,
-                            onToggleTheme = { isDarkTheme = it }
+                            onToggleTheme = { isDarkTheme = it },
+                            onNavigateToOnboarding = {
+                                backStack.add(OnboardingNavKey)
+                            }
                         )
                     }
                     entry<SessionReviewNavKey> { key ->
@@ -196,6 +214,15 @@ fun TrackRepApp() {
                             sessionId = key.sessionId,
                             onNavigateBack = {
                                 backStack.removeLastOrNull()
+                            }
+                        )
+                    }
+                    entry<OnboardingNavKey> {
+                        OnboardingScreen(
+                            onFinishOnboarding = {
+                                while (backStack.size > 1) {
+                                    backStack.removeLastOrNull()
+                                }
                             }
                         )
                     }

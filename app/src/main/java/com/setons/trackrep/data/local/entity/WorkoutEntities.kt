@@ -84,3 +84,44 @@ data class AIActionLogEntity(
     val isSuccess: Boolean = true
 )
 
+/**
+ * Persisted profile and scheduling preferences for the athlete.
+ */
+@Entity(tableName = "user_profile")
+data class UserProfileEntity(
+    @PrimaryKey
+    val id: String = "default_user",
+    val goal: String = "Full-Body Muscle Development",
+    val fitnessLevel: String = "Beginner",
+    val equipment: String = "Bodyweight (No Equipment)",
+    val customEquipment: String = "",
+    val availableDaysCsv: String = "MON,WED,FRI",
+    val preferredTimeOfDay: String = "MORNING",
+    val reminderHour: Int = 7,
+    val reminderMinute: Int = 30,
+    val workoutDurationMinutes: Int = 20,
+    val isCameraEnabled: Boolean = true,
+    val remindersEnabled: Boolean = true,
+    val isOnboardingCompleted: Boolean = false,
+    val createdAtTimestampMs: Long = System.currentTimeMillis()
+)
+
+/**
+ * Persisted scheduled workout for a specific day in the training plan.
+ */
+@Entity(tableName = "scheduled_workouts")
+data class ScheduledWorkoutEntity(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val dayOfWeek: String, // MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+    val dayIndex: Int, // 1 = Monday .. 7 = Sunday
+    val dateString: String, // e.g. "2026-09-24"
+    val routineId: String,
+    val routineName: String,
+    val targetMusclesCsv: String,
+    val isRestDay: Boolean = false,
+    val status: String = "SCHEDULED", // SCHEDULED, COMPLETED, MISSED, SKIPPED, RESCHEDULED
+    val notes: String = "",
+    val timeOfDay: String = "MORNING"
+)
+

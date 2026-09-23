@@ -85,3 +85,48 @@ interface AIActionLogDao {
     @Query("SELECT COUNT(*) FROM ai_action_logs")
     suspend fun getTotalLogCount(): Int
 }
+
+@Dao
+interface UserProfileDao {
+    @Query("SELECT * FROM user_profile WHERE id = :id LIMIT 1")
+    suspend fun getProfile(id: String = "default_user"): com.setons.trackrep.data.local.entity.UserProfileEntity?
+
+    @Query("SELECT * FROM user_profile WHERE id = :id LIMIT 1")
+    fun getProfileFlow(id: String = "default_user"): Flow<com.setons.trackrep.data.local.entity.UserProfileEntity?>
+
+    @Upsert
+    suspend fun upsertProfile(profile: com.setons.trackrep.data.local.entity.UserProfileEntity)
+
+    @Query("UPDATE user_profile SET isOnboardingCompleted = :completed WHERE id = :id")
+    suspend fun setOnboardingCompleted(completed: Boolean, id: String = "default_user")
+
+    @Query("SELECT isOnboardingCompleted FROM user_profile WHERE id = :id LIMIT 1")
+    suspend fun isOnboardingCompleted(id: String = "default_user"): Boolean?
+}
+
+@Dao
+interface ScheduledWorkoutDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSchedule(schedule: List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>)
+
+    @Upsert
+    suspend fun upsertWorkout(workout: com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity)
+
+    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    suspend fun getWeeklySchedule(): List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>
+
+    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    fun getWeeklyScheduleFlow(): Flow<List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>>
+
+    @Query("SELECT * FROM scheduled_workouts WHERE dateString = :dateString LIMIT 1")
+    suspend fun getWorkoutForDate(dateString: String): com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity?
+
+    @Query("UPDATE scheduled_workouts SET status = :status WHERE dateString = :dateString")
+    suspend fun updateStatusForDate(dateString: String, status: String)
+
+    @Query("UPDATE scheduled_workouts SET status = :status WHERE id = :id")
+    suspend fun updateStatusById(id: String, status: String)
+
+    @Query("DELETE FROM scheduled_workouts")
+    suspend fun clearSchedule()
+}

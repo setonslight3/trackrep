@@ -23,3 +23,6 @@ data object ExerciseLibraryNavKey : NavKey
 
 @Serializable
 data class SessionReviewNavKey(val sessionId: String) : NavKey
+
+@Serializable
+data object OnboardingNavKey : NavKey

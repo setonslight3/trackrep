@@ -13,14 +13,21 @@ import com.setons.trackrep.data.local.entity.ExerciseProgressionEntity
 import com.setons.trackrep.data.local.entity.SetRecordEntity
 import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
 
+import com.setons.trackrep.data.local.dao.ScheduledWorkoutDao
+import com.setons.trackrep.data.local.dao.UserProfileDao
+import com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity
+import com.setons.trackrep.data.local.entity.UserProfileEntity
+
 @Database(
     entities = [
         WorkoutSessionEntity::class,
         SetRecordEntity::class,
         ExerciseProgressionEntity::class,
-        AIActionLogEntity::class
+        AIActionLogEntity::class,
+        UserProfileEntity::class,
+        ScheduledWorkoutEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class TrackRepDatabase : RoomDatabase() {
@@ -29,6 +36,8 @@ abstract class TrackRepDatabase : RoomDatabase() {
     abstract fun setRecordDao(): SetRecordDao
     abstract fun progressionDao(): ExerciseProgressionDao
     abstract fun aiActionLogDao(): AIActionLogDao
+    abstract fun userProfileDao(): UserProfileDao
+    abstract fun scheduledWorkoutDao(): ScheduledWorkoutDao
 
     companion object {
         @Volatile
