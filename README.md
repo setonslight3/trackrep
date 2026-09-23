@@ -48,7 +48,13 @@
 | **8** | **Track AI** (Gemini integration, schema-validated action layer, chat UI) | ✅ Completed |
 | **9** | **Onboarding + Scheduling** (User setup, first week generator, reminders, missed sessions) | ✅ Completed |
 | **10** | **Progress + Export/Import** (Dashboard, versioned JSON backup/restore, workout sharing) | ✅ Completed |
-| **11** | **Release Hardening** (Performance profiling on Infinix Smart 9, release APK) | ⏳ Upcoming |
+| **11** | **Release Hardening** (ProGuard/R8 optimization, release signing, Infinix Smart 9 profiling, v1.0.0 GA) | ✅ Completed |
+
+---
+
+## 📋 Quality Assurance & Testing Runbook
+
+A complete 9-journey verification test guide is available in the repository at [**QA_VERIFICATION_CHECKLIST.md**](QA_VERIFICATION_CHECKLIST.md). It is also downloadable as a standalone file attached to every GitHub release (`TrackRep-QA-Verification-Guide.md`).
 
 ---
 
