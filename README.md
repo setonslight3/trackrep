@@ -47,8 +47,8 @@
 | **7** | **Local History + Adaptive Engine** (Room DB, progression, recovery rules) | ✅ Completed |
 | **8** | **Track AI** (Gemini integration, schema-validated action layer, chat UI) | ✅ Completed |
 | **9** | **Onboarding + Scheduling** (User setup, first week generator, reminders, missed sessions) | ✅ Completed |
-| **10** | **Progress + Export/Import** (Dashboard, versioned JSON backup/restore) | ⏳ Upcoming |
-| **11** | **Release Hardening** (Performance profiling on Infinix Smart 9, release APK) | 📋 Planned |
+| **10** | **Progress + Export/Import** (Dashboard, versioned JSON backup/restore, workout sharing) | ✅ Completed |
+| **11** | **Release Hardening** (Performance profiling on Infinix Smart 9, release APK) | ⏳ Upcoming |
 
 ---
 
