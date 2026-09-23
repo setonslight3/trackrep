@@ -19,4 +19,7 @@ data object HistoryNavKey : NavKey
 data object ProfileNavKey : NavKey
 
 @Serializable
+data object ExerciseLibraryNavKey : NavKey
+
+@Serializable
 data class SessionReviewNavKey(val sessionId: String) : NavKey

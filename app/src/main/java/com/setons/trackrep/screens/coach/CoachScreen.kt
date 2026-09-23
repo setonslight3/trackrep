@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
@@ -109,9 +110,14 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+object CoachModeHolder {
+    var pendingExerciseMode: ExerciseFramingMode? = null
+}
+
 @Composable
 fun CoachScreen(
     onNavigateToPlayback: (String) -> Unit = {},
+    onNavigateToLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -143,6 +149,15 @@ fun CoachScreen(
     var selectedExercise by remember { mutableStateOf(ExerciseFramingMode.PUSH_UP) }
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
+
+    // Auto-select pending exercise mode if launched from Exercise Library or Workout Routine
+    LaunchedEffect(Unit) {
+        CoachModeHolder.pendingExerciseMode?.let { mode ->
+            selectedExercise = mode
+            framingStatus = FramingStatus.CALIBRATING
+            CoachModeHolder.pendingExerciseMode = null
+        }
+    }
 
     // Phase 3, 4 & 5: Multi-Exercise Movement Analyzers & Live Telemetry
     val pushUpAnalyzer = remember { PushUpAnalyzer() }
@@ -699,6 +714,20 @@ fun CoachScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(
+                        onClick = onNavigateToLibrary,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MenuBook,
+                            contentDescription = "Training Library",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = { showTutorial = true },
                         modifier = Modifier
