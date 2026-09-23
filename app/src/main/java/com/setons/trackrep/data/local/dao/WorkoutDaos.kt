@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
+import com.setons.trackrep.data.local.entity.AIActionLogEntity
 import com.setons.trackrep.data.local.entity.ExerciseProgressionEntity
 import com.setons.trackrep.data.local.entity.SetRecordEntity
 import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
@@ -71,4 +72,16 @@ interface ExerciseProgressionDao {
 
     @Query("SELECT * FROM exercise_progressions ORDER BY lastTrainedTimestampMs DESC")
     suspend fun getRecentlyTrainedProgressions(): List<ExerciseProgressionEntity>
+}
+
+@Dao
+interface AIActionLogDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLog(log: AIActionLogEntity)
+
+    @Query("SELECT * FROM ai_action_logs ORDER BY timestampMs DESC LIMIT :limit")
+    suspend fun getRecentLogs(limit: Int = 10): List<AIActionLogEntity>
+
+    @Query("SELECT COUNT(*) FROM ai_action_logs")
+    suspend fun getTotalLogCount(): Int
 }

@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.setons.trackrep.data.local.dao.AIActionLogDao
 import com.setons.trackrep.data.local.dao.ExerciseProgressionDao
 import com.setons.trackrep.data.local.dao.SetRecordDao
 import com.setons.trackrep.data.local.dao.WorkoutSessionDao
+import com.setons.trackrep.data.local.entity.AIActionLogEntity
 import com.setons.trackrep.data.local.entity.ExerciseProgressionEntity
 import com.setons.trackrep.data.local.entity.SetRecordEntity
 import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
@@ -15,7 +17,8 @@ import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
     entities = [
         WorkoutSessionEntity::class,
         SetRecordEntity::class,
-        ExerciseProgressionEntity::class
+        ExerciseProgressionEntity::class,
+        AIActionLogEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -25,6 +28,7 @@ abstract class TrackRepDatabase : RoomDatabase() {
     abstract fun sessionDao(): WorkoutSessionDao
     abstract fun setRecordDao(): SetRecordDao
     abstract fun progressionDao(): ExerciseProgressionDao
+    abstract fun aiActionLogDao(): AIActionLogDao
 
     companion object {
         @Volatile

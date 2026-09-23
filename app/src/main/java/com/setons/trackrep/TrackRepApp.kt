@@ -169,7 +169,14 @@ fun TrackRepApp() {
                         )
                     }
                     entry<TrackAiNavKey> {
-                        TrackAiScreen()
+                        TrackAiScreen(
+                            onNavigateToCoach = {
+                                while (backStack.size > 1) {
+                                    backStack.removeLastOrNull()
+                                }
+                                backStack.add(CoachNavKey)
+                            }
+                        )
                     }
                     entry<HistoryNavKey> {
                         HistoryScreen(

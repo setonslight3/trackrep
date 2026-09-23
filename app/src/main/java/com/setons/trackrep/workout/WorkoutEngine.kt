@@ -1,5 +1,9 @@
 package com.setons.trackrep.workout
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.exercise.model.BodyRegion
 import com.setons.trackrep.exercise.model.DifficultyLevel
@@ -102,6 +106,22 @@ object WorkoutEngine {
             )
         )
     )
+
+    var activeCustomRoutine by androidx.compose.runtime.mutableStateOf<WorkoutRoutine?>(null)
+    var scheduledDateOffsetDays by androidx.compose.runtime.mutableIntStateOf(0)
+
+    fun getActiveOrTodayRoutine(): WorkoutRoutine {
+        return activeCustomRoutine ?: getDefaultTodayRoutine()
+    }
+
+    fun setCustomRoutine(routine: WorkoutRoutine) {
+        activeCustomRoutine = routine
+    }
+
+    fun resetToDefault() {
+        activeCustomRoutine = null
+        scheduledDateOffsetDays = 0
+    }
 
     fun getRoutines(): List<WorkoutRoutine> = curatedRoutines
 

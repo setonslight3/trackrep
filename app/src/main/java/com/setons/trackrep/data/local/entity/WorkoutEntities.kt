@@ -68,3 +68,19 @@ data class ExerciseProgressionEntity(
     val consecutiveFailures: Int = 0,
     val readinessScore: Int = 100 // 0..100
 )
+
+/**
+ * Persisted audit log of all AI actions executed by Track.
+ */
+@Entity(tableName = "ai_action_logs")
+data class AIActionLogEntity(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val timestampMs: Long = System.currentTimeMillis(),
+    val requestPrompt: String,
+    val actionType: String,
+    val actionDetailsJson: String,
+    val executionResult: String,
+    val isSuccess: Boolean = true
+)
+
