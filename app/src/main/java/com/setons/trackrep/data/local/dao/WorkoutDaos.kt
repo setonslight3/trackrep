@@ -40,6 +40,12 @@ interface WorkoutSessionDao {
     @Query("SELECT COALESCE(SUM(totalValidReps), 0) FROM workout_sessions")
     suspend fun getTotalValidRepsCount(): Int
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSessions(sessions: List<WorkoutSessionEntity>)
+
+    @Query("DELETE FROM workout_sessions")
+    suspend fun clearAllSessions()
+
     @Query("SELECT MAX(timestampMs) FROM workout_sessions")
     suspend fun getLatestWorkoutTimestamp(): Long?
 }
@@ -57,6 +63,12 @@ interface SetRecordDao {
 
     @Query("SELECT * FROM set_records WHERE exerciseId = :exerciseId ORDER BY id DESC")
     suspend fun getSetsForExercise(exerciseId: String): List<SetRecordEntity>
+
+    @Query("SELECT * FROM set_records ORDER BY id ASC")
+    suspend fun getAllSets(): List<SetRecordEntity>
+
+    @Query("DELETE FROM set_records")
+    suspend fun clearAllSets()
 }
 
 @Dao
@@ -70,6 +82,12 @@ interface ExerciseProgressionDao {
     @Upsert
     suspend fun upsertProgression(progression: ExerciseProgressionEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProgressions(progressions: List<ExerciseProgressionEntity>)
+
+    @Query("DELETE FROM exercise_progressions")
+    suspend fun clearAllProgressions()
+
     @Query("SELECT * FROM exercise_progressions ORDER BY lastTrainedTimestampMs DESC")
     suspend fun getRecentlyTrainedProgressions(): List<ExerciseProgressionEntity>
 }
@@ -79,11 +97,20 @@ interface AIActionLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(log: AIActionLogEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLogs(logs: List<AIActionLogEntity>)
+
     @Query("SELECT * FROM ai_action_logs ORDER BY timestampMs DESC LIMIT :limit")
     suspend fun getRecentLogs(limit: Int = 10): List<AIActionLogEntity>
 
+    @Query("SELECT * FROM ai_action_logs ORDER BY timestampMs DESC")
+    suspend fun getAllLogs(): List<AIActionLogEntity>
+
     @Query("SELECT COUNT(*) FROM ai_action_logs")
     suspend fun getTotalLogCount(): Int
+
+    @Query("DELETE FROM ai_action_logs")
+    suspend fun clearAllLogs()
 }
 
 @Dao
@@ -102,6 +129,9 @@ interface UserProfileDao {
 
     @Query("SELECT isOnboardingCompleted FROM user_profile WHERE id = :id LIMIT 1")
     suspend fun isOnboardingCompleted(id: String = "default_user"): Boolean?
+
+    @Query("DELETE FROM user_profile")
+    suspend fun clearProfile()
 }
 
 @Dao
@@ -114,6 +144,9 @@ interface ScheduledWorkoutDao {
 
     @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
     suspend fun getWeeklySchedule(): List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>
+
+    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    suspend fun getAllScheduledWorkouts(): List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>
 
     @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
     fun getWeeklyScheduleFlow(): Flow<List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>>
