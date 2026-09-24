@@ -802,6 +802,7 @@ fun HomeScreen(
 
         // Training Library Showcase Card
         OutlinedCard(
+            onClick = onNavigateToLibrary,
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.outlinedCardColors(
                 containerColor = MaterialTheme.colorScheme.surface
@@ -817,6 +818,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -839,24 +841,18 @@ fun HomeScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "30 full-body exercises across 5 tiers",
+                            text = "35 full-body exercises across 5 tiers",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
-                }
-
-                OutlinedButton(
-                    onClick = onNavigateToLibrary,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Browse")
                 }
             }
         }
 
         // Track AI Teaser Card
         Card(
+            onClick = onNavigateToTrackAi,
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -871,6 +867,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -898,13 +895,6 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-
-                OutlinedButton(
-                    onClick = onNavigateToTrackAi,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Chat")
                 }
             }
         }

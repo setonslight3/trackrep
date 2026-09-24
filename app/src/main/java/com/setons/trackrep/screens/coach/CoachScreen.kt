@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1176,188 +1177,124 @@ fun CoachScreen(
                 }
             } else {
                 // Live Camera View with Skeleton Tracking Lines & Framing Overlay
-                Box(
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Black),
+                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(Color.Black, RoundedCornerShape(16.dp))
                 ) {
-                    CameraPreview(
-                        lens = selectedLens,
-                        onPoseDetected = { pose ->
-                            currentPose = pose
-                            if (isRecording) {
-                                val state = trackingRecoveryManager.processFrame(pose)
-                                trackingState = state
-                                if (state is TrackingState.Recovering) {
-                                    voiceManager.speakCountdown(state.countdownSeconds)
-                                }
-                            } else if (isAutoDetectEnabled) {
-                                val detected = exerciseClassifier.processPose(pose)
-                                if (detected != null && detected.exerciseId != activeExercise.id) {
-                                    val newEx = ExerciseCatalog.getById(detected.exerciseId)
-                                    if (newEx != null) {
-                                        activeExercise = newEx
-                                        selectedExercise = detected.framingMode
-                                        framingStatus = FramingStatus.CALIBRATING
-                                        autoDetectedExerciseName = detected.displayName
-                                        showAutoDetectBanner = true
-                                        voiceManager.speakStatus("${detected.displayName} detected", isUrgent = false)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(16.dp))
+                    ) {
+                        CameraPreview(
+                            lens = selectedLens,
+                            onPoseDetected = { pose ->
+                                currentPose = pose
+                                if (isRecording) {
+                                    val state = trackingRecoveryManager.processFrame(pose)
+                                    trackingState = state
+                                    if (state is TrackingState.Recovering) {
+                                        voiceManager.speakCountdown(state.countdownSeconds)
+                                    }
+                                } else if (isAutoDetectEnabled) {
+                                    val detected = exerciseClassifier.processPose(pose)
+                                    if (detected != null && detected.exerciseId != activeExercise.id) {
+                                        val newEx = ExerciseCatalog.getById(detected.exerciseId)
+                                        if (newEx != null) {
+                                            activeExercise = newEx
+                                            selectedExercise = detected.framingMode
+                                            framingStatus = FramingStatus.CALIBRATING
+                                            autoDetectedExerciseName = detected.displayName
+                                            showAutoDetectBanner = true
+                                            voiceManager.speakStatus("${detected.displayName} detected", isUrgent = false)
+                                        }
                                     }
                                 }
-                            }
-                            val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
-                            when (selectedExercise) {
-                                ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
-                                    livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                                val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
+                                when (selectedExercise) {
+                                    ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
+                                        livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
+                                    }
+                                    ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
+                                        liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
+                                    }
+                                    ExerciseFramingMode.PLANK -> {
+                                        livePlankTelemetry = plankAnalyzer.processPose(pose, frameTime)
+                                    }
                                 }
-                                ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
-                                    liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
+                                if (isRecording) {
+                                    val elapsed = System.currentTimeMillis() - recordingStartTimeMs
+                                    val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
+                                    if (elapsed - lastMs >= 66) {
+                                        recordedPoses.add(TimestampedPose(elapsed, pose))
+                                    }
                                 }
-                                ExerciseFramingMode.PLANK -> {
-                                    livePlankTelemetry = plankAnalyzer.processPose(pose, frameTime)
-                                }
-                            }
-                            if (isRecording) {
-                                val elapsed = System.currentTimeMillis() - recordingStartTimeMs
-                                val lastMs = recordedPoses.lastOrNull()?.timestampMs ?: -100L
-                                if (elapsed - lastMs >= 66) {
-                                    recordedPoses.add(TimestampedPose(elapsed, pose))
-                                }
-                            }
-                        },
-                        onVideoCaptureReady = { vc -> videoCapture = vc },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                            },
+                            onVideoCaptureReady = { vc -> videoCapture = vc },
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                    FramingOverlay(
-                        exerciseMode = selectedExercise,
-                        framingStatus = framingStatus,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                        FramingOverlay(
+                            exerciseMode = selectedExercise,
+                            framingStatus = framingStatus,
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                    SkeletonOverlay(
-                        pose = currentPose,
-                        isFrontCamera = selectedLens == CameraLens.FRONT,
-                        isSuccessFlash = isRepCompletedFlash,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                        SkeletonOverlay(
+                            pose = currentPose,
+                            isFrontCamera = selectedLens == CameraLens.FRONT,
+                            isSuccessFlash = isRepCompletedFlash,
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                    // Real-Time Exercise Live Overlay
-                    when (selectedExercise) {
-                        ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
-                            PushUpLiveOverlay(
-                                telemetry = livePushUpTelemetry,
-                                setNumber = setManager.setNumber,
-                                elapsedSeconds = setManager.activeElapsedSeconds,
-                                fatigueLevel = fatigueDetector.currentFatigueLevel,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
-                            SquatLiveOverlay(
-                                telemetry = liveSquatTelemetry,
-                                setNumber = setManager.setNumber,
-                                elapsedSeconds = setManager.activeElapsedSeconds,
-                                fatigueLevel = fatigueDetector.currentFatigueLevel,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        ExerciseFramingMode.PLANK -> {
-                            PlankLiveOverlay(
-                                telemetry = livePlankTelemetry,
-                                setNumber = setManager.setNumber,
-                                elapsedSeconds = setManager.activeElapsedSeconds,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-
-                    // Phase 4: Coach Status Overlay in Non-Fullscreen
-                    CoachStatusOverlay(
-                        trackingState = trackingState,
-                        setLifecycleState = setManager.state,
-                        restRemainingSeconds = setManager.restRemainingSeconds,
-                        onSkipRest = {
-                            setManager.skipRest()
-                            voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
-                        },
-                        onAddRest = {
-                            setManager.addRestSeconds(30)
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    // Floating Top Controls Bar inside the Live Camera View
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp)
-                            .align(Alignment.TopCenter),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Current Exercise Pill (100% OPAQUE - NEVER TRANSPARENT!)
-                        Surface(
-                            onClick = { showExerciseDrawer = true },
-                            shape = RoundedCornerShape(20.dp),
-                            color = Color(0xF2161616),
-                            border = BorderStroke(1.dp, DarkPrimaryGold),
-                            shadowElevation = 6.dp
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FitnessCenter,
-                                    contentDescription = null,
-                                    tint = DarkPrimaryGold,
-                                    modifier = Modifier.size(14.dp)
+                        // Real-Time Exercise Live Overlay
+                        when (selectedExercise) {
+                            ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
+                                PushUpLiveOverlay(
+                                    telemetry = livePushUpTelemetry,
+                                    setNumber = setManager.setNumber,
+                                    elapsedSeconds = setManager.activeElapsedSeconds,
+                                    fatigueLevel = fatigueDetector.currentFatigueLevel,
+                                    modifier = Modifier.fillMaxSize()
                                 )
-                                Text(
-                                    text = activeExercise.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                            }
+                            ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
+                                SquatLiveOverlay(
+                                    telemetry = liveSquatTelemetry,
+                                    setNumber = setManager.setNumber,
+                                    elapsedSeconds = setManager.activeElapsedSeconds,
+                                    fatigueLevel = fatigueDetector.currentFatigueLevel,
+                                    modifier = Modifier.fillMaxSize()
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = "Change",
-                                    tint = DarkPrimaryGold,
-                                    modifier = Modifier.size(14.dp)
+                            }
+                            ExerciseFramingMode.PLANK -> {
+                                PlankLiveOverlay(
+                                    telemetry = livePlankTelemetry,
+                                    setNumber = setManager.setNumber,
+                                    elapsedSeconds = setManager.activeElapsedSeconds,
+                                    modifier = Modifier.fillMaxSize()
                                 )
                             }
                         }
 
-                        // Camera Off Button!
-                        Surface(
-                            onClick = { isCameraEnabled = false },
-                            shape = RoundedCornerShape(20.dp),
-                            color = Color(0xF2161616),
-                            border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.8f)),
-                            shadowElevation = 6.dp
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.VideocamOff,
-                                    contentDescription = "Turn Camera Off",
-                                    tint = Color(0xFFFF5252),
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Text(
-                                    text = "Camera Off",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
+                        // Phase 4: Coach Status Overlay in Non-Fullscreen
+                        CoachStatusOverlay(
+                            trackingState = trackingState,
+                            setLifecycleState = setManager.state,
+                            restRemainingSeconds = setManager.restRemainingSeconds,
+                            onSkipRest = {
+                                setManager.skipRest()
+                                voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
+                            },
+                            onAddRest = {
+                                setManager.addRestSeconds(30)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
 
@@ -1367,6 +1304,21 @@ fun CoachScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(
+                        onClick = { isCameraEnabled = false },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFFF5252).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VideocamOff,
+                            contentDescription = "Turn Camera Off",
+                            tint = Color(0xFFFF5252),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
                     Button(
                         onClick = { toggleRecording() },
                         modifier = Modifier
