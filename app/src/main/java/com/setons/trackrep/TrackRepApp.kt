@@ -1,8 +1,11 @@
 package com.setons.trackrep
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import com.setons.trackrep.ui.components.TrackRepSpeedDial
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -75,8 +78,9 @@ fun TrackRepApp() {
             }
         }
 
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
             topBar = {
                 if (!isFullscreenDestination) {
                     TopAppBar(
@@ -229,5 +233,44 @@ fun TrackRepApp() {
                 }
             )
         }
+
+        // Floating Action Circle (Speed Dial) at bottom right extending upwards with important options
+        if (!isFullscreenDestination) {
+            TrackRepSpeedDial(
+                onNavigateToLibrary = {
+                    if (currentDestination != ExerciseLibraryNavKey) {
+                        backStack.add(ExerciseLibraryNavKey)
+                    }
+                },
+                onNavigateToCoach = {
+                    if (currentDestination != CoachNavKey) {
+                        while (backStack.size > 1) {
+                            backStack.removeLastOrNull()
+                        }
+                        backStack.add(CoachNavKey)
+                    }
+                },
+                onNavigateToTrackAi = {
+                    if (currentDestination != TrackAiNavKey) {
+                        while (backStack.size > 1) {
+                            backStack.removeLastOrNull()
+                        }
+                        backStack.add(TrackAiNavKey)
+                    }
+                },
+                onNavigateToHistory = {
+                    if (currentDestination != HistoryNavKey) {
+                        while (backStack.size > 1) {
+                            backStack.removeLastOrNull()
+                        }
+                        backStack.add(HistoryNavKey)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 92.dp, end = 16.dp)
+            )
+        }
     }
 }
+}
