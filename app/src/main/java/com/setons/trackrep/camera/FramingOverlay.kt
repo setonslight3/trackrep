@@ -59,8 +59,8 @@ fun FramingOverlay(
                     boxLeft = (width - boxWidth) / 2f
                     boxTop = (height - boxHeight) / 2f
                 }
-                ExerciseFramingMode.SQUAT -> {
-                    // Taller vertical aspect for standing squat
+                ExerciseFramingMode.SQUAT, ExerciseFramingMode.PULL_UP, ExerciseFramingMode.CARDIO -> {
+                    // Taller vertical aspect for standing squat, pull-up, and cardio
                     boxWidth = width * 0.75f
                     boxHeight = height * 0.72f
                     boxLeft = (width - boxWidth) / 2f

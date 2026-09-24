@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TrackRep v1.0.0 — Complete QA Verification Runbook</title>
+  <style>
+    :root {
+      --bg-dark: #0c0c0e;
+      --bg-card: #16161a;
+      --bg-card-hover: #1f1f24;
+      --gold-primary: #ffd700;
+      --gold-secondary: #dfb15b;
+      --gold-glow: rgba(255, 215, 0, 0.15);
+      --green-success: #00e676;
+      --green-glow: rgba(0, 230, 118, 0.15);
+      --text-main: #f5f5f7;
+      --text-muted: #9e9ea8;
+      --border-card: rgba(255, 215, 0, 0.22);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+      padding-bottom: 60px;
+    }
+
+    /* Header */
+    .header-banner {
+      background: linear-gradient(145deg, #18181d 0%, #121215 100%);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 20px var(--gold-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-banner::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary), transparent);
+    }
+
+    .app-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gold-primary);
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .meta-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tag-gold {
+      background: var(--gold-glow);
+      border-color: var(--border-card);
+      color: var(--gold-primary);
+    }
+
+    .tag-green {
+      background: var(--green-glow);
+      border-color: rgba(0, 230, 118, 0.3);
+      color: var(--green-success);
+    }
+
+    /* Sticky Progress Bar */
+    .progress-sticky {
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+      background: rgba(22, 22, 26, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .progress-count {
+      color: var(--gold-primary);
+    }
+
+    .progress-bar-bg {
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--gold-primary), var(--green-success));
+      border-radius: 4px;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .reset-link {
+      color: #ff5252;
+      font-size: 11px;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-weight: 600;
+    }
+
+    /* Journey Section */
+    .journey-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 18px;
+      transition: border-color 0.2s;
+    }
+
+    .journey-card:hover {
+      border-color: rgba(255, 215, 0, 0.3);
+    }
+
+    .journey-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .journey-icon {
+      font-size: 24px;
+      line-height: 1;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+
+    .journey-title-wrap {
+      flex: 1;
+    }
+
+    .journey-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .journey-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .journey-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Checklist Items */
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .check-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .check-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .check-item.checked {
+      background: rgba(0, 230, 118, 0.04);
+      border-color: rgba(0, 230, 118, 0.25);
+    }
+
+    .check-item.checked .item-title {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .custom-checkbox {
+      margin-top: 2px;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--text-muted);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .check-item.checked .custom-checkbox {
+      background: var(--green-success);
+      border-color: var(--green-success);
+    }
+
+    .custom-checkbox::after {
+      content: "✔";
+      color: #0c0c0e;
+      font-size: 12px;
+      font-weight: 900;
+      display: none;
+    }
+
+    .check-item.checked .custom-checkbox::after {
+      display: block;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .item-expected {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .expected-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-secondary);
+      background: rgba(255, 215, 0, 0.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+
+    /* Bug Reporting Box */
+    .bug-box {
+      background: linear-gradient(145deg, #1e1818 0%, #151212 100%);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 30px;
+    }
+
+    .bug-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ff5252;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .bug-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .bug-template {
+      background: #09090b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #e2e2e8;
+      white-space: pre-wrap;
+      margin-bottom: 12px;
+    }
+
+    .copy-btn {
+      background: rgba(255, 82, 82, 0.15);
+      border: 1px solid rgba(255, 82, 82, 0.4);
+      color: #ff5252;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 82, 82, 0.25);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 36px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .footer a {
+      color: var(--gold-primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Banner -->
+  <header class="header-banner">
+    <div class="app-title">
+      <span>⚡</span> TrackRep v1.0.0
+    </div>
+    <div class="subtitle">Complete QA Verification Runbook & Hardware Interaction Checklist</div>
+    <div class="meta-tags">
+      <span class="tag tag-gold">✨ General Availability</span>
+      <span class="tag">📱 Infinix Smart 9</span>
+      <span class="tag">🔒 100% On-Device AI</span>
+      <span class="tag tag-green">🛡️ 82/82 Unit Tests Passing</span>
+    </div>
+  </header>
+
+  <!-- Sticky Live Progress Bar -->
+  <div class="progress-sticky">
+    <div class="progress-header">
+      <span>Verification Progress: <span class="progress-count" id="progressCount">0 / 30</span> (<span id="progressPercent">0%</span>)</span>
+      <button class="reset-link" onclick="resetChecks()">Reset Progress</button>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- Journey 1 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">🏁</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phases 0 & 9</div>
+        <h2 class="journey-title">Journey 1: First-Run Onboarding & Theming</h2>
+        <div class="journey-desc">Verify initial app startup, signature dark theme, and the 6-step setup flow.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="1.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.1 Fresh Install & Launch</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> App starts cleanly into the 6-Step Setup Wizard with the deep black (#000000) canvas and luxury gold (#FFD700) styling.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.2 Step 1 — Goal Selection</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Full-Body Muscle Development" (or another goal). The selected card highlights in gold with a checkmark. Tap Continue.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.3 Step 2 — Experience Tier Assessment</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Browse the 5 tiers (Beginner, Novice, Intermediate, Advanced, Elite). Exercise previews update smoothly. Tap Continue.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.4 Step 3 — Equipment Selection</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Select "Bodyweight (No Equipment)" or toggle custom gear chips. Selections toggle with immediate gold border feedback. Tap Continue.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.5">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.5 Step 4 — Schedule & Reminders</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap 3-day (MON, WED, FRI) or 4-day quick presets. Select Morning or Evening. Tap Continue.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.6">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.6 Step 5 — Camera & Privacy Briefing</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Review camera setup tips (floor level, ~15° tilt, 5–7 paces back). Tap "Allow Camera Access"; permission grants cleanly. Tap Continue.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="1.7">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">1.7 Step 6 — First Week Confirmation</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Inspect the generated 7-day schedule with protected rest days. Tap "Start Training Journey" to land directly on Today dashboard.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 2 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">🏠</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phases 0, 7 & 9</div>
+        <h2 class="journey-title">Journey 2: Today Dashboard & Weekly Schedule</h2>
+        <div class="journey-desc">Verify home screen layout, interactive 7-day strip, and rest day guidance.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="2.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">2.1 7-Day Schedule Strip</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap across each of the 7 day chips (Mon–Sun). Today has a distinct gold ring indicator.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="2.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">2.2 Rest Day Mode</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tapping a rest day displays the Rest Day Mode card with sleep, hydration, and light mobility guidance.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="2.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">2.3 Training Day Mode</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tapping a scheduled workout day shows the routine overview card with target muscles.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="2.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">2.4 Quick Action Buttons</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> "Start Today's Workout", "Ask Track AI", and "Exercise Library" are visible, legible, and easy to tap.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 3 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">📚</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phase 6</div>
+        <h2 class="journey-title">Journey 3: Exercise Library & Catalog</h2>
+        <div class="journey-desc">Verify the 35+ exercise catalog, category filters, and coach launcher.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="3.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">3.1 Open Library</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Exercise Library" from Today or Profile. Displays clean scrollable list of calisthenics exercises.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="3.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">3.2 Category & Difficulty Filtering</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap filter chips (Chest, Core, Quads, Beginner, Advanced). The list filters instantly without lag.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="3.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">3.3 Exercise Detail Bottom Sheet</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap an exercise (e.g. Standard Push-up). Bottom sheet opens showing execution steps, flaws to avoid, and pro tip.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="3.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">3.4 Direct Coach Mode Launch</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Start Coach Mode" inside the sheet to launch camera tracking directly for that exercise.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 4 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">📷</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phases 1, 2, 3, 4, 5 & 7</div>
+        <h2 class="journey-title">Journey 4: Live AI Camera Coach</h2>
+        <div class="journey-desc">Verify on-device ML Kit pose detection, rep counting, visual feedback, and set adaptation.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="4.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.1 Pose Calibration & Skeleton Wireframe</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Step 5–7 paces back. Skeleton wireframe overlays onto your body in real time; top framing indicator turns green: "Body in Frame / Ready".</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="4.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.2 Push-Up Rep Counting & Depth Gauge</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Descend into a push-up. Circular arc tracks elbow flexion degrees. Push up to lockout; counter increments by +1.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="4.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.3 Emotion Stick Green Flash</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> On valid rep completion, the emotion stick / keypoint landmarks flash vibrant Green!</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="4.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.4 Squat Tracking</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Switch to Squats. Squat until thighs are parallel; knee depth arc tracks flexion and increments reps upon standing.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="4.5">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.5 Plank Hold Tracking</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Switch to Plank. Timer counts up holding seconds; hip alignment detects sagging hips.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="4.6">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">4.6 Set Summary & Adaptive Rating Dialog</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "End Set". Dialog displays reps, time, and form score. Select difficulty (Just Right) and tap Save Set.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 5 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">🤖</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phase 8</div>
+        <h2 class="journey-title">Journey 5: Track AI Conversational Assistant</h2>
+        <div class="journey-desc">Verify local AI coaching, structured prompts, and schema-validated action execution.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="5.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">5.1 Open Track AI</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Track AI" on the bottom navigation bar. Chat interface opens with introductory greeting and suggestion chips.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="5.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">5.2 Prompt Suggestion Chips</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap a suggestion chip (e.g. "What should I train today?"). Track AI responds with structured advice based on your local profile and history.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="5.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">5.3 Action Layer Execution & Audit Badge</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> If an action is executed (such as updating progression targets), an "Action Executed" badge confirms the execution.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 6 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">📈</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phase 10</div>
+        <h2 class="journey-title">Journey 6: Progress Analytics & PR Milestones</h2>
+        <div class="journey-desc">Verify lifetime metrics aggregation, consistency streaks, and exercise PRs.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="6.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">6.1 Open Progress & PRs Tab</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "History" on the bottom bar, select the "Progress & PRs" tab.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="6.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">6.2 Lifetime KPI Cards</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Workouts, Total Reps, Training Time, and Avg Form Score reflect real completed sessions.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="6.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">6.3 Training Consistency Streak</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Displays current consecutive days streak and all-time longest historical streak.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="6.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">6.4 Muscle Breakdown & PR Showcase</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Progress bars show volume across Chest, Quads, Core, etc. PR milestone cards display your best reps and target goals.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 7 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">💾</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phase 10</div>
+        <h2 class="journey-title">Journey 7: Local Backup Export & Restore</h2>
+        <div class="journey-desc">Verify zero-cloud data sovereignty, file export, schema validation, and atomic restore.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="7.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">7.1 Export Backup JSON</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> On Progress tab, tap "Export Backup". Choose a folder in the system file picker and save. Green banner confirms: "Backup JSON exported successfully!".</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="7.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">7.2 Restore Backup JSON</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Restore Backup", select the JSON file. Confirmation dialog appears; tap "Restore Now". Success notification confirms restored data.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 8 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">📤</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phase 10</div>
+        <h2 class="journey-title">Journey 8: Workout Sharing via Native Share Sheet</h2>
+        <div class="journey-desc">Verify human-readable workout summaries shared to social and messaging apps.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="8.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">8.1 Open Sessions List</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> In History, tap the "Sessions & Replays" tab. All completed sessions appear in reverse chronological order.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="8.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">8.2 Trigger Share Sheet</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap the "Share" button on any session card. Android native share sheet opens (WhatsApp, Telegram, Messages, Notes).</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="8.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">8.3 Verify Share Card Text</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Text includes formatted exercise name, routine title, valid reps, sets, form score %, duration, and TrackRep AI branding.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Journey 9 -->
+  <section class="journey-card">
+    <div class="journey-header">
+      <div class="journey-icon">🎨</div>
+      <div class="journey-title-wrap">
+        <div class="journey-badge">Phases 0 & 11</div>
+        <h2 class="journey-title">Journey 9: Theming, Profile & Hardware Performance</h2>
+        <div class="journey-desc">Verify theme switching, preferences persistence, and hardware efficiency on Infinix Smart 9.</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li class="check-item" data-id="9.1">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">9.1 Open Profile Screen</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Profile" on bottom bar. Displays athlete preferences, training duration, and settings.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="9.2">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">9.2 Dark / Light Theme Toggle</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Toggle theme switch. Dark Mode: Pitch Black & Luxury Gold. Light Mode: Pure White & Crimson Red. Zero transparent or unreadable buttons.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="9.3">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">9.3 Re-run Onboarding Setup</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Tap "Re-run Onboarding Setup" at bottom of Profile; wizard opens with existing answers pre-loaded.</div>
+        </div>
+      </li>
+      <li class="check-item" data-id="9.4">
+        <div class="custom-checkbox"></div>
+        <div class="item-content">
+          <div class="item-title">9.4 Hardware Performance (Infinix Smart 9)</div>
+          <div class="item-expected"><span class="expected-badge">Expected</span> Camera preview runs smoothly without frame dropping or UI freezing. Phone does not overheat during a 5–10 min workout session.</div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Bug Reporting Box -->
+  <section class="bug-box">
+    <div class="bug-title">
+      <span>🐛</span> Found an issue? Report it easily
+    </div>
+    <div class="bug-desc">Tap the button below to copy the structured bug report template to your clipboard:</div>
+    <div class="bug-template" id="bugTemplate">Bug Report:
+• Journey / Step Number: (e.g. Journey 4.3)
+• What happened: (e.g. rep counter lagged by 1 second / text unreadable)
+• What was expected: (e.g. instant rep count update)
+• Screen / Tab: (e.g. Coach Screen / History Screen)
+• Screenshot / Error message (if any):</div>
+    <button class="copy-btn" onclick="copyBugTemplate()">
+      <span>📋</span> Copy Bug Report Template
+    </button>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>TrackRep v1.0.0 (GA) • Designed & Developed by <strong>Setons</strong></p>
+    <p style="margin-top: 4px;"><a href="https://github.com/setonslight3/trackrep" target="_blank">View GitHub Repository</a></p>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'trackrep_qa_checklist_v100';
+
+    function loadSavedChecks() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        saved.forEach(id => {
+          const el = document.querySelector(`.check-item[data-id="${id}"]`);
+          if (el) el.classList.add('checked');
+        });
+      } catch (e) {}
+      updateProgress();
+    }
+
+    function saveChecks() {
+      const checkedIds = Array.from(document.querySelectorAll('.check-item.checked')).map(el => el.getAttribute('data-id'));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(checkedIds));
+    }
+
+    function updateProgress() {
+      const allItems = document.querySelectorAll('.check-item');
+      const checkedItems = document.querySelectorAll('.check-item.checked');
+      const total = allItems.length;
+      const done = checkedItems.length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      document.getElementById('progressCount').textContent = `${done} / ${total}`;
+      document.getElementById('progressPercent').textContent = `${pct}%`;
+      document.getElementById('progressBar').style.width = `${pct}%`;
+    }
+
+    function resetChecks() {
+      if (confirm("Reset all verification checkboxes?")) {
+        document.querySelectorAll('.check-item.checked').forEach(el => el.classList.remove('checked'));
+        localStorage.removeItem(STORAGE_KEY);
+        updateProgress();
+      }
+    }
+
+    document.querySelectorAll('.check-item').forEach(item => {
+      item.addEventListener('click', () => {
+        item.classList.toggle('checked');
+        saveChecks();
+        updateProgress();
+      });
+    });
+
+    function copyBugTemplate() {
+      const text = document.getElementById('bugTemplate').innerText;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert('Bug report template copied to clipboard! Paste it into our chat.');
+        });
+      } else {
+        alert('Please manually copy the bug report template box above.');
+      }
+    }
+
+    // Initialize on load
+    loadSavedChecks();
+  </script>
+</body>
+</html>

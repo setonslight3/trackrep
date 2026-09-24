@@ -23,7 +23,7 @@ class ThemeAndNavigationTest {
     @Test
     fun testExerciseFramingModes() {
         val modes = com.setons.trackrep.camera.ExerciseFramingMode.values()
-        assertEquals(3, modes.size)
+        assertEquals(5, modes.size)
         val pushUp = com.setons.trackrep.camera.ExerciseFramingMode.PUSH_UP
         assertEquals("Push-up", pushUp.displayName)
         assertEquals("5–7 normal paces", pushUp.recommendedDistance)

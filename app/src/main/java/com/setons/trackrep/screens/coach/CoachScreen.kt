@@ -58,6 +58,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Visibility
+import com.setons.trackrep.exercise.catalog.ExerciseCatalog
+import com.setons.trackrep.exercise.model.Exercise
+import com.setons.trackrep.pose.ExerciseClassifier
+import com.setons.trackrep.ui.demo.StickmanDemoPlayer
 import com.setons.trackrep.adaptive.AdaptiveRepository
 import com.setons.trackrep.adaptive.ProgressionAction
 import androidx.compose.ui.Alignment
@@ -116,6 +126,7 @@ import java.util.UUID
 
 object CoachModeHolder {
     var pendingExerciseMode: ExerciseFramingMode? = null
+    var pendingExerciseId: String? = null
 }
 
 @Composable
@@ -151,16 +162,43 @@ fun CoachScreen(
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var currentPose by remember { mutableStateOf<TrackedPose?>(null) }
     var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
-    var selectedExercise by remember { mutableStateOf(ExerciseFramingMode.PUSH_UP) }
+    var activeExercise by remember {
+        mutableStateOf(
+            ExerciseCatalog.getById("push_up_standard") ?: ExerciseCatalog.exercises.first()
+        )
+    }
+    var selectedExercise by remember { mutableStateOf(activeExercise.framingMode ?: ExerciseFramingMode.PUSH_UP) }
     var framingStatus by remember { mutableStateOf(FramingStatus.CALIBRATING) }
     var lastRecordedSessionId by remember { mutableStateOf<String?>("sample_session_1") }
 
-    // Auto-select pending exercise mode if launched from Exercise Library or Workout Routine
+    // Auto-detection & Demo States
+    val exerciseClassifier = remember { ExerciseClassifier() }
+    var isAutoDetectEnabled by remember { mutableStateOf(true) }
+    var autoDetectedExerciseName by remember { mutableStateOf<String?>(null) }
+    var showAutoDetectBanner by remember { mutableStateOf(false) }
+    var showStickmanDemo by remember { mutableStateOf(false) }
+
+    // Auto-select pending exercise if launched from Exercise Library or Workout Routine
     LaunchedEffect(Unit) {
+        CoachModeHolder.pendingExerciseId?.let { id ->
+            ExerciseCatalog.getById(id)?.let { ex ->
+                activeExercise = ex
+                selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
+                framingStatus = FramingStatus.CALIBRATING
+            }
+            CoachModeHolder.pendingExerciseId = null
+        }
         CoachModeHolder.pendingExerciseMode?.let { mode ->
             selectedExercise = mode
             framingStatus = FramingStatus.CALIBRATING
             CoachModeHolder.pendingExerciseMode = null
+        }
+    }
+
+    LaunchedEffect(showAutoDetectBanner) {
+        if (showAutoDetectBanner) {
+            delay(2800L)
+            showAutoDetectBanner = false
         }
     }
 
@@ -304,7 +342,7 @@ fun CoachScreen(
             val validTimestamps: List<Long>
 
             when (selectedExercise) {
-                ExerciseFramingMode.PUSH_UP -> {
+                ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                     validReps = pushUpAnalyzer.liveTelemetry.validRepCount
                     partialCount = pushUpAnalyzer.liveTelemetry.partialRepCount
                     avgDepth = pushUpAnalyzer.getAverageDepthDegrees()
@@ -312,7 +350,7 @@ fun CoachScreen(
                     flaws = pushUpAnalyzer.getSummaryFlaws()
                     validTimestamps = pushUpAnalyzer.getCompletedReps().filter { it.isValid }.map { it.endTimestampMs }
                 }
-                ExerciseFramingMode.SQUAT -> {
+                ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
                     validReps = squatAnalyzer.liveTelemetry.validRepCount
                     partialCount = squatAnalyzer.liveTelemetry.partialRepCount
                     avgDepth = squatAnalyzer.getAverageDepthDegrees()
@@ -340,7 +378,7 @@ fun CoachScreen(
 
             val newSession = RecordedWorkoutSession(
                 id = newSessionId,
-                exerciseName = "${selectedExercise.displayName} Set",
+                exerciseName = "${activeExercise.name} Set",
                 videoPath = capturedFile?.takeIf { it.exists() && it.length() > 0 }?.absolutePath,
                 durationSeconds = duration,
                 repCount = finalRepCount,
@@ -376,7 +414,7 @@ fun CoachScreen(
             fatigueDetector.reset()
             trackingRecoveryManager.reset()
             setManager.startSet()
-            voiceManager.speakStatus("${selectedExercise.displayName} Set ${setManager.setNumber} started. Let's go!", isUrgent = true)
+            voiceManager.speakStatus("${activeExercise.name} Set ${setManager.setNumber} started. Let's go!", isUrgent = true)
 
             val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
             val outputFile = File(recordingsDir, "set_${System.currentTimeMillis()}.mp4")
@@ -427,13 +465,26 @@ fun CoachScreen(
                         if (state is TrackingState.Recovering) {
                             voiceManager.speakCountdown(state.countdownSeconds)
                         }
+                    } else if (isAutoDetectEnabled) {
+                        val detected = exerciseClassifier.processPose(pose)
+                        if (detected != null && detected.exerciseId != activeExercise.id) {
+                            val newEx = ExerciseCatalog.getById(detected.exerciseId)
+                            if (newEx != null) {
+                                activeExercise = newEx
+                                selectedExercise = detected.framingMode
+                                framingStatus = FramingStatus.CALIBRATING
+                                autoDetectedExerciseName = detected.displayName
+                                showAutoDetectBanner = true
+                                voiceManager.speakStatus("${detected.displayName} detected", isUrgent = false)
+                            }
+                        }
                     }
                     val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
                     when (selectedExercise) {
-                        ExerciseFramingMode.PUSH_UP -> {
+                        ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                             livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
                         }
-                        ExerciseFramingMode.SQUAT -> {
+                        ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
                             liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
                         }
                         ExerciseFramingMode.PLANK -> {
@@ -452,6 +503,92 @@ fun CoachScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
+            // Auto-Detected Exercise Banner Notification
+            AnimatedVisibility(
+                visible = showAutoDetectBanner,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 70.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xF0181408),
+                    border = BorderStroke(1.5.dp, DarkPrimaryGold),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Auto-Detected: ${autoDetectedExerciseName ?: activeExercise.name}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = DarkPrimaryGold
+                        )
+                    }
+                }
+            }
+
+            // Interactive Biomechanical Stickman Demo Overlay
+            if (showStickmanDemo) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xF8141414),
+                    border = BorderStroke(2.dp, DarkPrimaryGold),
+                    shadowElevation = 12.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .align(Alignment.Center)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "${activeExercise.name} Form Guide",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+                            IconButton(
+                                onClick = { showStickmanDemo = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        StickmanDemoPlayer(
+                            exerciseId = activeExercise.id,
+                            heightDp = 180,
+                            showControls = true
+                        )
+                    }
+                }
+            }
+
             // Dynamic Framing Guide
             FramingOverlay(
                 exerciseMode = selectedExercise,
@@ -469,7 +606,7 @@ fun CoachScreen(
 
             // Real-Time Exercise HUD Overlay (Offset safely below top controls)
             when (selectedExercise) {
-                ExerciseFramingMode.PUSH_UP -> {
+                ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                     PushUpLiveOverlay(
                         telemetry = livePushUpTelemetry,
                         setNumber = setManager.setNumber,
@@ -480,7 +617,7 @@ fun CoachScreen(
                             .padding(top = 68.dp)
                     )
                 }
-                ExerciseFramingMode.SQUAT -> {
+                ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
                     SquatLiveOverlay(
                         telemetry = liveSquatTelemetry,
                         setNumber = setManager.setNumber,
@@ -560,6 +697,37 @@ fun CoachScreen(
                     }
                 }
 
+                // Auto-Detect Toggle Chip
+                Surface(
+                    onClick = {
+                        isAutoDetectEnabled = !isAutoDetectEnabled
+                        if (isAutoDetectEnabled) exerciseClassifier.reset()
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isAutoDetectEnabled) DarkPrimaryGold.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.65f),
+                    border = BorderStroke(1.dp, if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Auto Detect",
+                            tint = if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = if (isAutoDetectEnabled) "Auto ON" else "Auto OFF",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
                 // Exercise Mode & Recording Status Badge
                 Surface(
                     onClick = {
@@ -567,6 +735,8 @@ fun CoachScreen(
                             val modes = ExerciseFramingMode.values()
                             val nextIndex = (modes.indexOf(selectedExercise) + 1) % modes.size
                             selectedExercise = modes[nextIndex]
+                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == selectedExercise }
+                            if (matching != null) activeExercise = matching
                             framingStatus = FramingStatus.CALIBRATING
                         }
                     },
@@ -575,7 +745,7 @@ fun CoachScreen(
                     border = BorderStroke(1.dp, if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold.copy(alpha = 0.6f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -599,16 +769,34 @@ fun CoachScreen(
                                 ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
                                 ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
                                 ExerciseFramingMode.PLANK -> Icons.Default.Timer
+                                ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
+                                ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
                             }
                             Icon(icon, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(14.dp))
                             Text(
-                                text = selectedExercise.displayName,
+                                text = activeExercise.name,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkPrimaryGold
+                                color = DarkPrimaryGold,
+                                maxLines = 1
                             )
                         }
                     }
+                }
+
+                // Stickman Form Demo Button
+                IconButton(
+                    onClick = { showStickmanDemo = !showStickmanDemo },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(if (showStickmanDemo) DarkPrimaryGold else Color.Black.copy(alpha = 0.65f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = "Form Demo",
+                        tint = if (showStickmanDemo) Color.Black else DarkPrimaryGold,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
 
                 // Flip Camera
@@ -795,9 +983,11 @@ fun CoachScreen(
                 }
             }
 
-            // Exercise Mode Selector Tabs (Push-up, Squat, Plank) - High Contrast Redesign
+            // Exercise Mode Selector Tabs (Push-up, Squat, Plank, Pull-up, Cardio) - High Contrast Redesign
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ExerciseFramingMode.values().forEach { mode ->
@@ -806,10 +996,14 @@ fun CoachScreen(
                         ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
                         ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
                         ExerciseFramingMode.PLANK -> Icons.Default.Timer
+                        ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
+                        ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
                     }
                     Surface(
                         onClick = {
                             selectedExercise = mode
+                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == mode }
+                            if (matching != null) activeExercise = matching
                             framingStatus = FramingStatus.CALIBRATING
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -818,14 +1012,11 @@ fun CoachScreen(
                             1.5.dp,
                             if (isSelected) DarkPrimaryGold else DarkPrimaryGold.copy(alpha = 0.5f)
                         ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp)
+                        modifier = Modifier.height(46.dp)
                     ) {
                         Row(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 4.dp),
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -933,13 +1124,26 @@ fun CoachScreen(
                                 if (state is TrackingState.Recovering) {
                                     voiceManager.speakCountdown(state.countdownSeconds)
                                 }
+                            } else if (isAutoDetectEnabled) {
+                                val detected = exerciseClassifier.processPose(pose)
+                                if (detected != null && detected.exerciseId != activeExercise.id) {
+                                    val newEx = ExerciseCatalog.getById(detected.exerciseId)
+                                    if (newEx != null) {
+                                        activeExercise = newEx
+                                        selectedExercise = detected.framingMode
+                                        framingStatus = FramingStatus.CALIBRATING
+                                        autoDetectedExerciseName = detected.displayName
+                                        showAutoDetectBanner = true
+                                        voiceManager.speakStatus("${detected.displayName} detected", isUrgent = false)
+                                    }
+                                }
                             }
                             val frameTime = if (isRecording) System.currentTimeMillis() - recordingStartTimeMs else System.currentTimeMillis()
                             when (selectedExercise) {
-                                ExerciseFramingMode.PUSH_UP -> {
+                                ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                                     livePushUpTelemetry = pushUpAnalyzer.processPose(pose, frameTime)
                                 }
-                                ExerciseFramingMode.SQUAT -> {
+                                ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
                                     liveSquatTelemetry = squatAnalyzer.processPose(pose, frameTime)
                                 }
                                 ExerciseFramingMode.PLANK -> {
@@ -973,7 +1177,7 @@ fun CoachScreen(
 
                     // Real-Time Exercise Live Overlay
                     when (selectedExercise) {
-                        ExerciseFramingMode.PUSH_UP -> {
+                        ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                             PushUpLiveOverlay(
                                 telemetry = livePushUpTelemetry,
                                 setNumber = setManager.setNumber,
@@ -982,7 +1186,7 @@ fun CoachScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        ExerciseFramingMode.SQUAT -> {
+                        ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
                             SquatLiveOverlay(
                                 telemetry = liveSquatTelemetry,
                                 setNumber = setManager.setNumber,
@@ -1119,16 +1323,8 @@ fun CoachScreen(
                     setManager.startRest(60)
                     voiceManager.speakStatus("Take 60 seconds rest", isUrgent = true)
                     coroutineScope.launch {
-                        val exId = when (selectedExercise) {
-                            ExerciseFramingMode.PUSH_UP -> "push_up_standard"
-                            ExerciseFramingMode.SQUAT -> "squat_bodyweight"
-                            ExerciseFramingMode.PLANK -> "plank_standard"
-                        }
-                        val exName = when (selectedExercise) {
-                            ExerciseFramingMode.PUSH_UP -> "Standard Push-up"
-                            ExerciseFramingMode.SQUAT -> "Bodyweight Squat"
-                            ExerciseFramingMode.PLANK -> "Standard Plank"
-                        }
+                        val exId = activeExercise.id
+                        val exName = activeExercise.name
                         val eval = AdaptiveRepository.recordCompletedSet(
                             context = context,
                             exerciseId = exId,
@@ -1146,16 +1342,8 @@ fun CoachScreen(
                     setManager.skipRest()
                     voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
                     coroutineScope.launch {
-                        val exId = when (selectedExercise) {
-                            ExerciseFramingMode.PUSH_UP -> "push_up_standard"
-                            ExerciseFramingMode.SQUAT -> "squat_bodyweight"
-                            ExerciseFramingMode.PLANK -> "plank_standard"
-                        }
-                        val exName = when (selectedExercise) {
-                            ExerciseFramingMode.PUSH_UP -> "Standard Push-up"
-                            ExerciseFramingMode.SQUAT -> "Bodyweight Squat"
-                            ExerciseFramingMode.PLANK -> "Standard Plank"
-                        }
+                        val exId = activeExercise.id
+                        val exName = activeExercise.name
                         AdaptiveRepository.recordCompletedSet(
                             context = context,
                             exerciseId = exId,

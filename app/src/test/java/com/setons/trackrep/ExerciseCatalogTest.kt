@@ -47,13 +47,18 @@ class ExerciseCatalogTest {
     }
 
     @Test
-    fun testVisionSupportedExercisesIncludeCoreThree() {
+    fun testUniversalVisionSupportForAllExercises() {
+        val all = ExerciseCatalog.getAll()
         val visionExercises = ExerciseCatalog.getVisionSupported()
-        val modes = visionExercises.mapNotNull { it.framingMode }
 
+        assertEquals("100% of catalog exercises must have AI Vision support", all.size, visionExercises.size)
+
+        val modes = visionExercises.mapNotNull { it.framingMode }.toSet()
         assertTrue("Should support Push-up vision", modes.contains(ExerciseFramingMode.PUSH_UP))
         assertTrue("Should support Squat vision", modes.contains(ExerciseFramingMode.SQUAT))
         assertTrue("Should support Plank vision", modes.contains(ExerciseFramingMode.PLANK))
+        assertTrue("Should support Pull-up vision", modes.contains(ExerciseFramingMode.PULL_UP))
+        assertTrue("Should support Cardio vision", modes.contains(ExerciseFramingMode.CARDIO))
     }
 
     @Test

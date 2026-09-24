@@ -82,6 +82,8 @@ import com.setons.trackrep.theme.DarkOutlineGold
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
+import com.setons.trackrep.screens.coach.CoachModeHolder
+import com.setons.trackrep.ui.demo.StickmanDemoPlayer
 import com.setons.trackrep.workout.WorkoutEngine
 
 enum class LibraryTab {
@@ -211,10 +213,12 @@ fun ExerciseLibraryScreen(
                 RoutinesTabContent(
                     routines = WorkoutEngine.getRoutines(),
                     onSelectRoutine = { routine ->
-                        val firstVisionItem = routine.items.mapNotNull { item ->
-                            ExerciseCatalog.getById(item.exerciseId)?.framingMode
+                        val firstItem = routine.items.mapNotNull { item ->
+                            ExerciseCatalog.getById(item.exerciseId)
                         }.firstOrNull()
-                        onNavigateToCoach(firstVisionItem ?: ExerciseFramingMode.PUSH_UP)
+                        CoachModeHolder.pendingExerciseId = firstItem?.id
+                        CoachModeHolder.pendingExerciseMode = firstItem?.framingMode ?: ExerciseFramingMode.PUSH_UP
+                        onNavigateToCoach(firstItem?.framingMode ?: ExerciseFramingMode.PUSH_UP)
                     }
                 )
             }
@@ -228,6 +232,8 @@ fun ExerciseLibraryScreen(
             onDismiss = { selectedExerciseForDetail = null },
             onLaunchCoach = { mode ->
                 selectedExerciseForDetail = null
+                CoachModeHolder.pendingExerciseId = exercise.id
+                CoachModeHolder.pendingExerciseMode = mode
                 onNavigateToCoach(mode)
             }
         )
@@ -784,6 +790,13 @@ fun ExerciseDetailDialog(
                         }
                     }
                 }
+
+                // AI Biomechanical Stickman Demonstration
+                StickmanDemoPlayer(
+                    exerciseId = exercise.id,
+                    heightDp = 210,
+                    showControls = true
+                )
 
                 // Personal Progression & PR Card (if trained before)
                 progression?.let { prog ->

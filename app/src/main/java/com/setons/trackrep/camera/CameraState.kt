@@ -5,7 +5,9 @@ import androidx.camera.core.CameraSelector
 enum class ExerciseFramingMode(val displayName: String, val recommendedDistance: String, val angleTip: String) {
     PUSH_UP("Push-up", "5–7 normal paces", "Floor level, tilted up ~15°"),
     SQUAT("Squat", "6–8 normal paces", "Knee/waist level, upright"),
-    PLANK("Plank", "5–7 normal paces", "Floor level, tilted up ~15°")
+    PLANK("Plank", "5–7 normal paces", "Floor level, tilted up ~15°"),
+    PULL_UP("Pull-up", "6–8 normal paces", "Chest level, upright"),
+    CARDIO("Cardio", "6–8 normal paces", "Full body standing, upright")
 }
 
 enum class FramingStatus(val message: String, val isPassing: Boolean) {
