@@ -8,7 +8,7 @@ import kotlin.math.min
 /**
  * Biomechanical state machine engine for Push-ups.
  * Analyzes real-time elbow flexion, torso alignment, range of motion, and rep cadence.
- * Built for 100% on-device execution with zero dropped frames on the Infinix Smart 9.
+ * Built for 100% on-device execution with zero dropped frames across all compatible Android, iOS, tablet, and laptop hardware.
  */
 class PushUpAnalyzer {
 

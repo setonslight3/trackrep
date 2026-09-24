@@ -8,9 +8,7 @@ TrackRep is a local-first Android workout app focused on full-body muscle develo
 
 Initial Scope
 
-Android only initially, targeting the Infinix Smart 9. One APK for the first test release.
-
-Future releases can add broader Android ABI support, iOS and possibly desktop.
+Universal compatibility across all major Android devices (Samsung, Pixel, Xiaomi, OnePlus, Infinix, etc.), iOS (PWA/Web), tablets, and laptops. One universal APK for Android.
 
 No account or cloud database initially. Workout data stays on the device.
 

@@ -23,7 +23,7 @@ class BackupManagerTest {
             "  \"appName\": \"TrackRep\",\n" +
             "  \"exportedAtMs\": 1774384200000,\n" +
             "  \"exportedAtFormatted\": \"2026-09-23 20:30:00\",\n" +
-            "  \"deviceInfo\": \"Infinix Smart 9\",\n" +
+            "  \"deviceInfo\": \"Universal Android\",\n" +
             "  \"data\": {\n" +
             "    \"userProfile\": {\n" +
             "      \"id\": \"default_user\",\n" +

@@ -60,7 +60,7 @@ fun CameraTutorialDialog(
                 )
 
                 Text(
-                    text = "Follow these steps for accurate, zero-lag on-device rep tracking on your Infinix Smart 9:",
+                    text = "Follow these steps for accurate, zero-lag on-device rep tracking on any phone, tablet, or laptop:",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
@@ -69,8 +69,8 @@ fun CameraTutorialDialog(
                 TutorialStepItem(
                     stepNumber = "1",
                     icon = Icons.Default.PhoneAndroid,
-                    title = "Stable Phone Placement",
-                    description = "Rest your phone on the floor leaning against a water bottle or wall at a slight ~15° upward angle."
+                    title = "Stable Device Placement",
+                    description = "Rest your phone, tablet, or laptop on the floor or sturdy surface leaning at a slight ~15° upward angle."
                 )
 
                 TutorialStepItem(

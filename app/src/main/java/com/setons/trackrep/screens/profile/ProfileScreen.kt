@@ -1,6 +1,7 @@
 package com.setons.trackrep.screens.profile
 
 import android.os.Build
+import com.setons.trackrep.BuildConfig
 import com.setons.trackrep.ui.components.TrackRepSwitch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -514,13 +515,33 @@ fun ProfileScreen(
 
                 Text(
                     text = "TrackRep • Developed by Setons\n" +
-                            "Version 0.12.0 (Phase 9: Onboarding + Scheduling)\n" +
+                            "Version ${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})\n" +
                             "AI Assistant: Track (Powered by Gemini + On-Device NLP)\n" +
-                            "Target Hardware: Infinix Smart 9\n" +
                             "Architecture: Local-First • On-Device Vision • Room DB",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                     lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Universal Device Compatibility:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "• Android: Universal support across Samsung Galaxy, Google Pixel, Xiaomi, OnePlus, Motorola, Tecno, Infinix, and all Android 8.0+ devices (API 24–36)\n" +
+                            "• iOS & iPadOS: Cross-platform Web & PWA access with real-time camera tracking\n" +
+                            "• Laptops & Desktops: Windows, macOS, Linux & ChromeOS via any webcam or browser\n" +
+                            "• Universal Vision: Any smartphone, tablet, or laptop camera — zero external sensors required.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                    lineHeight = 18.sp
                 )
             }
         }

@@ -10,7 +10,7 @@ Non-Negotiable Rules
 
 App: TrackRep. AI: Track. Developer: Setons.
 
-Android first; target Infinix Smart 9.
+Android first; Universal compatibility targeting all major Android devices, iOS, tablets, and laptops.
 
 Kotlin + Compose, CameraX, on-device pose detection, Room, DataStore and Gemini.
 

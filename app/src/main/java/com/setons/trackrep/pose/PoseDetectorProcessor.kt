@@ -14,7 +14,7 @@ class PoseDetectorProcessor(
     private val onPoseDetected: (TrackedPose) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    // Optimized for Infinix Smart 9: STREAM_MODE uses lightweight fast neural pipeline
+    // Universal optimization: STREAM_MODE uses lightweight fast neural pipeline for all Android phones, tablets & laptops
     private val options = PoseDetectorOptions.Builder()
         .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
         .build()

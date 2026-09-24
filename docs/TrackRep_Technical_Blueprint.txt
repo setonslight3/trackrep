@@ -120,7 +120,7 @@ Test rep state machines and prerecorded clips.
 
 Test distance, lighting, clothing, pauses, partial reps and tracking loss.
 
-Test repeatedly on the Infinix Smart 9.
+Test repeatedly across physical Android devices, tablets, and laptops.
 
 Do not expand the exercise library until the vision foundation is stable.
 
