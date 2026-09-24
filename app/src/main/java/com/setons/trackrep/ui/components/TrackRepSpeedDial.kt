@@ -1,14 +1,17 @@
 package com.setons.trackrep.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,7 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -44,8 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,14 +81,6 @@ fun TrackRepSpeedDial(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    val rotationAngle by animateFloatAsState(
-        targetValue = if (isExpanded) 135f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "fab_rotation"
-    )
 
     val options = remember(onNavigateToLibrary, onNavigateToCoach, onNavigateToTrackAi, onNavigateToHistory) {
         listOf(
@@ -165,26 +162,43 @@ fun TrackRepSpeedDial(
                 }
             }
 
-            // Main Trigger Floating Circle Button
+            // Main Trigger Floating Circle Button — Gold Stickman One-Arm Push-Up
             FloatingActionButton(
                 onClick = { isExpanded = !isExpanded },
                 shape = CircleShape,
-                containerColor = DarkPrimaryGold,
-                contentColor = Color.Black,
+                containerColor = Color(0xFF141414),
+                contentColor = DarkPrimaryGold,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 8.dp,
                     pressedElevation = 12.dp
                 ),
-                modifier = Modifier.size(58.dp)
+                modifier = Modifier.size(62.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = if (isExpanded) "Close Menu" else "Quick Actions Menu",
-                    tint = Color.Black,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .rotate(rotationAngle)
-                )
+                Crossfade(
+                    targetState = isExpanded,
+                    animationSpec = tween(durationMillis = 250),
+                    label = "fab_crossfade"
+                ) { expanded ->
+                    if (expanded) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Menu",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    } else {
+                        Canvas(
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            drawOneArmPushUpStickman(
+                                width = size.width,
+                                height = size.height,
+                                gold = DarkPrimaryGold,
+                                lightGold = DarkSecondaryGold
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -276,5 +290,156 @@ private fun SpeedDialOptionRow(
                 )
             }
         }
+    }
+}
+
+// -------------------------------------------------------------
+// GOLD STICKMAN ONE-ARM PUSH-UP — FAB ICON RENDERER
+// Matches the motion-stick style from StickmanDemoPlayer:
+// Halo-glow head with visor eye, thick limb strokes, glowing joints.
+// -------------------------------------------------------------
+
+/**
+ * Draws a gold stickman performing a one-arm push-up.
+ * Side view: head left, feet right, one arm supporting from the ground.
+ * The free arm is tucked behind the back for the classic one-arm pose.
+ */
+private fun DrawScope.drawOneArmPushUpStickman(
+    width: Float,
+    height: Float,
+    gold: Color,
+    lightGold: Color
+) {
+    val jointWhite = Color.White
+    val groundY = height * 0.88f
+
+    // Key body points — one-arm push-up at the "up" position
+    val handX = width * 0.24f
+    val handY = groundY
+
+    val feetX = width * 0.82f
+    val feetY = groundY
+
+    val shoulderX = handX + width * 0.10f
+    val shoulderY = groundY - height * 0.42f
+
+    val hipX = feetX - (feetX - shoulderX) * 0.42f
+    val hipY = shoulderY + height * 0.06f  // Slight body angle downward to feet
+
+    val headX = shoulderX - width * 0.14f
+    val headY = shoulderY - height * 0.06f
+    val headRadius = width * 0.085f
+
+    // Elbow bends slightly (supporting arm)
+    val elbowX = handX + (shoulderX - handX) * 0.45f + width * 0.04f
+    val elbowY = (shoulderY + handY) / 2f
+
+    // Free arm tucked behind back (from shoulder curving to hip area)
+    val freeArmX = shoulderX + width * 0.08f
+    val freeArmY = shoulderY + height * 0.14f
+
+    // ── Head with halo glow ──
+    // Outer halo glow
+    drawCircle(
+        color = gold.copy(alpha = 0.25f),
+        radius = headRadius * 1.4f,
+        center = Offset(headX, headY)
+    )
+    // Head circle outline
+    drawCircle(
+        color = gold,
+        radius = headRadius,
+        center = Offset(headX, headY),
+        style = Stroke(width = width * 0.04f)
+    )
+    // Visor eye line
+    drawLine(
+        color = Color.White.copy(alpha = 0.9f),
+        start = Offset(headX - headRadius * 0.45f, headY),
+        end = Offset(headX + headRadius * 0.45f, headY),
+        strokeWidth = width * 0.032f,
+        cap = StrokeCap.Round
+    )
+
+    // ── Limbs ──
+    val thickStroke = width * 0.055f
+    val mediumStroke = width * 0.045f
+
+    // Neck: Head → Shoulder
+    drawLine(
+        color = gold,
+        start = Offset(headX, headY + headRadius * 0.6f),
+        end = Offset(shoulderX, shoulderY),
+        strokeWidth = mediumStroke,
+        cap = StrokeCap.Round
+    )
+
+    // Spine/Torso: Shoulder → Hip
+    drawLine(
+        color = gold,
+        start = Offset(shoulderX, shoulderY),
+        end = Offset(hipX, hipY),
+        strokeWidth = thickStroke,
+        cap = StrokeCap.Round
+    )
+
+    // Legs: Hip → Feet (straight plank line)
+    drawLine(
+        color = lightGold,
+        start = Offset(hipX, hipY),
+        end = Offset(feetX, feetY),
+        strokeWidth = mediumStroke,
+        cap = StrokeCap.Round
+    )
+
+    // Supporting arm: Shoulder → Elbow → Hand
+    drawLine(
+        color = gold,
+        start = Offset(shoulderX, shoulderY),
+        end = Offset(elbowX, elbowY),
+        strokeWidth = mediumStroke,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = lightGold,
+        start = Offset(elbowX, elbowY),
+        end = Offset(handX, handY),
+        strokeWidth = mediumStroke,
+        cap = StrokeCap.Round
+    )
+
+    // Free arm tucked behind back: Shoulder → behind-back point
+    drawLine(
+        color = gold.copy(alpha = 0.7f),
+        start = Offset(shoulderX, shoulderY),
+        end = Offset(freeArmX, freeArmY),
+        strokeWidth = mediumStroke * 0.85f,
+        cap = StrokeCap.Round
+    )
+
+    // ── Joints (glowing dots) ──
+    val jointRadius = width * 0.035f
+    val jointGlowRadius = width * 0.06f
+
+    listOf(
+        Offset(shoulderX, shoulderY),
+        Offset(elbowX, elbowY),
+        Offset(handX, handY),
+        Offset(hipX, hipY),
+        Offset(feetX, feetY),
+        Offset(freeArmX, freeArmY)
+    ).forEach { joint ->
+        // Outer joint aura
+        drawCircle(
+            color = gold.copy(alpha = 0.35f),
+            radius = jointGlowRadius,
+            center = joint
+        )
+        // Solid joint dot
+        drawCircle(
+            color = jointWhite,
+            radius = jointRadius,
+            center = joint
+        )
     }
 }
