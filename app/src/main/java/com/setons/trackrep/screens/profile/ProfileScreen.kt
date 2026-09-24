@@ -1,6 +1,7 @@
 package com.setons.trackrep.screens.profile
 
 import android.os.Build
+import com.setons.trackrep.ui.components.TrackRepSwitch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -201,7 +202,7 @@ fun ProfileScreen(
                     }
                 }
 
-                Switch(
+                TrackRepSwitch(
                     checked = isDarkTheme,
                     onCheckedChange = onToggleTheme
                 )
@@ -383,13 +384,12 @@ fun ProfileScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Switch(
+                    TrackRepSwitch(
                         checked = remindersEnabled,
                         onCheckedChange = {
                             remindersEnabled = it
                             persistChanges(if (it) "Enabled daily reminders" else "Disabled daily reminders")
-                        },
-                        colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
+                        }
                     )
                 }
             }

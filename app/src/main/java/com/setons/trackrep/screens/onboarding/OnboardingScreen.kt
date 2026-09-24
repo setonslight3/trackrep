@@ -3,6 +3,7 @@ package com.setons.trackrep.screens.onboarding
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import com.setons.trackrep.ui.components.TrackRepSwitch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -819,10 +820,9 @@ private fun StepSchedule(
                         Text("Notification before daily workout", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     }
                 }
-                Switch(
+                TrackRepSwitch(
                     checked = remindersEnabled,
-                    onCheckedChange = onToggleReminders,
-                    colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
+                    onCheckedChange = onToggleReminders
                 )
             }
         }

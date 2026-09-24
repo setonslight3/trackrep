@@ -68,6 +68,16 @@ import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.exercise.model.Exercise
 import com.setons.trackrep.pose.ExerciseClassifier
 import com.setons.trackrep.ui.demo.StickmanDemoPlayer
+import com.setons.trackrep.ui.components.TrackRepSwitch
+import androidx.compose.foundation.border
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import com.setons.trackrep.adaptive.AdaptiveRepository
 import com.setons.trackrep.adaptive.ProgressionAction
 import androidx.compose.ui.Alignment
@@ -129,6 +139,7 @@ object CoachModeHolder {
     var pendingExerciseId: String? = null
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoachScreen(
     onNavigateToPlayback: (String) -> Unit = {},
@@ -152,6 +163,9 @@ fun CoachScreen(
         hasCameraPermission = isGranted
     }
 
+    var isCameraEnabled by remember { mutableStateOf(true) }
+    var showExerciseDrawer by remember { mutableStateOf(false) }
+    var showControlsDrawer by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -883,145 +897,92 @@ fun CoachScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Modern Athletic Header with Clean Action Controls
+            // Modern Athletic Header with Clean Action Controls (ONLY 2 ACTION ICONS)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = "AI Motion Coach",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Text(
-                        text = "Real-time posture & form tracking",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f)
-                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Surface(
+                        onClick = { showExerciseDrawer = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF1E1E1E),
+                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = null,
+                                tint = DarkPrimaryGold,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = activeExercise.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkPrimaryGold
+                            )
+                            if (isAutoDetectEnabled) {
+                                Text(
+                                    text = "• ⚡ Auto",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
                 }
 
+                // Exactly 2 Clean Action Icons in Drawers
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
+                    // Drawer Icon 1: Exercise Selection & Auto-Detection
                     IconButton(
-                        onClick = { showTutorial = true },
+                        onClick = { showExerciseDrawer = true },
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .size(40.dp)
+                            .background(Color(0xFF1E1E1E), CircleShape)
+                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.6f), CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.HelpOutline,
-                            contentDescription = "Setup Guide",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.Default.FitnessCenter,
+                            contentDescription = "Exercise Selection & Auto-Detect",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
-                    if (hasCameraPermission) {
-                        IconButton(
-                            onClick = {
-                                selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
-                            },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FlipCameraAndroid,
-                                contentDescription = "Switch Camera",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { voiceManager.toggleMute() },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                                contentDescription = if (voiceManager.isMuted) "Unmute Voice" else "Mute Voice",
-                                tint = if (voiceManager.isMuted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { isFullscreen = true },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fullscreen,
-                                contentDescription = "Fullscreen",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Exercise Mode Selector Tabs (Push-up, Squat, Plank, Pull-up, Cardio) - High Contrast Redesign
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ExerciseFramingMode.values().forEach { mode ->
-                    val isSelected = mode == selectedExercise
-                    val icon = when (mode) {
-                        ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
-                        ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
-                        ExerciseFramingMode.PLANK -> Icons.Default.Timer
-                        ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
-                        ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
-                    }
-                    Surface(
-                        onClick = {
-                            selectedExercise = mode
-                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == mode }
-                            if (matching != null) activeExercise = matching
-                            framingStatus = FramingStatus.CALIBRATING
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) DarkPrimaryGold else Color(0xFF222222),
-                        border = BorderStroke(
-                            1.5.dp,
-                            if (isSelected) DarkPrimaryGold else DarkPrimaryGold.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier.height(46.dp)
+                    // Drawer Icon 2: Camera & System Controls
+                    IconButton(
+                        onClick = { showControlsDrawer = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFF1E1E1E), CircleShape)
+                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.6f), CircleShape)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = if (isSelected) Color.Black else DarkPrimaryGold,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = mode.displayName,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.Black else Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Camera & Coach Options",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
@@ -1090,6 +1051,126 @@ fun CoachScreen(
                             Icon(Icons.Default.CameraAlt, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else if (!isCameraEnabled) {
+                // CAMERA IS OFF VIEW (Sleek offline card + high-contrast exercise picker!)
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141414)),
+                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VideocamOff,
+                                contentDescription = null,
+                                tint = DarkPrimaryGold,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Camera Vision is Off",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Turn camera on to track real-time reps, form angles, and get live posture feedback.",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            color = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { isCameraEnabled = true },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkPrimaryGold,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Turn Camera On", fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Selected Exercise Details & Change Exercise Button
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFF1E1E1E),
+                            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Selected Exercise",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = DarkPrimaryGold,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = activeExercise.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showExerciseDrawer = true },
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, DarkPrimaryGold)
+                                    ) {
+                                        Text("Change", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                OutlinedButton(
+                                    onClick = { showStickmanDemo = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Watch Stickman Form Demo", color = DarkPrimaryGold, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
@@ -1207,6 +1288,77 @@ fun CoachScreen(
                         modifier = Modifier.fillMaxSize()
                     )
 
+                    // Floating Top Controls Bar inside the Live Camera View
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp)
+                            .align(Alignment.TopCenter),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Current Exercise Pill (100% OPAQUE - NEVER TRANSPARENT!)
+                        Surface(
+                            onClick = { showExerciseDrawer = true },
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xF2161616),
+                            border = BorderStroke(1.dp, DarkPrimaryGold),
+                            shadowElevation = 6.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = activeExercise.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = "Change",
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+
+                        // Camera Off Button!
+                        Surface(
+                            onClick = { isCameraEnabled = false },
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xF2161616),
+                            border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.8f)),
+                            shadowElevation = 6.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.VideocamOff,
+                                    contentDescription = "Turn Camera Off",
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "Camera Off",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Controls Strip: Record Set & Playback Review
@@ -1344,6 +1496,592 @@ fun CoachScreen(
                     showSummaryDialog = false
                 }
             )
+        }
+    }
+
+    // -------------------------------------------------------------
+    // DRAWER 1: EXERCISE SELECTION & AI AUTO-DETECTION BOTTOM SHEET
+    // -------------------------------------------------------------
+    if (showExerciseDrawer) {
+        ModalBottomSheet(
+            onDismissRequest = { showExerciseDrawer = false },
+            containerColor = Color(0xFF161616),
+            contentColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Sheet Title
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Exercise & AI Detection",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Select your workout movement or let AI auto-switch",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.65f)
+                        )
+                    }
+                    IconButton(onClick = { showExerciseDrawer = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                // AI Auto-Detect Movement Toggle Card with High-Contrast TrackRepSwitch
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF201D16)),
+                    border = BorderStroke(1.5.dp, if (isAutoDetectEnabled) DarkPrimaryGold else Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Auto-Detect Exercise",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (isAutoDetectEnabled) "Active • Camera auto-detects Push-ups, Squats, Planks & more" else "Disabled • Manual movement selection",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isAutoDetectEnabled) DarkPrimaryGold else Color.White.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = isAutoDetectEnabled,
+                            onCheckedChange = { isAutoDetectEnabled = it }
+                        )
+                    }
+                }
+
+                // Current Active Exercise Summary Card
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "CURRENT TARGET",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DarkPrimaryGold,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = activeExercise.name,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "${activeExercise.difficulty.displayName} • ${activeExercise.targetMuscle.displayName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    showExerciseDrawer = false
+                                    showStickmanDemo = true
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DarkPrimaryGold,
+                                    contentColor = Color.Black
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PlayCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Form Demo", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    showExerciseDrawer = false
+                                    onNavigateToLibrary()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.7f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("All 35 Exercises", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Choose Exercise by Category (Push-Up, Squat, Plank, Pull-Up, Cardio)
+                Text(
+                    text = "SELECT MOVEMENT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp
+                )
+
+                ExerciseFramingMode.values().forEach { mode ->
+                    val isSelected = mode == selectedExercise
+                    Surface(
+                        onClick = {
+                            selectedExercise = mode
+                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == mode }
+                            if (matching != null) activeExercise = matching
+                            framingStatus = FramingStatus.CALIBRATING
+                            showExerciseDrawer = false
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) DarkPrimaryGold.copy(alpha = 0.15f) else Color(0xFF1E1E1E),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) DarkPrimaryGold else Color(0xFF333333)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = when (mode) {
+                                        ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
+                                        ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
+                                        ExerciseFramingMode.PLANK -> Icons.Default.Timer
+                                        ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
+                                        ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
+                                    },
+                                    contentDescription = null,
+                                    tint = if (isSelected) DarkPrimaryGold else Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = mode.displayName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) DarkPrimaryGold else Color.White
+                                    )
+                                    Text(
+                                        text = when (mode) {
+                                            ExerciseFramingMode.PUSH_UP -> "Standard, Close-Grip, Bench Dips, Pike"
+                                            ExerciseFramingMode.SQUAT -> "Bodyweight, Jump Squats, Bulgarian Split, Calf Raises"
+                                            ExerciseFramingMode.PLANK -> "Standard Hold, Shoulder Taps, Superman"
+                                            ExerciseFramingMode.PULL_UP -> "Standard Pull-Up, Inverted Row"
+                                            ExerciseFramingMode.CARDIO -> "Mountain Climbers, Burpees"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                            if (isSelected) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // DRAWER 2: CAMERA & SYSTEM CONTROLS BOTTOM SHEET
+    // -------------------------------------------------------------
+    if (showControlsDrawer) {
+        ModalBottomSheet(
+            onDismissRequest = { showControlsDrawer = false },
+            containerColor = Color(0xFF161616),
+            contentColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Title
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Camera & Coach Controls",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Vision feed, audio cues, and display options",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.65f)
+                        )
+                    }
+                    IconButton(onClick = { showControlsDrawer = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                // 1. Camera Vision Power (ON / OFF)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, if (isCameraEnabled) DarkPrimaryGold else Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        if (isCameraEnabled) SuccessGreen.copy(alpha = 0.15f) else Color(0xFFFF5252).copy(alpha = 0.15f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isCameraEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                                    contentDescription = null,
+                                    tint = if (isCameraEnabled) SuccessGreen else Color(0xFFFF5252),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Camera Vision",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (isCameraEnabled) "Camera is actively tracking" else "Camera is paused (Off)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = isCameraEnabled,
+                            onCheckedChange = { isCameraEnabled = it }
+                        )
+                    }
+                }
+
+                // 2. Camera Lens (Front / Back)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FlipCameraAndroid,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Camera Lens",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (selectedLens == CameraLens.BACK) "Rear Camera (Environment)" else "Front Camera (Selfie)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, DarkPrimaryGold)
+                        ) {
+                            Text(
+                                text = if (selectedLens == CameraLens.BACK) "Use Front" else "Use Back",
+                                color = DarkPrimaryGold,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                // 3. Audio Voice Feedback Toggle
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Voice Coach Cues",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (voiceManager.isMuted) "Audio muted" else "Active spoken rep & form coaching",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = !voiceManager.isMuted,
+                            onCheckedChange = { voiceManager.toggleMute() }
+                        )
+                    }
+                }
+
+                // 4. Immersive Fullscreen Mode
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Fullscreen,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Fullscreen Mode",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Immersive tracking without navigation bars",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                showControlsDrawer = false
+                                isFullscreen = true
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkPrimaryGold,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text("Expand", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                // 5. Setup & Positioning Guide Tutorial
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
+                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.HelpOutline,
+                                    contentDescription = null,
+                                    tint = DarkPrimaryGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Setup & Calibration Guide",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "5-7 paces, floor level, 15° tilt placement",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                showControlsDrawer = false
+                                showTutorial = true
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, DarkPrimaryGold)
+                        ) {
+                            Text("Open", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }

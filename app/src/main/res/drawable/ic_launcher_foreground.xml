@@ -4,127 +4,69 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Subtle gold glow ring behind the stickman -->
+    <!-- Subtle luxury gold glow aura behind the muscle -->
+    <path
+        android:fillColor="#15D4AF37"
+        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
+
+    <!-- Main Flexing Arm Muscle Silhouette (Metallic Luxury Gold) -->
+    <!-- Hand/Fist at top-left, curled forearm down to elbow, prominent peaked bicep, strong deltoid/shoulder -->
+    <path
+        android:fillColor="#FFD4AF37"
+        android:fillType="nonZero"
+        android:pathData="M 38,28
+            C 34,28 31,31 31,35
+            C 31,39 33,42 36,44
+            L 40,48
+            L 42,54
+            C 44,61 48,68 53,74
+            C 56,77 60,78 64,77
+            C 69,76 75,71 78,65
+            C 81,60 82,54 80,48
+            C 78,43 73,40 68,41
+            C 65,37 60,34 54,34
+            C 47,34 43,38 41,41
+            L 39,37
+            C 41,33 42,30 38,28 Z" />
+
+    <!-- Forearm & Fist Muscle Mass Details -->
+    <path
+        android:fillColor="#FFE5C378"
+        android:pathData="M 37,29
+            C 34.5,29 32.5,31.2 32.5,34.2
+            C 32.5,37 34,39.5 36.5,41
+            L 40.5,45
+            C 42,47 43.5,50 44,53
+            C 46,60 50,67 55,72
+            C 57.5,74.5 60.5,75.5 63.5,74.8
+            C 61.5,73 57,66 54.5,58
+            C 53,53 50,47 47,43
+            C 44.5,39.5 41,35 39,31
+            C 38.5,30 37.8,29 37,29 Z" />
+
+    <!-- Bicep Peak Highlight (Champagne Gold 3D contour) -->
+    <path
+        android:fillColor="#FFF5D68A"
+        android:pathData="M 54,36
+            C 59,36 63,38.5 66,42
+            C 63,45 58,47 52,47
+            C 48,47 45,45 43,43
+            C 45.5,39 49.5,36 54,36 Z" />
+
+    <!-- Shoulder / Deltoid Definition Arch -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#33D4AF37"
-        android:strokeWidth="1.5"
-        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0" />
+        android:strokeColor="#FFB88E3E"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 68,42 C 73,43 78,48 78,55 C 78,61 74,67 69,72" />
 
-    <!-- HEAD — Halo glow outer ring -->
-    <path
-        android:fillColor="#40D4AF37"
-        android:pathData="M36,36m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
-
-    <!-- HEAD — Gold circle outline -->
+    <!-- Bicep-to-Forearm Definition Shadow Line -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFD4AF37"
-        android:strokeWidth="2.8"
-        android:pathData="M36,36m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
-
-    <!-- HEAD — Visor eye line -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#F0FFFFFF"
+        android:strokeColor="#33000000"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M33.5,36L38.5,36" />
-
-    <!-- NECK: Head to Shoulder -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFD4AF37"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:pathData="M38,39L43,42" />
-
-    <!-- TORSO: Shoulder to Hip (thick core) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFD4AF37"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:pathData="M43,42L62,46" />
-
-    <!-- LEGS: Hip to Feet (angled down to ground) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFE5C378"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:pathData="M62,46L78,72" />
-
-    <!-- SUPPORTING ARM: Shoulder to Elbow -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFD4AF37"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:pathData="M43,42L40,56" />
-
-    <!-- SUPPORTING ARM: Elbow to Hand on ground -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFE5C378"
-        android:strokeWidth="2.8"
-        android:strokeLineCap="round"
-        android:pathData="M40,56L36,72" />
-
-    <!-- FREE ARM: Tucked behind back (slightly transparent) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#B3D4AF37"
-        android:strokeWidth="2.4"
-        android:strokeLineCap="round"
-        android:pathData="M43,42L50,52" />
-
-    <!-- JOINT: Shoulder -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M43,42m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M43,42m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
-
-    <!-- JOINT: Elbow -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M40,56m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M40,56m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
-
-    <!-- JOINT: Hand on ground -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M36,72m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M36,72m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
-
-    <!-- JOINT: Hip -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M62,46m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M62,46m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
-
-    <!-- JOINT: Feet -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M78,72m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M78,72m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
-
-    <!-- JOINT: Free arm end -->
-    <path
-        android:fillColor="#60D4AF37"
-        android:pathData="M50,52m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M50,52m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0" />
+        android:pathData="M 44,45 C 47,49 50,54 53,60" />
 
 </vector>
