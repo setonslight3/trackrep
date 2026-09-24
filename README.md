@@ -54,7 +54,7 @@
 
 ## 📋 Quality Assurance & Testing Runbook
 
-A complete 9-journey verification test guide is available in the repository at [**QA_VERIFICATION_CHECKLIST.md**](QA_VERIFICATION_CHECKLIST.md). It is also downloadable as a standalone file attached to every GitHub release (`TrackRep-QA-Verification-Guide.md`).
+A complete 9-journey interactive verification test guide is available in the repository at [**QA_VERIFICATION_CHECKLIST.html**](QA_VERIFICATION_CHECKLIST.html) (interactive HTML with live progress tracking and persistent checkboxes) and [**QA_VERIFICATION_CHECKLIST.md**](QA_VERIFICATION_CHECKLIST.md). It is also downloadable as a standalone HTML file attached to the GitHub release (`TrackRep-QA-Verification-Guide.html`).
 
 ---
 
