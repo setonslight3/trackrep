@@ -10,17 +10,21 @@ import com.setons.trackrep.ai.action.TrackAction
 import com.setons.trackrep.ai.action.TrackActionExecutor
 import com.setons.trackrep.ai.action.TrackActionValidator
 import com.setons.trackrep.ai.action.TrackAiResponse
+import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.workout.WorkoutEngine
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Dedicated Track AI Service interfacing with Gemini and executing on-device
@@ -30,11 +34,19 @@ import java.net.URL
  * - "Never allow Gemini to write directly to the database."
  * - "Gemini receives structured context, not raw camera video by default."
  * - "Track service -> Gemini -> validated structured commands -> domain actions."
+ * - As long as there is an API key configured, Gemini is queried directly and
+ *   errors (quota, rate limits, invalid keys) are reported clearly rather than
+ *   silently falling back to canned local responses.
  */
 object TrackAiService {
 
     private const val PREFS_NAME = "trackrep_ai_prefs"
     private const val KEY_GEMINI_API_KEY = "gemini_api_key"
+
+    sealed class GeminiCallResult {
+        data class Success(val response: TrackAiResponse) : GeminiCallResult()
+        data class Error(val code: Int?, val userFacingErrorMessage: String) : GeminiCallResult()
+    }
 
     fun getApiKey(context: Context): String? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -43,7 +55,12 @@ object TrackAiService {
 
     fun setApiKey(context: Context, key: String?) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_GEMINI_API_KEY, key?.trim()).apply()
+        val trimmed = key?.trim()
+        if (trimmed.isNullOrBlank()) {
+            prefs.edit().remove(KEY_GEMINI_API_KEY).apply()
+        } else {
+            prefs.edit().putString(KEY_GEMINI_API_KEY, trimmed).apply()
+        }
     }
 
     suspend fun processMessage(
@@ -52,21 +69,27 @@ object TrackAiService {
     ): TrackAiResponse = withContext(Dispatchers.IO) {
         val apiKey = getApiKey(context)
 
-        // 1. If API key is available, attempt live Gemini API call
+        // 1. If API key is configured, ALWAYS query Gemini directly (never fallback to local NLP)
         if (!apiKey.isNullOrBlank()) {
-            try {
-                val structuredContext = TrackContextBuilder.buildStructuredContext(context)
-                val response = callGeminiApi(apiKey, userMessage, structuredContext)
-                if (response != null) {
-                    executeValidatedActions(context, response.actions, userMessage)
-                    return@withContext response
+            val structuredContext = TrackContextBuilder.buildStructuredContext(context)
+            val result = callGeminiApiWithDetailedResult(apiKey, userMessage, structuredContext)
+            return@withContext when (result) {
+                is GeminiCallResult.Success -> {
+                    executeValidatedActions(context, result.response.actions, userMessage)
+                    result.response
                 }
-            } catch (e: Exception) {
-                // Seamlessly fall back to on-device reasoning if API call fails
+                is GeminiCallResult.Error -> {
+                    // Do not execute local NLP fallback when user has configured an API key.
+                    // Directly report the exact error (quota, invalid key, timeout, etc.)
+                    TrackAiResponse(
+                        replyMessage = result.userFacingErrorMessage,
+                        actions = emptyList()
+                    )
+                }
             }
         }
 
-        // 2. On-Device Fallback Reasoning Engine
+        // 2. On-Device Fallback Reasoning Engine (Only active when no Gemini API key is configured)
         val localResponse = evaluateOnDeviceReasoning(userMessage, context)
         executeValidatedActions(context, localResponse.actions, userMessage)
         localResponse
@@ -86,17 +109,16 @@ object TrackAiService {
     }
 
     /**
-     * Calls Gemini 2.5 Flash API with strict JSON schema instructions.
+     * Calls Google Gemini API with fallback across flash model versions.
+     * Returns detailed result with clear user-facing error explanations.
      */
-    private fun callGeminiApi(apiKey: String, userMessage: String, structuredContext: String): TrackAiResponse? {
-        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
-        val url = URL(endpoint)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.doOutput = true
-        conn.connectTimeout = 8000
-        conn.readTimeout = 12000
+    fun callGeminiApiWithDetailedResult(
+        apiKey: String,
+        userMessage: String,
+        structuredContext: String
+    ): GeminiCallResult {
+        val candidateModels = listOf("gemini-1.5-flash", "gemini-2.0-flash")
+        var lastError: GeminiCallResult.Error? = null
 
         val systemPrompt = """
 You are Track, an elite athletic AI coach developed by Setons for TrackRep.
@@ -132,11 +154,11 @@ You cannot directly alter user data. You must output a JSON object conforming to
   ]
 }
 
-When the athlete asks about their past workouts, workout history, performance, progress, or how they performed, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence.
+When the athlete asks about their past workouts, workout history, performance, progress, or how they performed today, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence.
 
 CONTEXT OF CURRENT ATHLETE & WORKOUT:
 $structuredContext
-"""
+""".trimIndent()
 
         val fullPrompt = "$systemPrompt\n\nATHLETE QUERY: $userMessage"
         val payload = JSONObject().apply {
@@ -153,84 +175,162 @@ $structuredContext
                 put("temperature", 0.4)
             })
         }
+        val payloadBytes = payload.toString().toByteArray(Charsets.UTF_8)
 
-        OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
-            writer.write(payload.toString())
-            writer.flush()
+        for (model in candidateModels) {
+            try {
+                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val url = URL(endpoint)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                conn.doOutput = true
+                conn.connectTimeout = 10000
+                conn.readTimeout = 15000
+
+                conn.outputStream.use { os ->
+                    os.write(payloadBytes)
+                    os.flush()
+                }
+
+                val code = conn.responseCode
+                if (code in 200..299) {
+                    val rawResponse = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
+                    val root = JSONObject(rawResponse)
+                    val candidates = root.optJSONArray("candidates")
+                    if (candidates != null && candidates.length() > 0) {
+                        val textContent = candidates.getJSONObject(0)
+                            .getJSONObject("content")
+                            .getJSONArray("parts")
+                            .getJSONObject(0)
+                            .getString("text")
+                        val parsed = parseGeminiJsonResponse(textContent)
+                        return GeminiCallResult.Success(parsed)
+                    }
+                }
+
+                val errorStream = conn.errorStream ?: conn.inputStream
+                val errorBody = if (errorStream != null) {
+                    BufferedReader(InputStreamReader(errorStream, "UTF-8")).use { it.readText() }
+                } else ""
+
+                var apiMessage = ""
+                var apiStatus = ""
+                try {
+                    val errRoot = JSONObject(errorBody).optJSONObject("error")
+                    if (errRoot != null) {
+                        apiMessage = errRoot.optString("message", "")
+                        apiStatus = errRoot.optString("status", "")
+                    }
+                } catch (_: Exception) {}
+
+                val userFacingError = when {
+                    code == 429 || apiStatus == "RESOURCE_EXHAUSTED" || errorBody.contains("quota", ignoreCase = true) || errorBody.contains("RESOURCE_EXHAUSTED") -> {
+                        "⚠️ Gemini API Quota Exceeded (HTTP 429): You have run out of usage or hit rate limits for this API key. Please check your Google AI Studio quota (aistudio.google.com) or wait a short while and try again."
+                    }
+                    code in listOf(400, 401, 403) || apiStatus in listOf("UNAUTHENTICATED", "PERMISSION_DENIED") || errorBody.contains("API_KEY_INVALID") -> {
+                        "⚠️ Gemini API Key Error (HTTP $code): The configured API key is invalid or unauthorized. Tap the settings icon (⚙️) at the top right to verify or update your Gemini API key."
+                    }
+                    code == 404 -> {
+                        lastError = GeminiCallResult.Error(code, "⚠️ Gemini Model Error (HTTP 404): Model '$model' was not found ($apiMessage).")
+                        continue
+                    }
+                    code in 500..599 -> {
+                        "⚠️ Gemini Server Error (HTTP $code): Google's Gemini service is temporarily unavailable. Please try again shortly."
+                    }
+                    else -> {
+                        "⚠️ Gemini API Error (HTTP $code): ${if (apiMessage.isNotBlank()) apiMessage else "Unexpected error from Gemini API"}"
+                    }
+                }
+
+                return GeminiCallResult.Error(code, userFacingError)
+            } catch (e: java.net.UnknownHostException) {
+                return GeminiCallResult.Error(null, "⚠️ Network Connection Error: Could not reach Google Gemini. Please check your internet connection and try again.")
+            } catch (e: java.net.SocketTimeoutException) {
+                return GeminiCallResult.Error(null, "⚠️ Request Timeout: Google Gemini took too long to respond. Please check your internet connection and try again.")
+            } catch (e: Exception) {
+                return GeminiCallResult.Error(null, "⚠️ Gemini Connection Error: ${e.localizedMessage ?: "Failed to connect to Google Gemini"}. Please check your internet connection.")
+            }
         }
 
-        val code = conn.responseCode
-        if (code !in 200..299) return null
+        return lastError ?: GeminiCallResult.Error(null, "⚠️ Gemini Error: Could not communicate with Google Gemini API.")
+    }
 
-        val rawResponse = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
-        val root = JSONObject(rawResponse)
-        val candidates = root.optJSONArray("candidates") ?: return null
-        if (candidates.length() == 0) return null
-
-        val textContent = candidates.getJSONObject(0)
-            .getJSONObject("content")
-            .getJSONArray("parts")
-            .getJSONObject(0)
-            .getString("text")
-
-        return parseGeminiJsonResponse(textContent)
+    /**
+     * Backwards-compatible helper returning nullable TrackAiResponse.
+     */
+    fun callGeminiApi(apiKey: String, userMessage: String, structuredContext: String): TrackAiResponse? {
+        val result = callGeminiApiWithDetailedResult(apiKey, userMessage, structuredContext)
+        return (result as? GeminiCallResult.Success)?.response
     }
 
     /**
      * Parses the JSON output produced by Gemini into strongly-typed TrackActions.
      */
     fun parseGeminiJsonResponse(jsonStr: String): TrackAiResponse {
-        val obj = JSONObject(jsonStr)
-        val reply = obj.optString("replyMessage", "I've reviewed your request.")
-        val actions = mutableListOf<TrackAction>()
+        return try {
+            val cleanJson = jsonStr.trim()
+                .removePrefix("```json")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+            val obj = JSONObject(cleanJson)
+            val reply = obj.optString("replyMessage", "I've reviewed your request.")
+            val actions = mutableListOf<TrackAction>()
 
-        val arr = obj.optJSONArray("actions")
-        if (arr != null) {
-            for (i in 0 until arr.length()) {
-                val item = arr.getJSONObject(i)
-                when (item.optString("type")) {
-                    "REPLACE_EXERCISE" -> {
-                        actions.add(
-                            ReplaceExerciseAction(
-                                oldExerciseId = item.getString("oldExerciseId"),
-                                newExerciseId = item.getString("newExerciseId"),
-                                reason = item.optString("reason", "Adapted by Track")
+            val arr = obj.optJSONArray("actions")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val item = arr.getJSONObject(i)
+                    when (item.optString("type")) {
+                        "REPLACE_EXERCISE" -> {
+                            actions.add(
+                                ReplaceExerciseAction(
+                                    oldExerciseId = item.getString("oldExerciseId"),
+                                    newExerciseId = item.getString("newExerciseId"),
+                                    reason = item.optString("reason", "Adapted by Track")
+                                )
                             )
-                        )
-                    }
-                    "ADJUST_TARGET" -> {
-                        actions.add(
-                            AdjustTargetAction(
-                                exerciseId = item.getString("exerciseId"),
-                                newTargetReps = if (item.has("newTargetReps")) item.getInt("newTargetReps") else null,
-                                newTargetSets = if (item.has("newTargetSets")) item.getInt("newTargetSets") else null,
-                                newTargetHoldSeconds = if (item.has("newTargetHoldSeconds")) item.getInt("newTargetHoldSeconds") else null,
-                                newRestSeconds = if (item.has("newRestSeconds")) item.getInt("newRestSeconds") else null,
-                                reason = item.optString("reason", "Adjusted by Track")
+                        }
+                        "ADJUST_TARGET" -> {
+                            actions.add(
+                                AdjustTargetAction(
+                                    exerciseId = item.getString("exerciseId"),
+                                    newTargetReps = if (item.has("newTargetReps")) item.getInt("newTargetReps") else null,
+                                    newTargetSets = if (item.has("newTargetSets")) item.getInt("newTargetSets") else null,
+                                    newTargetHoldSeconds = if (item.has("newTargetHoldSeconds")) item.getInt("newTargetHoldSeconds") else null,
+                                    newRestSeconds = if (item.has("newRestSeconds")) item.getInt("newRestSeconds") else null,
+                                    reason = item.optString("reason", "Adjusted by Track")
+                                )
                             )
-                        )
-                    }
-                    "RESCHEDULE_WORKOUT" -> {
-                        actions.add(
-                            RescheduleWorkoutAction(
-                                daysOffset = item.optInt("daysOffset", 1),
-                                reason = item.optString("reason", "Rescheduled by Track")
+                        }
+                        "RESCHEDULE_WORKOUT" -> {
+                            actions.add(
+                                RescheduleWorkoutAction(
+                                    daysOffset = item.optInt("daysOffset", 1),
+                                    reason = item.optString("reason", "Rescheduled by Track")
+                                )
                             )
-                        )
-                    }
-                    "EXPLAIN_ADJUSTMENT" -> {
-                        actions.add(
-                            ExplainWorkoutAdjustmentAction(
-                                topic = item.optString("topic", "Coaching"),
-                                explanation = item.optString("explanation", "")
+                        }
+                        "EXPLAIN_ADJUSTMENT" -> {
+                            actions.add(
+                                ExplainWorkoutAdjustmentAction(
+                                    topic = item.optString("topic", "Coaching"),
+                                    explanation = item.optString("explanation", "")
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-        }
 
-        return TrackAiResponse(replyMessage = reply, actions = actions)
+            TrackAiResponse(replyMessage = reply, actions = actions)
+        } catch (_: Exception) {
+            TrackAiResponse(
+                replyMessage = jsonStr.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim(),
+                actions = emptyList()
+            )
+        }
     }
 
     /**
@@ -344,13 +444,43 @@ $structuredContext
                 reply = "For optimal ML Kit joint detection, place your phone on the floor approximately 5 to 7 normal paces away, tilted about 15° upward. Ensure the camera sees your full body from head to toes within the luxury gold brackets."
             }
 
-            // 9. History & Past Workouts Analysis
+            // 9. Today's Completed Exercises
+            (q.contains("today") && (q.contains("complete") || q.contains("done") || q.contains("exercise") || q.contains("workout") || q.contains("did i") || q.contains("finish"))) ||
+            q.contains("what did i do today") || q.contains("exercises today") || q.contains("completed today") -> {
+                var todayReply: String? = null
+                if (context != null) {
+                    try {
+                        val db = TrackRepDatabase.getDatabase(context)
+                        val recent = runBlocking { db.sessionDao().getRecentSessions(25) }
+                        val ymdFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                        val todayDateStr = ymdFormat.format(Date())
+                        val todaySessions = recent.filter {
+                            it.dateString == todayDateStr || ymdFormat.format(Date(it.timestampMs)) == todayDateStr
+                        }
+                        if (todaySessions.isNotEmpty()) {
+                            val totalReps = todaySessions.sumOf { it.totalValidReps }
+                            val avgScore = todaySessions.map { it.averageFormScore }.average().toInt()
+                            val summaryLines = todaySessions.joinToString("\n") { s ->
+                                "• ${s.exerciseName}: ${s.totalValidReps} valid reps (Form consistency: ${s.averageFormScore}%)"
+                            }
+                            todayReply = "Here are the exercises you completed today ($todayDateStr):\n\n$summaryLines\n\nTotal: $totalReps reps logged across ${todaySessions.size} set(s) with an average form score of $avgScore%.\nGreat job maintaining consistency today!"
+                        } else {
+                            todayReply = "You haven't completed any recorded exercise sets today yet ($todayDateStr).\nHead over to the Coach tab to begin today's routine!"
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                reply = todayReply ?: "You haven't logged any exercise sets for today yet. Select an exercise in the Coach tab to start tracking your reps!"
+            }
+
+            // 10. History & Past Workouts Analysis
             q.contains("past") || q.contains("history") || q.contains("previous") || q.contains("analyze") || q.contains("analysis") || q.contains("last workout") || q.contains("recent") || q.contains("progress") || q.contains("how did i do") -> {
                 var historyReply: String? = null
                 if (context != null) {
                     try {
-                        val db = com.setons.trackrep.data.local.TrackRepDatabase.getDatabase(context)
-                        val recent = kotlinx.coroutines.runBlocking { db.sessionDao().getRecentSessions(5) }
+                        val db = TrackRepDatabase.getDatabase(context)
+                        val recent = runBlocking { db.sessionDao().getRecentSessions(5) }
                         if (recent.isNotEmpty()) {
                             val totalReps = recent.sumOf { it.totalValidReps }
                             val avgScore = recent.map { it.averageFormScore }.average().toInt()
@@ -366,9 +496,14 @@ $structuredContext
                 reply = historyReply ?: "I'm ready to analyze your workout history! Once you complete and log sets with the camera coach, I'll provide detailed breakdowns of your rep counts, form consistency scores, and progressive overload."
             }
 
-            // 10. Default Coaching Response
+            // 11. Conversational Continuity (e.g. "continue", "next", "ok")
+            q == "continue" || q.startsWith("continue") || q == "next" || q == "proceed" || q == "tell me more" || q == "go on" || q == "ok" || q == "okay" || q == "got it" -> {
+                reply = "Ready when you are! Ask me about form cues (e.g. hip sagging, phone placement), swap exercises for joint relief (e.g. wrist or knee), adjust rep targets, or start a set in the Coach tab."
+            }
+
+            // 12. Unrecognized Query in On-Device Mode
             else -> {
-                reply = "I'm Track, your adaptive coach! You can ask me to swap exercises if you have joint discomfort, reschedule missed workouts, adjust target reps, or analyze your past workouts."
+                reply = "I'm operating in On-Device mode and didn't recognize \"$query\".\n\nIn this mode, you can ask:\n• \"What exercises did I complete today?\"\n• \"Analyze my past workouts\"\n• \"Swap push-ups for wrist relief\"\n• \"Increase push-up target by 2 reps\"\n• \"Fix hip sagging\" or \"Camera setup\"\n\n💡 Tip: For open-ended natural conversation and reasoning, add your Google Gemini API key in settings (⚙️ at top right)."
             }
         }
 

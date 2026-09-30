@@ -116,4 +116,34 @@ class TrackAiServiceTest {
         val response = TrackAiService.evaluateOnDeviceReasoning(query)
         assertTrue(response.replyMessage.contains("analyze your workout history") || response.replyMessage.contains("logged workouts"))
     }
+
+    @Test
+    fun testTodayCompletedExercisesQuery() {
+        val query = "what exercises did i complete today"
+        val response = TrackAiService.evaluateOnDeviceReasoning(query)
+        assertTrue(response.replyMessage.contains("today") || response.replyMessage.contains("exercise sets"))
+    }
+
+    @Test
+    fun testContinueQuery() {
+        val query = "continue"
+        val response = TrackAiService.evaluateOnDeviceReasoning(query)
+        assertTrue(response.replyMessage.contains("Ready when you are"))
+    }
+
+    @Test
+    fun testUnrecognizedQueryDoesNotReturnDefaultStartupMessage() {
+        val query = "random unrecognized question xyz"
+        val response = TrackAiService.evaluateOnDeviceReasoning(query)
+        // Ensure it does NOT repeat the canned startup greeting
+        assertTrue(!response.replyMessage.startsWith("I'm Track, your adaptive coach! You can ask me to swap"))
+        assertTrue(response.replyMessage.contains("didn't recognize"))
+    }
+
+    @Test
+    fun testParseGeminiPlainTextFallback() {
+        val plainText = "Here is my advice on your form."
+        val response = TrackAiService.parseGeminiJsonResponse(plainText)
+        assertEquals("Here is my advice on your form.", response.replyMessage)
+    }
 }

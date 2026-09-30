@@ -173,6 +173,7 @@ fun TrackAiScreen(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+                val hasApiKey = !TrackAiService.getApiKey(context).isNullOrBlank()
                 Column {
                     Text(
                         text = "Track AI Coach",
@@ -181,7 +182,7 @@ fun TrackAiScreen(
                         color = Color.White
                     )
                     Text(
-                        text = "Powered by Gemini • Developed by Setons",
+                        text = if (hasApiKey) "Powered by Gemini 1.5 Flash • Developed by Setons" else "On-Device AI Engine • Developed by Setons",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 11.sp,
                         color = DarkPrimaryGold
@@ -616,7 +617,7 @@ private fun ApiKeyConfigDialog(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "Track AI can connect directly to Gemini 2.5 Flash. If left blank, Track operates seamlessly using its built-in on-device reasoning engine.",
+                    text = "Track AI connects directly to Google Gemini 1.5 Flash. Enter your Google AI Studio API key below (free at aistudio.google.com).\n\nAs long as an API key is configured, Track communicates live with Gemini and displays direct error diagnostics if quota is exceeded.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.75f),
                     fontSize = 12.sp
@@ -643,18 +644,28 @@ private fun ApiKeyConfigDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel", color = Color.Gray)
+                    if (currentKey.isNotBlank()) {
+                        TextButton(onClick = { onSaveKey("") }) {
+                            Text("Clear Key", color = Color(0xFFFF6B6B))
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSaveKey(keyText) },
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkPrimaryGold, contentColor = Color.Black)
-                    ) {
-                        Text("Save Key", fontWeight = FontWeight.Bold)
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = onDismiss) {
+                            Text("Cancel", color = Color.Gray)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onSaveKey(keyText) },
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkPrimaryGold, contentColor = Color.Black)
+                        ) {
+                            Text("Save Key", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
