@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.FitnessCenter
+import com.setons.trackrep.screens.coach.CoachModeHolder
+import com.setons.trackrep.camera.ExerciseFramingMode
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -628,26 +630,61 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Exercise preview checklist with camera icons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TODAY'S EXERCISE LIST (${routineExercises.size} MOVEMENTS)",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = "Tap to train with AI Vision",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        routineExercises.forEach { (item, exercise) ->
+                        routineExercises.forEachIndexed { index, (item, exercise) ->
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                onClick = {
+                                    CoachModeHolder.pendingExerciseId = exercise.id
+                                    CoachModeHolder.pendingExerciseMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP
+                                    CoachModeHolder.pendingTargetReps = item.targetReps
+                                    CoachModeHolder.pendingTargetHoldSeconds = item.targetHoldSeconds
+                                    CoachModeHolder.pendingTargetSets = item.targetSets
+                                    CoachModeHolder.pendingCameraEnabled = true
+                                    CoachModeHolder.activeRoutine = todayRoutine
+                                    CoachModeHolder.activeRoutineIndex = index
+                                    onNavigateToCoach()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                                border = BorderStroke(1.dp, if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.35f) else Color.Transparent),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.weight(1f)
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -659,11 +696,11 @@ fun HomeScreen(
                                                 ),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                imageVector = if (exercise.isVisionSupported) Icons.Default.CameraAlt else Icons.Default.FitnessCenter,
-                                                contentDescription = null,
-                                                tint = if (exercise.isVisionSupported) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                                modifier = Modifier.size(16.dp)
+                                            Text(
+                                                text = "${index + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (exercise.isVisionSupported) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
 
@@ -685,20 +722,31 @@ fun HomeScreen(
                                         }
                                     }
 
-                                    if (exercise.isVisionSupported) {
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = DarkPrimaryGold.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = "AI VISION",
-                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontSize = 9.sp,
-                                                color = DarkPrimaryGold,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        if (exercise.isVisionSupported) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = DarkPrimaryGold.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    text = "AI VISION",
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontSize = 9.sp,
+                                                    color = DarkPrimaryGold,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                         }
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Train Now",
+                                            tint = DarkPrimaryGold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                 }
                             }
@@ -712,7 +760,21 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Button(
-                            onClick = onNavigateToCoach,
+                            onClick = {
+                                val first = routineExercises.firstOrNull()
+                                if (first != null) {
+                                    val (item, exercise) = first
+                                    CoachModeHolder.pendingExerciseId = exercise.id
+                                    CoachModeHolder.pendingExerciseMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP
+                                    CoachModeHolder.pendingTargetReps = item.targetReps
+                                    CoachModeHolder.pendingTargetHoldSeconds = item.targetHoldSeconds
+                                    CoachModeHolder.pendingTargetSets = item.targetSets
+                                    CoachModeHolder.pendingCameraEnabled = true
+                                    CoachModeHolder.activeRoutine = todayRoutine
+                                    CoachModeHolder.activeRoutineIndex = 0
+                                }
+                                onNavigateToCoach()
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary

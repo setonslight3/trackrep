@@ -132,12 +132,20 @@ import com.setons.trackrep.video.VideoRecorderManager
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.setons.trackrep.data.local.CoachPreferences
+import com.setons.trackrep.exercise.model.WorkoutRoutine
 import java.util.Locale
 import java.util.UUID
 
 object CoachModeHolder {
     var pendingExerciseMode: ExerciseFramingMode? = null
     var pendingExerciseId: String? = null
+    var pendingTargetReps: Int = 10
+    var pendingTargetHoldSeconds: Int = 0
+    var pendingTargetSets: Int = 3
+    var pendingCameraEnabled: Boolean = true
+    var activeRoutine: WorkoutRoutine? = null
+    var activeRoutineIndex: Int = 0
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,9 +172,10 @@ fun CoachScreen(
         hasCameraPermission = isGranted
     }
 
-    var isCameraEnabled by remember { mutableStateOf(true) }
+    var isCameraEnabled by remember { mutableStateOf(CoachModeHolder.pendingCameraEnabled) }
     var showExerciseDrawer by remember { mutableStateOf(false) }
     var showControlsDrawer by remember { mutableStateOf(false) }
+    var showRoutineDrawer by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -179,7 +188,8 @@ fun CoachScreen(
     var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
     var activeExercise by remember {
         mutableStateOf(
-            ExerciseCatalog.getById("push_up_standard") ?: ExerciseCatalog.exercises.first()
+            ExerciseCatalog.getById(CoachModeHolder.pendingExerciseId ?: "push_up_standard")
+                ?: ExerciseCatalog.exercises.first()
         )
     }
     var selectedExercise by remember { mutableStateOf(activeExercise.framingMode ?: ExerciseFramingMode.PUSH_UP) }
@@ -188,13 +198,28 @@ fun CoachScreen(
 
     // Auto-detection & Demo States
     val exerciseClassifier = remember { ExerciseClassifier() }
-    var isAutoDetectEnabled by remember { mutableStateOf(true) }
+    var isAutoDetectEnabled by remember { mutableStateOf(CoachPreferences.isAutoDetectEnabled(context)) }
     var autoDetectedExerciseName by remember { mutableStateOf<String?>(null) }
     var showAutoDetectBanner by remember { mutableStateOf(false) }
     var showStickmanDemo by remember { mutableStateOf(false) }
 
+    // Workout Routine & Goal Tracking State
+    var targetReps by remember { mutableIntStateOf(CoachModeHolder.pendingTargetReps) }
+    var targetHoldSeconds by remember { mutableIntStateOf(CoachModeHolder.pendingTargetHoldSeconds) }
+    var totalTargetSets by remember { mutableIntStateOf(CoachModeHolder.pendingTargetSets) }
+    var currentRoutine by remember { mutableStateOf<WorkoutRoutine?>(CoachModeHolder.activeRoutine) }
+    var currentRoutineIndex by remember { mutableIntStateOf(CoachModeHolder.activeRoutineIndex) }
+
     // Auto-select pending exercise if launched from Exercise Library or Workout Routine
     LaunchedEffect(Unit) {
+        isAutoDetectEnabled = CoachPreferences.isAutoDetectEnabled(context)
+        isCameraEnabled = CoachModeHolder.pendingCameraEnabled
+        targetReps = CoachModeHolder.pendingTargetReps
+        targetHoldSeconds = CoachModeHolder.pendingTargetHoldSeconds
+        totalTargetSets = CoachModeHolder.pendingTargetSets
+        currentRoutine = CoachModeHolder.activeRoutine
+        currentRoutineIndex = CoachModeHolder.activeRoutineIndex
+
         CoachModeHolder.pendingExerciseId?.let { id ->
             ExerciseCatalog.getById(id)?.let { ex ->
                 activeExercise = ex
@@ -271,7 +296,7 @@ fun CoachScreen(
     LaunchedEffect(livePushUpTelemetry.validRepCount) {
         if (livePushUpTelemetry.validRepCount > 0) {
             isRepCompletedFlash = true
-            voiceManager.speakRep(livePushUpTelemetry.validRepCount)
+            voiceManager.speakRep(livePushUpTelemetry.validRepCount, targetReps)
 
             val lastRep = livePushUpTelemetry.lastCompletedRep
             if (lastRep != null) {
@@ -290,7 +315,7 @@ fun CoachScreen(
     LaunchedEffect(liveSquatTelemetry.validRepCount) {
         if (liveSquatTelemetry.validRepCount > 0) {
             isRepCompletedFlash = true
-            voiceManager.speakRep(liveSquatTelemetry.validRepCount)
+            voiceManager.speakRep(liveSquatTelemetry.validRepCount, targetReps)
 
             val lastRep = liveSquatTelemetry.lastCompletedRep
             if (lastRep != null) {
@@ -715,8 +740,10 @@ fun CoachScreen(
                 // Auto-Detect Toggle Chip
                 Surface(
                     onClick = {
-                        isAutoDetectEnabled = !isAutoDetectEnabled
-                        if (isAutoDetectEnabled) exerciseClassifier.reset()
+                        val updated = !isAutoDetectEnabled
+                        isAutoDetectEnabled = updated
+                        CoachPreferences.setAutoDetectEnabled(context, updated)
+                        if (updated) exerciseClassifier.reset()
                     },
                     shape = RoundedCornerShape(20.dp),
                     color = if (isAutoDetectEnabled) DarkPrimaryGold.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.65f),
@@ -983,6 +1010,47 @@ fun CoachScreen(
                             contentDescription = "Camera & Coach Options",
                             tint = DarkPrimaryGold,
                             modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // Routine Progress Banner (if active workout routine)
+            currentRoutine?.let { routine ->
+                Surface(
+                    onClick = { showRoutineDrawer = true },
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFF1E1A11),
+                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsRun,
+                                contentDescription = null,
+                                tint = DarkPrimaryGold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "${routine.name} • Movement ${currentRoutineIndex + 1} of ${routine.items.size}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkPrimaryGold
+                            )
+                        }
+                        Text(
+                            text = "Workout List 📋",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -1404,11 +1472,100 @@ fun CoachScreen(
         }
     }
 
+    // Routine progression and next exercise helper
+    val nextExerciseItem = remember(currentRoutine, currentRoutineIndex) {
+        val routine = currentRoutine
+        if (routine != null && currentRoutineIndex + 1 < routine.items.size) {
+            routine.items[currentRoutineIndex + 1]
+        } else null
+    }
+    val nextExerciseName = remember(nextExerciseItem) {
+        nextExerciseItem?.let { item ->
+            ExerciseCatalog.getById(item.exerciseId)?.name ?: item.exerciseId
+        }
+    }
+
+    fun advanceToNextExercise(rating: AdaptiveSetRating) {
+        showSummaryDialog = false
+        coroutineScope.launch {
+            activeSetSummary?.let { summary ->
+                AdaptiveRepository.recordCompletedSet(
+                    context = context,
+                    exerciseId = activeExercise.id,
+                    exerciseName = activeExercise.name,
+                    summary = summary,
+                    ratingString = rating.name
+                )
+            }
+        }
+        val routine = currentRoutine
+        if (routine != null && currentRoutineIndex + 1 < routine.items.size) {
+            val nextIdx = currentRoutineIndex + 1
+            currentRoutineIndex = nextIdx
+            CoachModeHolder.activeRoutineIndex = nextIdx
+            val item = routine.items[nextIdx]
+            ExerciseCatalog.getById(item.exerciseId)?.let { ex ->
+                activeExercise = ex
+                selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
+                framingStatus = FramingStatus.CALIBRATING
+                targetReps = item.targetReps
+                targetHoldSeconds = item.targetHoldSeconds
+                totalTargetSets = item.targetSets
+                if (item.targetHoldSeconds > 0) {
+                    plankAnalyzer.targetHoldSeconds = item.targetHoldSeconds
+                }
+                setManager.reset()
+                pushUpAnalyzer.reset()
+                squatAnalyzer.reset()
+                plankAnalyzer.reset()
+                exerciseClassifier.reset()
+                livePushUpTelemetry = PushUpLiveTelemetry()
+                liveSquatTelemetry = SquatLiveTelemetry()
+                livePlankTelemetry = PlankLiveTelemetry()
+                voiceManager.speakStatus("Next up: ${ex.name}. Set 1 ready!", isUrgent = true)
+            }
+        }
+    }
+
+    fun selectRoutineExercise(index: Int) {
+        val routine = currentRoutine ?: return
+        if (index in routine.items.indices) {
+            currentRoutineIndex = index
+            CoachModeHolder.activeRoutineIndex = index
+            val item = routine.items[index]
+            ExerciseCatalog.getById(item.exerciseId)?.let { ex ->
+                activeExercise = ex
+                selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
+                framingStatus = FramingStatus.CALIBRATING
+                targetReps = item.targetReps
+                targetHoldSeconds = item.targetHoldSeconds
+                totalTargetSets = item.targetSets
+                if (item.targetHoldSeconds > 0) {
+                    plankAnalyzer.targetHoldSeconds = item.targetHoldSeconds
+                }
+                setManager.reset()
+                pushUpAnalyzer.reset()
+                squatAnalyzer.reset()
+                plankAnalyzer.reset()
+                exerciseClassifier.reset()
+                livePushUpTelemetry = PushUpLiveTelemetry()
+                liveSquatTelemetry = SquatLiveTelemetry()
+                livePlankTelemetry = PlankLiveTelemetry()
+                voiceManager.speakStatus("Switched to ${ex.name}", isUrgent = true)
+            }
+        }
+    }
+
     // Phase 4 & 7: Post-Set Performance Summary & Adaptive Difficulty Survey Dialog
     activeSetSummary?.let { summary ->
         if (showSummaryDialog) {
             SetSummaryDialog(
                 summary = summary,
+                totalTargetSets = totalTargetSets,
+                nextExerciseName = nextExerciseName,
+                onNextExercise = { rating ->
+                    advanceToNextExercise(rating)
+                },
                 onStartRest = { rating ->
                     showSummaryDialog = false
                     setManager.startRest(60)
@@ -1539,7 +1696,11 @@ fun CoachScreen(
                         }
                         TrackRepSwitch(
                             checked = isAutoDetectEnabled,
-                            onCheckedChange = { isAutoDetectEnabled = it }
+                            onCheckedChange = {
+                                isAutoDetectEnabled = it
+                                CoachPreferences.setAutoDetectEnabled(context, it)
+                                if (it) exerciseClassifier.reset()
+                            }
                         )
                     }
                 }
@@ -2033,6 +2194,154 @@ fun CoachScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // DRAWER 3: WORKOUT ROUTINE CHECKLIST & DIRECT SWITCH DRAWER
+    // -------------------------------------------------------------
+    if (showRoutineDrawer) {
+        val routine = currentRoutine
+        if (routine != null) {
+            ModalBottomSheet(
+                onDismissRequest = { showRoutineDrawer = false },
+                containerColor = Color(0xFF161616),
+                contentColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = routine.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Today's Routine • ${routine.items.size} Movements",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.65f)
+                            )
+                        }
+                        IconButton(onClick = { showRoutineDrawer = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        }
+                    }
+
+                    routine.items.forEachIndexed { idx, item ->
+                        val ex = ExerciseCatalog.getById(item.exerciseId)
+                        val isCurrent = idx == currentRoutineIndex
+                        val isDone = idx < currentRoutineIndex
+
+                        Surface(
+                            onClick = {
+                                selectRoutineExercise(idx)
+                                showRoutineDrawer = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = when {
+                                isCurrent -> DarkPrimaryGold.copy(alpha = 0.15f)
+                                isDone -> Color(0xFF1B241C)
+                                else -> Color(0xFF1F1F1F)
+                            },
+                            border = BorderStroke(
+                                1.dp,
+                                when {
+                                    isCurrent -> DarkPrimaryGold
+                                    isDone -> SuccessGreen.copy(alpha = 0.6f)
+                                    else -> Color(0xFF333333)
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .background(
+                                                when {
+                                                    isCurrent -> DarkPrimaryGold
+                                                    isDone -> SuccessGreen
+                                                    else -> Color(0xFF333333)
+                                                },
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isDone) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "${idx + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCurrent) Color.Black else Color.White
+                                            )
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            text = ex?.name ?: item.exerciseId,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCurrent) DarkPrimaryGold else Color.White
+                                        )
+                                        Text(
+                                            text = if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold • ${item.targetSets} sets" else "${item.targetReps} reps • ${item.targetSets} sets",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
+
+                                if (isCurrent) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = DarkPrimaryGold,
+                                    ) {
+                                        Text(
+                                            text = "ACTIVE",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.Black,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
             }
         }
     }

@@ -2,7 +2,9 @@ package com.setons.trackrep.screens.profile
 
 import android.os.Build
 import com.setons.trackrep.BuildConfig
+import com.setons.trackrep.data.local.CoachPreferences
 import com.setons.trackrep.ui.components.TrackRepSwitch
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -443,6 +445,66 @@ fun ProfileScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        // AI Vision & Coach Settings Card
+        ElevatedCard(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = "AI Vision & Coach Settings",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                var isAutoDetect by remember {
+                    mutableStateOf(CoachPreferences.isAutoDetectEnabled(context))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Auto-Detect Exercise Movement",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (isAutoDetect)
+                                "Active • Camera automatically switches exercise when you change movements"
+                            else
+                                "Disabled • Movement is locked to your selected exercise",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                    }
+                    TrackRepSwitch(
+                        checked = isAutoDetect,
+                        onCheckedChange = { checked ->
+                            isAutoDetect = checked
+                            CoachPreferences.setAutoDetectEnabled(context, checked)
+                            saveStatusMessage = if (checked) "AI Auto-detect enabled" else "AI Auto-detect disabled (locked)"
+                        }
+                    )
                 }
             }
         }

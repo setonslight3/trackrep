@@ -62,8 +62,11 @@ enum class AdaptiveSetRating(val label: String, val color: Color) {
 @Composable
 fun SetSummaryDialog(
     summary: CompletedSetSummary,
+    totalTargetSets: Int = 3,
+    nextExerciseName: String? = null,
     onStartRest: (rating: AdaptiveSetRating) -> Unit,
     onSkipToNextSet: (rating: AdaptiveSetRating) -> Unit,
+    onNextExercise: ((rating: AdaptiveSetRating) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     var selectedRating by remember { mutableStateOf(AdaptiveSetRating.JUST_RIGHT) }
@@ -99,7 +102,7 @@ fun SetSummaryDialog(
                     border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.3f))
                 ) {
                     Text(
-                        text = "SET ${summary.setNumber} COMPLETE",
+                        text = if (totalTargetSets > 1) "SET ${summary.setNumber} OF $totalTargetSets COMPLETE" else "SET ${summary.setNumber} COMPLETE",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = DarkPrimaryGold,
@@ -266,42 +269,81 @@ fun SetSummaryDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Primary Rest Button
-                Button(
-                    onClick = { onStartRest(selectedRating) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkPrimaryGold,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "Start 60s Rest Period",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                }
+                if (summary.setNumber >= totalTargetSets && nextExerciseName != null && onNextExercise != null) {
+                    // All sets completed for this exercise -> prompt next exercise in routine
+                    Button(
+                        onClick = { onNextExercise(selectedRating) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkPrimaryGold,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            text = "Next: $nextExerciseName ➡️",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Skip to Next Set Outlined Button
-                OutlinedButton(
-                    onClick = { onSkipToNextSet(selectedRating) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
-                ) {
-                    Text(
-                        text = "Skip Rest • Ready Now",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp
-                    )
+                    OutlinedButton(
+                        onClick = { onStartRest(selectedRating) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            text = "Do Bonus Set • 60s Rest",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp
+                        )
+                    }
+                } else {
+                    // Primary Rest Button
+                    Button(
+                        onClick = { onStartRest(selectedRating) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkPrimaryGold,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            text = if (totalTargetSets > 1) "Start 60s Rest (Set ${summary.setNumber} of $totalTargetSets)" else "Start 60s Rest Period",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Skip to Next Set Outlined Button
+                    OutlinedButton(
+                        onClick = { onSkipToNextSet(selectedRating) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            text = "Skip Rest • Ready Now",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }

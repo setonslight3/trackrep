@@ -55,22 +55,26 @@ class CoachVoiceManager(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    fun speakRep(count: Int) {
+    fun speakRep(count: Int, targetReps: Int = 0) {
         if (isMuted || !isInitialized) return
-        val text = when (count) {
-            1 -> "One"
-            2 -> "Two"
-            3 -> "Three"
-            4 -> "Four"
-            5 -> "Five"
-            6 -> "Six"
-            7 -> "Seven"
-            8 -> "Eight"
-            9 -> "Nine"
-            10 -> "Ten, halfway there"
-            12 -> "Twelve"
-            15 -> "Fifteen, strong work"
-            20 -> "Twenty, beast mode"
+        val text = when {
+            targetReps > 0 && count == targetReps -> "$count, set complete! Great job!"
+            targetReps >= 4 && count == targetReps / 2 -> "$count, halfway there"
+            targetReps >= 3 && count == targetReps - 1 -> "$count, last one!"
+            targetReps > 0 && count > targetReps -> "$count, bonus rep!"
+            count == 1 -> "One"
+            count == 2 -> "Two"
+            count == 3 -> "Three"
+            count == 4 -> "Four"
+            count == 5 -> "Five"
+            count == 6 -> "Six"
+            count == 7 -> "Seven"
+            count == 8 -> "Eight"
+            count == 9 -> "Nine"
+            count == 10 -> "Ten"
+            count == 12 -> "Twelve"
+            count == 15 -> "Fifteen"
+            count == 20 -> "Twenty"
             else -> count.toString()
         }
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "rep_$count")

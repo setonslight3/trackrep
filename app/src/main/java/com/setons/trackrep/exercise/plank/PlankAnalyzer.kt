@@ -47,6 +47,8 @@ class PlankAnalyzer {
     var liveTelemetry = PlankLiveTelemetry()
         private set
 
+    var targetHoldSeconds: Int = 45
+
     fun reset() {
         isHolding = false
         holdStartTimestampMs = 0L
@@ -135,18 +137,29 @@ class PlankAnalyzer {
 
         val holdSeconds = (totalHoldMs / 1000L).toInt()
 
-        // Voice milestones at 15s, 30s, 45s, 60s, 90s, 120s
+        // Dynamically synced voice milestones
         var milestoneCue: String? = null
-        if (holdSeconds > 0 && holdSeconds % 15 == 0 && holdSeconds != lastMilestoneAnnounced) {
-            lastMilestoneAnnounced = holdSeconds
-            milestoneCue = when (holdSeconds) {
-                15 -> "15 seconds, great start"
-                30 -> "30 seconds, halfway there"
-                45 -> "45 seconds, stay strong"
-                60 -> "One minute! Outstanding hold"
-                90 -> "90 seconds, iron core"
-                120 -> "Two minutes, elite stability"
-                else -> "$holdSeconds seconds hold"
+        if (holdSeconds > 0 && holdSeconds != lastMilestoneAnnounced) {
+            if (targetHoldSeconds > 0 && holdSeconds == targetHoldSeconds) {
+                lastMilestoneAnnounced = holdSeconds
+                milestoneCue = "$holdSeconds seconds, set complete! Outstanding hold!"
+            } else if (targetHoldSeconds >= 20 && holdSeconds == targetHoldSeconds / 2) {
+                lastMilestoneAnnounced = holdSeconds
+                milestoneCue = "$holdSeconds seconds, halfway there"
+            } else if (targetHoldSeconds >= 15 && holdSeconds == targetHoldSeconds - 5) {
+                lastMilestoneAnnounced = holdSeconds
+                milestoneCue = "Five seconds left, hold strong!"
+            } else if (holdSeconds % 15 == 0) {
+                lastMilestoneAnnounced = holdSeconds
+                milestoneCue = when (holdSeconds) {
+                    15 -> "15 seconds, great start"
+                    30 -> "30 seconds, stay steady"
+                    45 -> "45 seconds, stay strong"
+                    60 -> "One minute! Outstanding hold"
+                    90 -> "90 seconds, iron core"
+                    120 -> "Two minutes, elite stability"
+                    else -> "$holdSeconds seconds hold"
+                }
             }
         }
 
