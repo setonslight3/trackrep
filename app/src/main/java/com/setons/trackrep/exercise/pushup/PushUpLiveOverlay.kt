@@ -220,14 +220,14 @@ fun PushUpLiveOverlay(
             }
         }
 
-        // Safe Floating Warning Banner (Above Bottom Guidance)
+        // Safe Floating Warning Banner (Positioned above bottom controls)
         AnimatedVisibility(
             visible = telemetry.activeWarning != null,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 54.dp)
+                .padding(bottom = 124.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(20.dp),

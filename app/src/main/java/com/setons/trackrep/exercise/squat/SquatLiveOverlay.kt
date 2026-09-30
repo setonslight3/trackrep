@@ -233,14 +233,14 @@ fun SquatLiveOverlay(
             }
         }
 
-        // Live Warning Banner (Centered safely above bottom setup hints)
+        // Live Warning Banner (Centered safely above bottom controls)
         AnimatedVisibility(
             visible = telemetry.activeWarning != null,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 54.dp, start = 16.dp, end = 16.dp)
+                .padding(bottom = 124.dp, start = 16.dp, end = 16.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(10.dp),

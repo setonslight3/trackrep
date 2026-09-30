@@ -53,30 +53,30 @@ fun FramingOverlay(
 
             when (exerciseMode) {
                 ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PLANK -> {
-                    // Wide horizontal aspect for push-up / plank lying down
+                    // Wide horizontal aspect for push-up / plank lying down (human floor ratio)
                     boxWidth = width * 0.88f
-                    boxHeight = height * 0.46f
+                    boxHeight = (boxWidth * 0.44f).coerceAtMost(height * 0.32f)
                     boxLeft = (width - boxWidth) / 2f
-                    boxTop = (height - boxHeight) / 2f
+                    boxTop = (height - boxHeight) * 0.52f
                 }
                 ExerciseFramingMode.SQUAT, ExerciseFramingMode.PULL_UP, ExerciseFramingMode.CARDIO -> {
-                    // Taller vertical aspect for standing squat, pull-up, and cardio
-                    boxWidth = width * 0.75f
-                    boxHeight = height * 0.72f
+                    // Proportional vertical aspect for standing squat, pull-up, and cardio
+                    boxHeight = (height * 0.65f).coerceAtMost(width * 1.55f)
+                    boxWidth = (boxHeight * 0.52f).coerceAtMost(width * 0.82f)
                     boxLeft = (width - boxWidth) / 2f
-                    boxTop = (height - boxHeight) / 2f
+                    boxTop = (height - boxHeight) * 0.48f
                 }
             }
 
-            // Draw bounding guide with dashed luxury gold line
+            // Draw bounding guide with subtle dashed luxury gold line
             drawRoundRect(
-                color = activeColor.copy(alpha = 0.55f),
+                color = activeColor.copy(alpha = 0.35f),
                 topLeft = Offset(boxLeft, boxTop),
                 size = Size(boxWidth, boxHeight),
                 cornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx()),
                 style = Stroke(
-                    width = 2.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 15f), 0f)
+                    width = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 14f), 0f)
                 )
             )
 

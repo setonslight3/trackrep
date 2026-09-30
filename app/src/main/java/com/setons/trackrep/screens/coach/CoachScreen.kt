@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,6 +69,7 @@ import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Visibility
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.exercise.model.Exercise
+import com.setons.trackrep.exercise.model.MuscleGroup
 import com.setons.trackrep.pose.ExerciseClassifier
 import com.setons.trackrep.ui.demo.StickmanDemoPlayer
 import com.setons.trackrep.ui.components.TrackRepSwitch
@@ -152,6 +155,29 @@ object CoachModeHolder {
     var activeRoutine: WorkoutRoutine? = null
     var activeRoutineIndex: Int = 0
     var isImmersiveFullscreen by mutableStateOf(false)
+    var updateEventId by mutableLongStateOf(0L)
+    var workoutCompletedCount by mutableLongStateOf(0L)
+
+    fun setPending(
+        exerciseId: String,
+        framingMode: ExerciseFramingMode,
+        targetReps: Int = 10,
+        targetHoldSeconds: Int = 0,
+        targetSets: Int = 3,
+        cameraEnabled: Boolean = true,
+        routine: WorkoutRoutine? = null,
+        routineIndex: Int = 0
+    ) {
+        this.pendingExerciseId = exerciseId
+        this.pendingExerciseMode = framingMode
+        this.pendingTargetReps = targetReps
+        this.pendingTargetHoldSeconds = targetHoldSeconds
+        this.pendingTargetSets = targetSets
+        this.pendingCameraEnabled = cameraEnabled
+        this.activeRoutine = routine
+        this.activeRoutineIndex = routineIndex
+        this.updateEventId++
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -224,31 +250,6 @@ fun CoachScreen(
     var currentRoutine by remember { mutableStateOf<WorkoutRoutine?>(CoachModeHolder.activeRoutine) }
     var currentRoutineIndex by remember { mutableIntStateOf(CoachModeHolder.activeRoutineIndex) }
 
-    // Auto-select pending exercise if launched from Exercise Library or Workout Routine
-    LaunchedEffect(Unit) {
-        isAutoDetectEnabled = CoachPreferences.isAutoDetectEnabled(context)
-        isCameraEnabled = CoachModeHolder.pendingCameraEnabled
-        targetReps = CoachModeHolder.pendingTargetReps
-        targetHoldSeconds = CoachModeHolder.pendingTargetHoldSeconds
-        totalTargetSets = CoachModeHolder.pendingTargetSets
-        currentRoutine = CoachModeHolder.activeRoutine
-        currentRoutineIndex = CoachModeHolder.activeRoutineIndex
-
-        CoachModeHolder.pendingExerciseId?.let { id ->
-            ExerciseCatalog.getById(id)?.let { ex ->
-                activeExercise = ex
-                selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
-                framingStatus = FramingStatus.CALIBRATING
-            }
-            CoachModeHolder.pendingExerciseId = null
-        }
-        CoachModeHolder.pendingExerciseMode?.let { mode ->
-            selectedExercise = mode
-            framingStatus = FramingStatus.CALIBRATING
-            CoachModeHolder.pendingExerciseMode = null
-        }
-    }
-
     LaunchedEffect(showAutoDetectBanner) {
         if (showAutoDetectBanner) {
             delay(2800L)
@@ -291,6 +292,47 @@ fun CoachScreen(
     var trackingState by remember { mutableStateOf<TrackingState>(TrackingState.Tracking) }
     var showSummaryDialog by remember { mutableStateOf(false) }
     var activeSetSummary by remember { mutableStateOf<CompletedSetSummary?>(null) }
+
+    // React immediately whenever an exercise is selected (from Home, Library, or Drawer)
+    LaunchedEffect(CoachModeHolder.updateEventId) {
+        isAutoDetectEnabled = CoachPreferences.isAutoDetectEnabled(context)
+        isCameraEnabled = CoachModeHolder.pendingCameraEnabled
+        targetReps = CoachModeHolder.pendingTargetReps
+        targetHoldSeconds = CoachModeHolder.pendingTargetHoldSeconds
+        totalTargetSets = CoachModeHolder.pendingTargetSets
+        currentRoutine = CoachModeHolder.activeRoutine
+        currentRoutineIndex = CoachModeHolder.activeRoutineIndex
+
+        CoachModeHolder.pendingExerciseId?.let { id ->
+            ExerciseCatalog.getById(id)?.let { ex ->
+                activeExercise = ex
+                selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
+                framingStatus = FramingStatus.CALIBRATING
+                setManager.reset()
+                pushUpAnalyzer.reset()
+                squatAnalyzer.reset()
+                plankAnalyzer.reset()
+                exerciseClassifier.reset()
+                livePushUpTelemetry = PushUpLiveTelemetry()
+                liveSquatTelemetry = SquatLiveTelemetry()
+                livePlankTelemetry = PlankLiveTelemetry()
+                if (CoachModeHolder.pendingTargetHoldSeconds > 0) {
+                    plankAnalyzer.targetHoldSeconds = CoachModeHolder.pendingTargetHoldSeconds
+                }
+                voiceManager.speakStatus("Switched to ${ex.name}", isUrgent = true)
+            }
+            CoachModeHolder.pendingExerciseId = null
+        }
+        CoachModeHolder.pendingExerciseMode?.let { mode ->
+            selectedExercise = mode
+            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == mode }
+            if (matching != null) {
+                activeExercise = matching
+            }
+            framingStatus = FramingStatus.CALIBRATING
+            CoachModeHolder.pendingExerciseMode = null
+        }
+    }
 
     // Master Set & Rest Ticker
     LaunchedEffect(Unit) {
@@ -487,6 +529,7 @@ fun CoachScreen(
                     db.sessionDao().insertSession(sessionEntity)
                     db.setRecordDao().insertSet(setRecordEntity)
                     UserProfileRepository.getInstance(context).markWorkoutCompleted(todayDateYmd)
+                    CoachModeHolder.workoutCompletedCount++
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -723,7 +766,8 @@ fun CoachScreen(
                         fatigueLevel = fatigueDetector.currentFatigueLevel,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 68.dp)
+                            .statusBarsPadding()
+                            .padding(top = 58.dp)
                     )
                 }
                 ExerciseFramingMode.SQUAT, ExerciseFramingMode.CARDIO -> {
@@ -734,7 +778,8 @@ fun CoachScreen(
                         fatigueLevel = fatigueDetector.currentFatigueLevel,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 68.dp)
+                            .statusBarsPadding()
+                            .padding(top = 58.dp)
                     )
                 }
                 ExerciseFramingMode.PLANK -> {
@@ -744,7 +789,8 @@ fun CoachScreen(
                         elapsedSeconds = setManager.activeElapsedSeconds,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 68.dp)
+                            .statusBarsPadding()
+                            .padding(top = 58.dp)
                     )
                 }
             }
@@ -768,7 +814,8 @@ fun CoachScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -882,9 +929,10 @@ fun CoachScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 28.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Record / Stop Button
                 Button(
@@ -1500,6 +1548,17 @@ fun CoachScreen(
                 livePlankTelemetry = PlankLiveTelemetry()
                 voiceManager.speakStatus("Next up: ${ex.name}. Set 1 ready!", isUrgent = true)
             }
+        } else {
+            val todayDateYmd = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    UserProfileRepository.getInstance(context).markWorkoutCompleted(todayDateYmd)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            CoachModeHolder.workoutCompletedCount++
+            voiceManager.speakStatus("Full workout routine completed! Outstanding job!", isUrgent = true)
         }
     }
 
@@ -1756,76 +1815,247 @@ fun CoachScreen(
                     }
                 }
 
-                // Choose Exercise by Category (Push-Up, Squat, Plank, Pull-Up, Cardio)
+                // 1. If an active routine is loaded, show today's routine movements with 1-tap switch
+                currentRoutine?.let { routine ->
+                    Text(
+                        text = "TODAY'S ROUTINE (${routine.items.size} MOVEMENTS)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = DarkPrimaryGold,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
+
+                    routine.items.forEachIndexed { idx, item ->
+                        val ex = ExerciseCatalog.getById(item.exerciseId)
+                        val isCurrent = ex?.id == activeExercise.id
+                        val isDone = idx < currentRoutineIndex
+
+                        Surface(
+                            onClick = {
+                                selectRoutineExercise(idx)
+                                showExerciseDrawer = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = when {
+                                isCurrent -> DarkPrimaryGold.copy(alpha = 0.18f)
+                                isDone -> Color(0xFF1B241C)
+                                else -> Color(0xFF1E1E1E)
+                            },
+                            border = BorderStroke(
+                                1.dp,
+                                when {
+                                    isCurrent -> DarkPrimaryGold
+                                    isDone -> SuccessGreen.copy(alpha = 0.6f)
+                                    else -> Color(0xFF333333)
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .background(
+                                                when {
+                                                    isCurrent -> DarkPrimaryGold
+                                                    isDone -> SuccessGreen
+                                                    else -> Color(0xFF333333)
+                                                },
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${idx + 1}",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = if (isCurrent || isDone) Color.Black else Color.White
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = ex?.name ?: item.exerciseId,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCurrent) DarkPrimaryGold else Color.White
+                                        )
+                                        Text(
+                                            text = "${item.targetSets} sets • " +
+                                                    if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
+                                                    else "${item.targetReps} reps",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.65f)
+                                        )
+                                    }
+                                }
+                                if (isCurrent) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = DarkPrimaryGold.copy(alpha = 0.25f)
+                                    ) {
+                                        Text(
+                                            text = "ACTIVE",
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 9.sp,
+                                            color = DarkPrimaryGold,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                } else if (isDone) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Completed",
+                                        tint = SuccessGreen,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                // 2. Full Exercises Category Filter & Quick Switch (Bird Dog, Squats, Planks, Push-ups)
+                var selectedCategory by remember { mutableStateOf("Core & Back") }
+                val categories = listOf("Core & Back", "Chest", "Legs", "Arms", "Cardio")
+
                 Text(
-                    text = "SELECT MOVEMENT",
+                    text = "ALL MOVEMENTS (QUICK SELECT)",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.6f),
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp
                 )
 
-                ExerciseFramingMode.values().forEach { mode ->
-                    val isSelected = mode == selectedExercise
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { cat ->
+                        val isCatSelected = cat == selectedCategory
+                        Surface(
+                            onClick = { selectedCategory = cat },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isCatSelected) DarkPrimaryGold else Color(0xFF222222),
+                            border = BorderStroke(1.dp, if (isCatSelected) DarkPrimaryGold else Color(0xFF444444))
+                        ) {
+                            Text(
+                                text = cat,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isCatSelected) Color.Black else Color.White
+                            )
+                        }
+                    }
+                }
+
+                val filteredExercises = remember(selectedCategory) {
+                    ExerciseCatalog.exercises.filter { ex ->
+                        when (selectedCategory) {
+                            "Core & Back" -> ex.targetMuscle == MuscleGroup.BACK || ex.targetMuscle == MuscleGroup.CORE || ex.framingMode == ExerciseFramingMode.PLANK
+                            "Chest" -> ex.targetMuscle == MuscleGroup.CHEST || ex.framingMode == ExerciseFramingMode.PUSH_UP
+                            "Legs" -> ex.targetMuscle == MuscleGroup.QUADS || ex.targetMuscle == MuscleGroup.GLUTES || ex.targetMuscle == MuscleGroup.HAMSTRINGS || ex.targetMuscle == MuscleGroup.CALVES || ex.framingMode == ExerciseFramingMode.SQUAT
+                            "Arms" -> ex.targetMuscle == MuscleGroup.ARMS || ex.targetMuscle == MuscleGroup.SHOULDERS
+                            "Cardio" -> ex.framingMode == ExerciseFramingMode.CARDIO
+                            else -> true
+                        }
+                    }
+                }
+
+                filteredExercises.forEach { ex ->
+                    val isCurrent = ex.id == activeExercise.id
                     Surface(
                         onClick = {
-                            selectedExercise = mode
-                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == mode }
-                            if (matching != null) activeExercise = matching
+                            activeExercise = ex
+                            selectedExercise = ex.framingMode ?: ExerciseFramingMode.PUSH_UP
+                            targetReps = ex.defaultReps
+                            targetHoldSeconds = ex.defaultHoldSeconds
+                            totalTargetSets = ex.defaultSets
                             framingStatus = FramingStatus.CALIBRATING
+                            val rIdx = currentRoutine?.items?.indexOfFirst { it.exerciseId == ex.id } ?: -1
+                            if (rIdx >= 0) {
+                                currentRoutineIndex = rIdx
+                                CoachModeHolder.activeRoutineIndex = rIdx
+                            }
+                            setManager.reset()
+                            pushUpAnalyzer.reset()
+                            squatAnalyzer.reset()
+                            plankAnalyzer.reset()
+                            exerciseClassifier.reset()
+                            livePushUpTelemetry = PushUpLiveTelemetry()
+                            liveSquatTelemetry = SquatLiveTelemetry()
+                            livePlankTelemetry = PlankLiveTelemetry()
+                            if (ex.defaultHoldSeconds > 0) {
+                                plankAnalyzer.targetHoldSeconds = ex.defaultHoldSeconds
+                            }
+                            voiceManager.speakStatus("Switched to ${ex.name}", isUrgent = true)
                             showExerciseDrawer = false
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) DarkPrimaryGold.copy(alpha = 0.15f) else Color(0xFF1E1E1E),
+                        color = if (isCurrent) DarkPrimaryGold.copy(alpha = 0.15f) else Color(0xFF1E1E1E),
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) DarkPrimaryGold else Color(0xFF333333)
+                            if (isCurrent) DarkPrimaryGold else Color(0xFF333333)
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
-                                    imageVector = when (mode) {
+                                    imageVector = when (ex.framingMode) {
                                         ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
                                         ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
                                         ExerciseFramingMode.PLANK -> Icons.Default.Timer
                                         ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
                                         ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
+                                        null -> Icons.Default.FitnessCenter
                                     },
                                     contentDescription = null,
-                                    tint = if (isSelected) DarkPrimaryGold else Color.White.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(20.dp)
+                                    tint = if (isCurrent) DarkPrimaryGold else Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Column {
                                     Text(
-                                        text = mode.displayName,
-                                        style = MaterialTheme.typography.titleMedium,
+                                        text = ex.name,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) DarkPrimaryGold else Color.White
+                                        color = if (isCurrent) DarkPrimaryGold else Color.White
                                     )
                                     Text(
-                                        text = when (mode) {
-                                            ExerciseFramingMode.PUSH_UP -> "Standard, Close-Grip, Bench Dips, Pike"
-                                            ExerciseFramingMode.SQUAT -> "Bodyweight, Jump Squats, Bulgarian Split, Calf Raises"
-                                            ExerciseFramingMode.PLANK -> "Standard Hold, Shoulder Taps, Superman"
-                                            ExerciseFramingMode.PULL_UP -> "Standard Pull-Up, Inverted Row"
-                                            ExerciseFramingMode.CARDIO -> "Mountain Climbers, Burpees"
-                                        },
+                                        text = "${ex.difficulty.displayName} • ${ex.targetMuscle.displayName}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.White.copy(alpha = 0.6f)
                                     )
                                 }
                             }
-                            if (isSelected) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(20.dp))
+                            if (isCurrent) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
                             }
                         }
                     }

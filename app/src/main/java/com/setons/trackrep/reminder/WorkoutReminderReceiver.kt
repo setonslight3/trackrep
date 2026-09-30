@@ -13,6 +13,7 @@ import com.setons.trackrep.schedule.UserProfileRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.setons.trackrep.R
 
 /**
  * BroadcastReceiver triggered by AlarmManager to post workout reminders.
@@ -78,7 +79,7 @@ class WorkoutReminderReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification_arm)
             .setContentTitle(title)
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))

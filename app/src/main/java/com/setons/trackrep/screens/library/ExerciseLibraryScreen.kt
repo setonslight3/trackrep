@@ -213,12 +213,21 @@ fun ExerciseLibraryScreen(
                 RoutinesTabContent(
                     routines = WorkoutEngine.getRoutines(),
                     onSelectRoutine = { routine ->
-                        val firstItem = routine.items.mapNotNull { item ->
-                            ExerciseCatalog.getById(item.exerciseId)
-                        }.firstOrNull()
-                        CoachModeHolder.pendingExerciseId = firstItem?.id
-                        CoachModeHolder.pendingExerciseMode = firstItem?.framingMode ?: ExerciseFramingMode.PUSH_UP
-                        onNavigateToCoach(firstItem?.framingMode ?: ExerciseFramingMode.PUSH_UP)
+                        val firstItem = routine.items.firstOrNull()
+                        val ex = firstItem?.let { ExerciseCatalog.getById(it.exerciseId) }
+                        if (ex != null && firstItem != null) {
+                            CoachModeHolder.setPending(
+                                exerciseId = ex.id,
+                                framingMode = ex.framingMode ?: ExerciseFramingMode.PUSH_UP,
+                                targetReps = firstItem.targetReps,
+                                targetHoldSeconds = firstItem.targetHoldSeconds,
+                                targetSets = firstItem.targetSets,
+                                cameraEnabled = true,
+                                routine = routine,
+                                routineIndex = 0
+                            )
+                        }
+                        onNavigateToCoach(ex?.framingMode ?: ExerciseFramingMode.PUSH_UP)
                     }
                 )
             }
@@ -232,9 +241,16 @@ fun ExerciseLibraryScreen(
             onDismiss = { selectedExerciseForDetail = null },
             onLaunchCoach = { mode ->
                 selectedExerciseForDetail = null
-                CoachModeHolder.pendingExerciseId = exercise.id
-                CoachModeHolder.pendingExerciseMode = mode
-                onNavigateToCoach(mode)
+                val resolvedMode = mode ?: exercise.framingMode ?: ExerciseFramingMode.PUSH_UP
+                CoachModeHolder.setPending(
+                    exerciseId = exercise.id,
+                    framingMode = resolvedMode,
+                    targetReps = exercise.defaultReps,
+                    targetHoldSeconds = exercise.defaultHoldSeconds,
+                    targetSets = exercise.defaultSets,
+                    cameraEnabled = true
+                )
+                onNavigateToCoach(resolvedMode)
             }
         )
     }

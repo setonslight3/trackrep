@@ -48,13 +48,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -126,11 +131,41 @@ fun HomeScreen(
         try {
             readinessState = AdaptiveRepository.getAthleteReadiness(context)
             adaptedPlan = AdaptiveRepository.getAdaptedTodayWorkout(context)
-            recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 3)
+            recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 20)
             refreshSchedule()
         } catch (e: Exception) {
             android.util.Log.e("HomeScreen", "Error initializing home data", e)
         }
+    }
+
+    // Refresh immediately when workouts are recorded in CoachScreen
+    LaunchedEffect(CoachModeHolder.workoutCompletedCount) {
+        refreshSchedule()
+    }
+
+    // Refresh when navigating back to HomeScreen
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshSchedule()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val ymdFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+    val completedDates = remember(recentSessions) {
+        recentSessions.map { ymdFormat.format(Date(it.timestampMs)) }.toSet()
+    }
+    val todayDoneExerciseIds = remember(recentSessions, todayDateStr) {
+        recentSessions
+            .filter { ymdFormat.format(Date(it.timestampMs)) == todayDateStr }
+            .map { it.exerciseId }
+            .toSet()
     }
 
     val todayRoutine = adaptedPlan?.routine ?: WorkoutEngine.getDefaultTodayRoutine()
@@ -382,7 +417,7 @@ fun HomeScreen(
                         weeklySchedule.forEach { item ->
                             val isToday = item.dateString == todayDateStr
                             val isSelected = selectedScheduleDay?.id == item.id
-                            val isCompleted = item.status == "COMPLETED"
+                            val isCompleted = item.status == "COMPLETED" || completedDates.contains(item.dateString)
                             val isMissed = item.status == "MISSED" || (item in missedSessions)
 
                             Surface(
@@ -670,21 +705,31 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         routineExercises.forEachIndexed { index, (item, exercise) ->
+                            val isExerciseDone = todayDoneExerciseIds.contains(exercise.id) ||
+                                    (todayRoutine != null && CoachModeHolder.activeRoutine?.id == todayRoutine.id && index < CoachModeHolder.activeRoutineIndex)
+
                             Surface(
                                 onClick = {
-                                    CoachModeHolder.pendingExerciseId = exercise.id
-                                    CoachModeHolder.pendingExerciseMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP
-                                    CoachModeHolder.pendingTargetReps = item.targetReps
-                                    CoachModeHolder.pendingTargetHoldSeconds = item.targetHoldSeconds
-                                    CoachModeHolder.pendingTargetSets = item.targetSets
-                                    CoachModeHolder.pendingCameraEnabled = true
-                                    CoachModeHolder.activeRoutine = todayRoutine
-                                    CoachModeHolder.activeRoutineIndex = index
+                                    CoachModeHolder.setPending(
+                                        exerciseId = exercise.id,
+                                        framingMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP,
+                                        targetReps = item.targetReps,
+                                        targetHoldSeconds = item.targetHoldSeconds,
+                                        targetSets = item.targetSets,
+                                        cameraEnabled = true,
+                                        routine = todayRoutine,
+                                        routineIndex = index
+                                    )
                                     onNavigateToCoach()
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-                                border = BorderStroke(1.dp, if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.35f) else Color.Transparent),
+                                color = if (isExerciseDone) Color(0xFF1B241C) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isExerciseDone) SuccessGreen.copy(alpha = 0.6f)
+                                    else if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.35f)
+                                    else Color.Transparent
+                                ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -703,18 +748,28 @@ fun HomeScreen(
                                             modifier = Modifier
                                                 .size(28.dp)
                                                 .background(
-                                                    if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.2f)
+                                                    if (isExerciseDone) SuccessGreen
+                                                    else if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.2f)
                                                     else MaterialTheme.colorScheme.surface,
                                                     CircleShape
                                                 ),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = "${index + 1}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (exercise.isVisionSupported) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface
-                                            )
+                                            if (isExerciseDone) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Completed",
+                                                    tint = Color.Black,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "${index + 1}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (exercise.isVisionSupported) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
                                         }
 
                                         Column {
@@ -722,14 +777,15 @@ fun HomeScreen(
                                                 text = exercise.name,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                color = if (isExerciseDone) Color.White else MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
-                                                text = "${item.targetSets} sets • " +
-                                                        if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
-                                                        else "${item.targetReps} reps",
+                                                text = if (isExerciseDone) "Completed • ${item.targetSets} sets logged"
+                                                       else "${item.targetSets} sets • " +
+                                                            if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
+                                                            else "${item.targetReps} reps",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                                color = if (isExerciseDone) SuccessGreen.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -739,27 +795,49 @@ fun HomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        if (exercise.isVisionSupported) {
+                                        if (isExerciseDone) {
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = DarkPrimaryGold.copy(alpha = 0.15f)
+                                                color = SuccessGreen.copy(alpha = 0.2f)
                                             ) {
                                                 Text(
-                                                    text = "AI VISION",
-                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                                    text = "COMPLETED",
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontSize = 9.sp,
-                                                    color = DarkPrimaryGold,
+                                                    color = SuccessGreen,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Completed",
+                                                tint = SuccessGreen,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        } else {
+                                            if (exercise.isVisionSupported) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = DarkPrimaryGold.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "AI VISION",
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 9.sp,
+                                                        color = DarkPrimaryGold,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                            Icon(
+                                                imageVector = Icons.Default.PlayArrow,
+                                                contentDescription = "Train Now",
+                                                tint = DarkPrimaryGold,
+                                                modifier = Modifier.size(18.dp)
+                                            )
                                         }
-                                        Icon(
-                                            imageVector = Icons.Default.PlayArrow,
-                                            contentDescription = "Train Now",
-                                            tint = DarkPrimaryGold,
-                                            modifier = Modifier.size(18.dp)
-                                        )
                                     }
                                 }
                             }
@@ -777,14 +855,16 @@ fun HomeScreen(
                                 val first = routineExercises.firstOrNull()
                                 if (first != null) {
                                     val (item, exercise) = first
-                                    CoachModeHolder.pendingExerciseId = exercise.id
-                                    CoachModeHolder.pendingExerciseMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP
-                                    CoachModeHolder.pendingTargetReps = item.targetReps
-                                    CoachModeHolder.pendingTargetHoldSeconds = item.targetHoldSeconds
-                                    CoachModeHolder.pendingTargetSets = item.targetSets
-                                    CoachModeHolder.pendingCameraEnabled = true
-                                    CoachModeHolder.activeRoutine = todayRoutine
-                                    CoachModeHolder.activeRoutineIndex = 0
+                                    CoachModeHolder.setPending(
+                                        exerciseId = exercise.id,
+                                        framingMode = exercise.framingMode ?: ExerciseFramingMode.PUSH_UP,
+                                        targetReps = item.targetReps,
+                                        targetHoldSeconds = item.targetHoldSeconds,
+                                        targetSets = item.targetSets,
+                                        cameraEnabled = true,
+                                        routine = todayRoutine,
+                                        routineIndex = 0
+                                    )
                                 }
                                 onNavigateToCoach()
                             },
