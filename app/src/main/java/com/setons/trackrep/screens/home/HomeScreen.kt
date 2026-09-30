@@ -104,25 +104,33 @@ fun HomeScreen(
 
     fun refreshSchedule() {
         scope.launch {
-            val week = userProfileRepo.getWeeklySchedule()
-            weeklySchedule = week
-            val todayItem = week.firstOrNull { it.dateString == todayDateStr }
-            selectedScheduleDay = todayItem ?: week.firstOrNull()
-            val sessions = AdaptiveRepository.getRecentSessions(context, limit = 10)
-            recentSessions = sessions
-            val ymdFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val completedDates = sessions.map {
-                ymdFormat.format(Date(it.timestampMs))
-            }.toSet()
-            missedSessions = WorkoutScheduleEngine.detectMissedSessions(week, completedDates, todayDateStr)
+            try {
+                val week = userProfileRepo.getWeeklySchedule()
+                weeklySchedule = week
+                val todayItem = week.firstOrNull { it.dateString == todayDateStr }
+                selectedScheduleDay = todayItem ?: week.firstOrNull()
+                val sessions = AdaptiveRepository.getRecentSessions(context, limit = 10)
+                recentSessions = sessions
+                val ymdFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                val completedDates = sessions.map {
+                    ymdFormat.format(Date(it.timestampMs))
+                }.toSet()
+                missedSessions = WorkoutScheduleEngine.detectMissedSessions(week, completedDates, todayDateStr)
+            } catch (e: Exception) {
+                android.util.Log.e("HomeScreen", "Error refreshing schedule", e)
+            }
         }
     }
 
     LaunchedEffect(Unit) {
-        readinessState = AdaptiveRepository.getAthleteReadiness(context)
-        adaptedPlan = AdaptiveRepository.getAdaptedTodayWorkout(context)
-        recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 3)
-        refreshSchedule()
+        try {
+            readinessState = AdaptiveRepository.getAthleteReadiness(context)
+            adaptedPlan = AdaptiveRepository.getAdaptedTodayWorkout(context)
+            recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 3)
+            refreshSchedule()
+        } catch (e: Exception) {
+            android.util.Log.e("HomeScreen", "Error initializing home data", e)
+        }
     }
 
     val todayRoutine = adaptedPlan?.routine ?: WorkoutEngine.getDefaultTodayRoutine()

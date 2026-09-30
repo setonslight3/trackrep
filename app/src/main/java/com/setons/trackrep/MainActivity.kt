@@ -8,9 +8,13 @@ import androidx.activity.enableEdgeToEdge
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            TrackRepApp()
+        try {
+            enableEdgeToEdge()
+            setContent {
+                TrackRepApp()
+            }
+        } catch (t: Throwable) {
+            android.util.Log.e("TrackRep", "Error in MainActivity onCreate", t)
         }
     }
 }

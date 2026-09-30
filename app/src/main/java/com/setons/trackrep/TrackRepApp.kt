@@ -69,9 +69,13 @@ fun TrackRepApp() {
 
         // If first launch, show onboarding
         LaunchedEffect(Unit) {
-            val completed = repository.isOnboardingCompleted()
-            if (!completed) {
-                backStack.add(OnboardingNavKey)
+            try {
+                val completed = repository.isOnboardingCompleted()
+                if (!completed) {
+                    backStack.add(OnboardingNavKey)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("TrackRep", "Failed to check onboarding state", e)
             }
         }
 
