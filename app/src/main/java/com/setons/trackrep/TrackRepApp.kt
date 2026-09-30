@@ -65,7 +65,7 @@ fun TrackRepApp() {
     TrackRepTheme(darkTheme = isDarkTheme) {
         val backStack = rememberNavBackStack(HomeNavKey)
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
-        val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey
+        val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey || CoachModeHolder.isImmersiveFullscreen
 
         // If first launch, show onboarding
         LaunchedEffect(Unit) {

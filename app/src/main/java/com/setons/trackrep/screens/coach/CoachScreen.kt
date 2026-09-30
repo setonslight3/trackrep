@@ -151,6 +151,7 @@ object CoachModeHolder {
     var pendingCameraEnabled: Boolean = true
     var activeRoutine: WorkoutRoutine? = null
     var activeRoutineIndex: Int = 0
+    var isImmersiveFullscreen by mutableStateOf(false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,6 +184,14 @@ fun CoachScreen(
     var showRoutineDrawer by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
+    LaunchedEffect(isFullscreen) {
+        CoachModeHolder.isImmersiveFullscreen = isFullscreen
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            CoachModeHolder.isImmersiveFullscreen = false
+        }
+    }
     var isRecording by remember { mutableStateOf(false) }
     var recordingDurationSec by remember { mutableIntStateOf(0) }
     var recordingStartTimeMs by remember { mutableLongStateOf(0L) }
@@ -755,91 +764,36 @@ fun CoachScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Floating Top Controls in Fullscreen
+            // Floating Top Controls in Fullscreen (Clean Minimal 3-Anchor Bar)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
                     .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Controls: Exit Fullscreen + Mute Audio Toggle
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // 1. Exit Fullscreen
+                IconButton(
+                    onClick = { isFullscreen = false },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                 ) {
-                    IconButton(
-                        onClick = { isFullscreen = false },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FullscreenExit,
-                            contentDescription = "Exit Fullscreen",
-                            tint = DarkPrimaryGold
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { voiceManager.toggleMute() },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                            contentDescription = if (voiceManager.isMuted) "Unmute Voice" else "Mute Voice",
-                            tint = if (voiceManager.isMuted) Color.White.copy(alpha = 0.5f) else DarkPrimaryGold,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.FullscreenExit,
+                        contentDescription = "Exit Fullscreen",
+                        tint = DarkPrimaryGold,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
 
-                // Auto-Detect Toggle Chip
-                Surface(
-                    onClick = {
-                        val updated = !isAutoDetectEnabled
-                        isAutoDetectEnabled = updated
-                        CoachPreferences.setAutoDetectEnabled(context, updated)
-                        if (updated) exerciseClassifier.reset()
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isAutoDetectEnabled) DarkPrimaryGold.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.65f),
-                    border = BorderStroke(1.dp, if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray.copy(alpha = 0.5f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "Auto Detect",
-                            tint = if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = if (isAutoDetectEnabled) "Auto ON" else "Auto OFF",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isAutoDetectEnabled) DarkPrimaryGold else Color.Gray,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
-                // Exercise Mode & Recording Status Badge
+                // 2. Center Exercise Selector Capsule
                 Surface(
                     onClick = {
                         if (!isRecording) {
-                            val modes = ExerciseFramingMode.values()
-                            val nextIndex = (modes.indexOf(selectedExercise) + 1) % modes.size
-                            selectedExercise = modes[nextIndex]
-                            val matching = ExerciseCatalog.exercises.firstOrNull { it.framingMode == selectedExercise }
-                            if (matching != null) activeExercise = matching
-                            framingStatus = FramingStatus.CALIBRATING
+                            showExerciseDrawer = true
                         }
                     },
                     shape = RoundedCornerShape(20.dp),
@@ -847,7 +801,7 @@ fun CoachScreen(
                     border = BorderStroke(1.dp, if (isRecording) Color(0xFFFF5252) else DarkPrimaryGold.copy(alpha = 0.6f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -856,7 +810,7 @@ fun CoachScreen(
                                 imageVector = Icons.Default.FiberManualRecord,
                                 contentDescription = "Recording",
                                 tint = Color(0xFFFF5252),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(12.dp)
                             )
                             val m = recordingDurationSec / 60
                             val s = recordingDurationSec % 60
@@ -867,14 +821,12 @@ fun CoachScreen(
                                 color = Color(0xFFFF5252)
                             )
                         } else {
-                            val icon = when (selectedExercise) {
-                                ExerciseFramingMode.PUSH_UP -> Icons.Default.FitnessCenter
-                                ExerciseFramingMode.SQUAT -> Icons.Default.AccessibilityNew
-                                ExerciseFramingMode.PLANK -> Icons.Default.Timer
-                                ExerciseFramingMode.PULL_UP -> Icons.Default.FitnessCenter
-                                ExerciseFramingMode.CARDIO -> Icons.Default.DirectionsRun
-                            }
-                            Icon(icon, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(14.dp))
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = null,
+                                tint = DarkPrimaryGold,
+                                modifier = Modifier.size(14.dp)
+                            )
                             Text(
                                 text = activeExercise.name,
                                 style = MaterialTheme.typography.labelSmall,
@@ -886,35 +838,42 @@ fun CoachScreen(
                     }
                 }
 
-                // Stickman Form Demo Button
-                IconButton(
-                    onClick = { showStickmanDemo = !showStickmanDemo },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(if (showStickmanDemo) DarkPrimaryGold else Color.Black.copy(alpha = 0.65f), CircleShape)
+                // 3. Right: Quick Flip & More Controls
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = "Form Demo",
-                        tint = if (showStickmanDemo) Color.Black else DarkPrimaryGold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                    IconButton(
+                        onClick = {
+                            selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                        },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FlipCameraAndroid,
+                            contentDescription = "Flip Camera",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
 
-                // Flip Camera
-                IconButton(
-                    onClick = {
-                        selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
-                    },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color.Black.copy(alpha = 0.65f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FlipCameraAndroid,
-                        contentDescription = "Flip Camera",
-                        tint = DarkPrimaryGold
-                    )
+                    IconButton(
+                        onClick = { showControlsDrawer = true },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More Options",
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 
@@ -944,7 +903,7 @@ fun CoachScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isRecording) "Stop & Save Set (${recordingDurationSec}s)" else "Record Set For Playback",
+                        text = if (isRecording) "Stop Set (${recordingDurationSec}s)" else "Start Set ${setManager.setNumber}",
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -967,7 +926,7 @@ fun CoachScreen(
                         ) {
                             Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
                             Text(
-                                text = "Watch Playback & Form Flaw Review",
+                                text = "Watch Replay",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkPrimaryGold
@@ -991,32 +950,34 @@ fun CoachScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "AI Motion Coach",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "AI Motion Coach",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    // Exercise Selector Pill
                     Surface(
                         onClick = { showExerciseDrawer = true },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(20.dp),
                         color = Color(0xFF1E1E1E),
                         border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.FitnessCenter,
                                 contentDescription = null,
                                 tint = DarkPrimaryGold,
-                                modifier = Modifier.size(13.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = activeExercise.name,
@@ -1024,52 +985,22 @@ fun CoachScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = DarkPrimaryGold
                             )
-                            if (isAutoDetectEnabled) {
-                                Text(
-                                    text = "• ⚡ Auto",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontSize = 10.sp,
-                                    color = Color.White.copy(alpha = 0.8f)
-                                )
-                            }
                         }
                     }
-                }
 
-                // Exactly 2 Clean Action Icons in Drawers
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Drawer Icon 1: Exercise Selection & Auto-Detection
-                    IconButton(
-                        onClick = { showExerciseDrawer = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFF1E1E1E), CircleShape)
-                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.6f), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FitnessCenter,
-                            contentDescription = "Exercise Selection & Auto-Detect",
-                            tint = DarkPrimaryGold,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Drawer Icon 2: Camera & System Controls
+                    // More Options Drawer
                     IconButton(
                         onClick = { showControlsDrawer = true },
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(38.dp)
                             .background(Color(0xFF1E1E1E), CircleShape)
-                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.6f), CircleShape)
+                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.5f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Camera & Coach Options",
+                            contentDescription = "Options",
                             tint = DarkPrimaryGold,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1090,6 +1021,7 @@ fun CoachScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
+                            modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -1100,18 +1032,28 @@ fun CoachScreen(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "${routine.name} • Movement ${currentRoutineIndex + 1} of ${routine.items.size}",
+                                text = "${routine.name} • ${currentRoutineIndex + 1}/${routine.items.size}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkPrimaryGold
+                                color = DarkPrimaryGold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
-                        Text(
-                            text = "Workout List 📋",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = DarkPrimaryGold.copy(alpha = 0.15f),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Text(
+                                text = "Routine List",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = DarkPrimaryGold,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1503,32 +1445,6 @@ fun CoachScreen(
                 }
             }
 
-            // On-Device Privacy Banner (Polished Athletic Minimal)
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = null,
-                        tint = SuccessGreen,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "100% On-Device AI • Video & poses never leave your phone",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-            }
         }
     }
 
