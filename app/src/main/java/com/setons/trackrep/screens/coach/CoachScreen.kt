@@ -114,6 +114,11 @@ import com.setons.trackrep.review.SessionReviewRepository
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
+import com.setons.trackrep.data.local.TrackRepDatabase
+import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
+import com.setons.trackrep.data.local.entity.SetRecordEntity
+import com.setons.trackrep.schedule.UserProfileRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
@@ -416,13 +421,18 @@ fun CoachScreen(
                 (duration / 3).coerceAtLeast(1)
             }
 
+            val videoPathStr = capturedFile?.absolutePath
+            val nowMs = System.currentTimeMillis()
+            val dateStr = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault()).format(Date(nowMs))
+            val todayDateYmd = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(nowMs))
+
             val newSession = RecordedWorkoutSession(
                 id = newSessionId,
                 exerciseName = "${activeExercise.name} Set",
-                videoPath = capturedFile?.takeIf { it.exists() && it.length() > 0 }?.absolutePath,
+                videoPath = videoPathStr,
                 durationSeconds = duration,
                 repCount = finalRepCount,
-                dateString = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date()),
+                dateString = dateStr,
                 detectedFlaws = flaws,
                 recordedPoses = finalPoses,
                 completedRepTimestamps = validTimestamps
@@ -430,6 +440,48 @@ fun CoachScreen(
 
             SessionReviewRepository.addSession(newSession)
             lastRecordedSessionId = newSessionId
+
+            // Auto-persist immediately to Room DB so AI & History have permanent local access
+            val sessionEntity = WorkoutSessionEntity(
+                id = newSessionId,
+                routineId = currentRoutine?.id,
+                routineName = currentRoutine?.name,
+                exerciseId = activeExercise.id,
+                exerciseName = activeExercise.name,
+                timestampMs = nowMs,
+                dateString = dateStr,
+                durationSeconds = duration,
+                totalValidReps = finalRepCount,
+                totalPartialReps = partialCount,
+                averageFormScore = formScore,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "COMPLETED",
+                isCompleted = true,
+                videoPath = videoPathStr
+            )
+
+            val setRecordEntity = SetRecordEntity(
+                sessionId = newSessionId,
+                exerciseId = activeExercise.id,
+                setNumber = setManager.setNumber,
+                validReps = finalRepCount,
+                partialReps = partialCount,
+                durationSeconds = duration,
+                averageDepthDegrees = avgDepth,
+                formConsistencyPercent = formScore,
+                fatigueLevel = fatigueDetector.currentFatigueLevel.name
+            )
+
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    val db = TrackRepDatabase.getDatabase(context)
+                    db.sessionDao().insertSession(sessionEntity)
+                    db.setRecordDao().insertSet(setRecordEntity)
+                    UserProfileRepository.getInstance(context).markWorkoutCompleted(todayDateYmd)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             // Phase 4 & 5: Workout set completion & summary
             val summary = setManager.completeSet(
@@ -464,6 +516,14 @@ fun CoachScreen(
                 if (finalizedFile != null && finalizedFile.exists()) {
                     lastRecordedSessionId?.let { sId ->
                         SessionReviewRepository.updateVideoPath(sId, finalizedFile.absolutePath)
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val db = TrackRepDatabase.getDatabase(context)
+                                db.sessionDao().updateVideoPath(sId, finalizedFile.absolutePath)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                     }
                 }
             }

@@ -109,4 +109,11 @@ class TrackAiServiceTest {
         assertTrue(parsed.actions[0] is AdjustTargetAction)
         assertTrue(parsed.actions[1] is RescheduleWorkoutAction)
     }
+
+    @Test
+    fun testPastWorkoutsAnalysisRequest() {
+        val query = "Can you analyze my past workouts and check my progress?"
+        val response = TrackAiService.evaluateOnDeviceReasoning(query)
+        assertTrue(response.replyMessage.contains("analyze your workout history") || response.replyMessage.contains("logged workouts"))
+    }
 }

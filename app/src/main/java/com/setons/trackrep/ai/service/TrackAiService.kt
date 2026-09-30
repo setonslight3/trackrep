@@ -67,7 +67,7 @@ object TrackAiService {
         }
 
         // 2. On-Device Fallback Reasoning Engine
-        val localResponse = evaluateOnDeviceReasoning(userMessage)
+        val localResponse = evaluateOnDeviceReasoning(userMessage, context)
         executeValidatedActions(context, localResponse.actions, userMessage)
         localResponse
     }
@@ -131,6 +131,8 @@ You cannot directly alter user data. You must output a JSON object conforming to
     }
   ]
 }
+
+When the athlete asks about their past workouts, workout history, performance, progress, or how they performed, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence.
 
 CONTEXT OF CURRENT ATHLETE & WORKOUT:
 $structuredContext
@@ -235,7 +237,7 @@ $structuredContext
      * On-Device Fallback Reasoning Engine.
      * Evaluates natural language queries using biomechanical rules when offline.
      */
-    fun evaluateOnDeviceReasoning(query: String): TrackAiResponse {
+    fun evaluateOnDeviceReasoning(query: String, context: Context? = null): TrackAiResponse {
         val q = query.lowercase().trim()
         val actions = mutableListOf<TrackAction>()
         val reply: String
@@ -342,9 +344,31 @@ $structuredContext
                 reply = "For optimal ML Kit joint detection, place your phone on the floor approximately 5 to 7 normal paces away, tilted about 15° upward. Ensure the camera sees your full body from head to toes within the luxury gold brackets."
             }
 
-            // 9. Default Coaching Response
+            // 9. History & Past Workouts Analysis
+            q.contains("past") || q.contains("history") || q.contains("previous") || q.contains("analyze") || q.contains("analysis") || q.contains("last workout") || q.contains("recent") || q.contains("progress") || q.contains("how did i do") -> {
+                var historyReply: String? = null
+                if (context != null) {
+                    try {
+                        val db = com.setons.trackrep.data.local.TrackRepDatabase.getDatabase(context)
+                        val recent = kotlinx.coroutines.runBlocking { db.sessionDao().getRecentSessions(5) }
+                        if (recent.isNotEmpty()) {
+                            val totalReps = recent.sumOf { it.totalValidReps }
+                            val avgScore = recent.map { it.averageFormScore }.average().toInt()
+                            val summaryLines = recent.joinToString("\n") { s ->
+                                "• ${s.dateString}: ${s.exerciseName} — ${s.totalValidReps} reps (Form score: ${s.averageFormScore}%)"
+                            }
+                            historyReply = "Here is the analysis of your recent logged workouts:\n\n$summaryLines\n\nOverall, you have completed $totalReps total reps with an average form consistency score of $avgScore%. Keep your tempo controlled and finish every repetition with full lockout!"
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                reply = historyReply ?: "I'm ready to analyze your workout history! Once you complete and log sets with the camera coach, I'll provide detailed breakdowns of your rep counts, form consistency scores, and progressive overload."
+            }
+
+            // 10. Default Coaching Response
             else -> {
-                reply = "I'm Track, your adaptive coach! You can ask me to swap exercises if you have joint discomfort, reschedule missed workouts, adjust target reps, or explain any form cues."
+                reply = "I'm Track, your adaptive coach! You can ask me to swap exercises if you have joint discomfort, reschedule missed workouts, adjust target reps, or analyze your past workouts."
             }
         }
 

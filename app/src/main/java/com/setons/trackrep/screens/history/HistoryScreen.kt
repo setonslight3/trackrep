@@ -43,6 +43,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -81,11 +82,13 @@ import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
 import com.setons.trackrep.review.SessionReviewRepository
 import com.setons.trackrep.share.WorkoutShareHelper
+import com.setons.trackrep.video.MediaAlbumHelper
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import com.setons.trackrep.theme.WarningOrange
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -738,6 +741,28 @@ fun HistoryScreen(
                                         Icon(Icons.Default.PlayCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text("Review", fontSize = 12.sp)
+                                    }
+
+                                    val hasVideo = session.videoPath != null && File(session.videoPath).exists() && File(session.videoPath).length() > 0
+                                    if (hasVideo) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        IconButton(
+                                            onClick = {
+                                                MediaAlbumHelper.saveVideoToPhoneAlbum(
+                                                    context = context,
+                                                    sourceFile = File(session.videoPath!!),
+                                                    exerciseName = session.exerciseName
+                                                )
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Download,
+                                                contentDescription = "Save Video to Gallery",
+                                                tint = DarkPrimaryGold,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -10,6 +10,7 @@ import com.setons.trackrep.data.local.entity.UserProfileEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -58,9 +59,19 @@ class UserProfileRepository(context: Context) {
 
     suspend fun getWeeklySchedule(): List<ScheduledWorkoutEntity> = withContext(Dispatchers.IO) {
         val schedule = scheduleDao.getWeeklySchedule()
-        if (schedule.isEmpty()) {
+        val currentMondayCal = Calendar.getInstance().apply {
+            firstDayOfWeek = Calendar.MONDAY
+            while (get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
+                add(Calendar.DAY_OF_MONTH, -1)
+            }
+        }
+        val mondayStr = dateFormat.format(currentMondayCal.time)
+        val isCurrentWeek = schedule.isNotEmpty() && schedule.firstOrNull()?.dateString == mondayStr
+
+        if (!isCurrentWeek) {
             val profile = getProfile()
-            val generated = WorkoutScheduleEngine.generateCoherentFirstWeek(profile)
+            val generated = WorkoutScheduleEngine.generateCoherentFirstWeek(profile, currentMondayCal)
+            scheduleDao.clearSchedule()
             scheduleDao.insertSchedule(generated)
             generated
         } else {

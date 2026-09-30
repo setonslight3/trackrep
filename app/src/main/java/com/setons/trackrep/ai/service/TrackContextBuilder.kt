@@ -69,13 +69,16 @@ object TrackContextBuilder {
         json.put("activeRoutine", routineObj)
 
         // 3. Recent Workout Logs
-        val recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 3)
+        val recentSessions = AdaptiveRepository.getRecentSessions(context, limit = 15)
         val sessionsArr = JSONArray()
         recentSessions.forEach { session ->
             sessionsArr.put(JSONObject().apply {
                 put("exerciseName", session.exerciseName)
+                put("routineName", session.routineName ?: "Standard Workout")
                 put("date", session.dateString)
                 put("validReps", session.totalValidReps)
+                put("partialReps", session.totalPartialReps)
+                put("durationSeconds", session.durationSeconds)
                 put("formScore", session.averageFormScore)
                 put("rating", session.perceivedRating)
             })

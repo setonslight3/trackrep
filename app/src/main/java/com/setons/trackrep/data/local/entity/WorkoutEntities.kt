@@ -24,7 +24,8 @@ data class WorkoutSessionEntity(
     val averageFormScore: Int,
     val fatigueVelocityLossPercent: Float,
     val perceivedRating: String, // TOO_EASY, JUST_RIGHT, DIFFICULT, COULD_NOT_COMPLETE
-    val isCompleted: Boolean = true
+    val isCompleted: Boolean = true,
+    val videoPath: String? = null
 )
 
 /**

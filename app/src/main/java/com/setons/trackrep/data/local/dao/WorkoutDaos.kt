@@ -48,6 +48,9 @@ interface WorkoutSessionDao {
 
     @Query("SELECT MAX(timestampMs) FROM workout_sessions")
     suspend fun getLatestWorkoutTimestamp(): Long?
+
+    @Query("UPDATE workout_sessions SET videoPath = :videoPath WHERE id = :sessionId")
+    suspend fun updateVideoPath(sessionId: String, videoPath: String)
 }
 
 @Dao

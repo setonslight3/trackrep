@@ -108,7 +108,12 @@ fun HomeScreen(
             weeklySchedule = week
             val todayItem = week.firstOrNull { it.dateString == todayDateStr }
             selectedScheduleDay = todayItem ?: week.firstOrNull()
-            val completedDates = recentSessions.map { it.dateString }.toSet()
+            val sessions = AdaptiveRepository.getRecentSessions(context, limit = 10)
+            recentSessions = sessions
+            val ymdFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val completedDates = sessions.map {
+                ymdFormat.format(Date(it.timestampMs))
+            }.toSet()
             missedSessions = WorkoutScheduleEngine.detectMissedSessions(week, completedDates, todayDateStr)
         }
     }
