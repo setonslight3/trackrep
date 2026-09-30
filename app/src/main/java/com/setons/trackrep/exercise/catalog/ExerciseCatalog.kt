@@ -162,16 +162,17 @@ object ExerciseCatalog {
             defaultReps = 12,
             restSeconds = 45,
             instructions = listOf(
-                "Stand 6 inches in front of a sturdy chair with feet shoulder-width apart.",
-                "Hinge at the hips and bend knees to sit gently back onto the chair.",
-                "Lightly touch the seat without relaxing your core tension.",
-                "Drive through the midfoot and heels to stand back up."
+                "Stand 4-6 inches in front of a sturdy chair or box with feet shoulder-width apart, facing away from the seat.",
+                "Brace your core, hinge hips backward, and bend knees while keeping shins near-vertical.",
+                "Reach arms forward for counter-balance as glutes lightly tap the seat—do not dump your weight or rock.",
+                "Pause momentarily on the seat to eliminate momentum, then drive through heels and midfoot to stand back up."
             ),
             commonFlaws = listOf(
-                "Collapsing heavily onto the chair",
-                "Knees caving inward on ascent"
+                "Collapsing heavily onto the chair and relaxing core tension",
+                "Knees caving inward (valgus collapse) on the ascent",
+                "Rocking back and forward to generate momentum instead of leg drive"
             ),
-            proTip = "Helps groove hip hinge mechanics and builds foundational quad endurance."
+            proTip = "Treat the chair as a tactile depth sensor, not a resting spot. Keep muscular tension constant throughout the touch."
         ),
         Exercise(
             id = "squat_bodyweight",
@@ -186,14 +187,15 @@ object ExerciseCatalog {
             restSeconds = 60,
             instructions = listOf(
                 "Stand tall with feet shoulder-width apart, toes turned outward 10-15 degrees.",
-                "Push hips back and bend knees, driving knees outward in line with toes.",
-                "Lower until hip crease drops parallel to or below the top of the kneecap (<=90 deg).",
-                "Keep chest upright and drive through heels to return to standing lockout."
+                "Push hips back and bend knees, driving knees outward in line with middle toes.",
+                "Extend arms forward in front of chest to maintain balance and an upright torso.",
+                "Lower until hip crease drops parallel to or below the top of kneecaps (<=90 deg).",
+                "Keep chest proud and drive firmly through heels and midfoot to return to full standing lockout."
             ),
             commonFlaws = listOf(
-                "Cutting depth above parallel",
-                "Excessive forward torso pitch (>65 degrees)",
-                "Heels lifting off the ground"
+                "Cutting depth above parallel (half-squatting)",
+                "Excessive forward torso pitch (>65 degrees) rounding the lower back",
+                "Heels lifting off the floor during the descent"
             ),
             proTip = "AI Vision enabled: Tracks real-time knee flexion angle and alerts you if depth is cut short."
         ),
@@ -232,15 +234,18 @@ object ExerciseCatalog {
             defaultReps = 10,
             restSeconds = 75,
             instructions = listOf(
-                "Perform a standard bodyweight squat down to parallel depth.",
-                "From the bottom, explode upward vertically off the ground with maximum power.",
-                "Land softly on midfoot, immediately absorbing into the next repetition."
+                "Stand with feet shoulder-width apart and arms relaxed at your sides.",
+                "Hinge hips and bend knees into a loaded squat (parallel depth), sweeping arms slightly back.",
+                "Explode vertically off the floor with maximal power, driving arms upward for vertical propulsion.",
+                "Achieve full triple extension (hips, knees, and ankles straight) at peak height in mid-air.",
+                "Land quietly and softly on balls of feet, immediately absorbing the descent by sinking into the next squat."
             ),
             commonFlaws = listOf(
-                "Stiff-legged landing causing knee shock",
-                "Cutting depth before jumping"
+                "Landing stiff-legged with knees locked, sending impact shock through joints",
+                "Slapping feet loudly on the floor instead of absorbing softly through hips and quads",
+                "Cutting squat depth before launching into the jump"
             ),
-            proTip = "Land like a ninja: quiet landings ensure optimal eccentric deceleration and joint protection."
+            proTip = "Aim for maximum vertical height and silent landings. If your landing makes a loud thud, absorb deeper through the knees."
         ),
         Exercise(
             id = "squat_bulgarian",
@@ -254,15 +259,19 @@ object ExerciseCatalog {
             defaultReps = 8,
             restSeconds = 60,
             instructions = listOf(
-                "Stand 2-3 feet in front of a bench or chair with back foot elevated on the surface.",
-                "Lower hips straight down until the front thigh is parallel to the ground.",
-                "Drive through the front heel to return to standing lockout."
+                "Stand 2-3 feet in front of a sturdy bench, chair, or box (ideal height is mid-shin).",
+                "Reach one leg back and place the top of the foot (laces down) flat on the bench.",
+                "Keep torso tall with a slight athletic forward pitch (~15-20°) and core engaged.",
+                "Lower hips straight down until front thigh is parallel to the ground and front knee is at ~90 degrees.",
+                "Ensure front shin stays nearly vertical; back knee hovers 1-2 inches above the floor.",
+                "Drive forcefully through the front heel and midfoot to return to the top lockout."
             ),
             commonFlaws = listOf(
-                "Standing too close causing heel lift on the front foot",
-                "Tilting pelvis sideways"
+                "Standing too close to the bench, pushing front knee excessively past toes and lifting the front heel",
+                "Allowing the front knee to wobble or cave inward",
+                "Excessive hyperextension of the lumbar spine (arching lower back)"
             ),
-            proTip = "Elite unilateral quad and glute builder that fixes leg imbalances."
+            proTip = "Keep 85% of your weight on the front working leg. The rear elevated foot is strictly for balance."
         ),
         Exercise(
             id = "squat_pistol",
@@ -276,16 +285,19 @@ object ExerciseCatalog {
             defaultReps = 5,
             restSeconds = 90,
             instructions = listOf(
-                "Stand balanced on one leg with the other leg extended straight forward.",
-                "Squat down fully on the working leg until the hamstring touches the calf.",
-                "Keep the non-working leg elevated off the ground.",
-                "Drive through the heel to stand back up with full balance."
+                "Stand tall balanced on one leg with core braced and shoulders engaged.",
+                "Extend the non-working leg straight out in front, parallel to the ground with toes pointed forward.",
+                "Reach both arms straight out in front of your chest to provide essential counterweight balance.",
+                "Bend the standing knee and push hips back, descending under full control until hamstring touches calf.",
+                "Keep the extended non-working leg completely off the floor throughout the entire movement.",
+                "Drive hard through the heel and midfoot of the standing leg, maintaining chest height, to stand back up to full lockout."
             ),
             commonFlaws = listOf(
-                "Heel lifting off the ground",
-                "Extended foot touching the floor"
+                "Standing heel lifting off the ground due to tight ankles",
+                "Extended non-working leg drooping and touching the floor",
+                "Collapsing the chest forward into severe spinal rounding"
             ),
-            proTip = "Requires profound ankle dorsiflexion, hip flexor strength, and unilateral power."
+            proTip = "Hold a light object or reach forward with both fists as a counterweight to make balancing significantly easier."
         ),
 
         // ==================== CORE & ABS ====================
@@ -657,16 +669,18 @@ object ExerciseCatalog {
             defaultReps = 12,
             restSeconds = 60,
             instructions = listOf(
-                "Sit on the edge of a sturdy chair or coffee table with hands gripping the front edge.",
-                "Slide hips just forward off the seat with knees bent (or legs straight for more challenge).",
-                "Bend elbows backward to lower hips until arms reach 90 degrees.",
-                "Press through palms to lockout arms."
+                "Sit on the edge of a sturdy chair, coffee table, or bench with palms gripping the front edge beside your hips.",
+                "Slide hips forward off the seat, supporting your weight on your hands with feet planted out in front.",
+                "Bend elbows backward, lowering hips vertically until upper arms are parallel to the floor (elbows at 90 degrees).",
+                "Keep back gliding within inches of the chair edge—do not drift forward.",
+                "Press forcefully through palms to extend arms and lock out triceps at the top."
             ),
             commonFlaws = listOf(
-                "Dipping too deep causing anterior shoulder impingement",
-                "Shrugging shoulders upward"
+                "Dipping below 90 degrees, causing severe anterior shoulder impingement",
+                "Drifting hips too far away from the chair, straining rotator cuffs",
+                "Shrugging shoulders up toward the ears"
             ),
-            proTip = "Keep your back gliding close to the front edge of the chair."
+            proTip = "Keep your back gliding close to the front edge of the chair to keep tension strictly on the triceps."
         ),
         Exercise(
             id = "close_grip_push_up",

@@ -40,9 +40,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -60,20 +63,46 @@ import kotlin.math.sin
 
 /**
  * Procedural Stickman Animation Archetypes for all 35 catalog exercises.
+ * Every exercise variation (especially squats, push-ups, dips, and rows) has its own
+ * authentic biomechanical model and environmental objects (chairs, boxes, benches, walls, bars).
  */
 enum class StickmanArchetype {
-    PUSH_UP,
-    SQUAT,
+    // Squat Variations
+    SQUAT_BODYWEIGHT,
+    SQUAT_CHAIR,
+    SQUAT_JUMP,
+    SQUAT_BULGARIAN,
+    SQUAT_PISTOL,
     LUNGE,
+
+    // Push-up & Arm Variations
+    PUSH_UP_STANDARD,
+    PUSH_UP_WALL,
+    PUSH_UP_INCLINE,
+    PUSH_UP_DECLINE,
+    PUSH_UP_DIAMOND,
+    PUSH_UP_ARCHER,
+    PUSH_UP_CLOSE_GRIP,
+    BENCH_DIPS,
+
+    // Pull & Inverted Variations
+    PULL_UP,
+    INVERTED_ROW,
+    PIKE_INVERTED,
+    HANDSTAND_HOLD,
+
+    // Core & Isometric Holds
     PLANK,
+    PLANK_SIDE,
     HOLLOW_BODY,
     SUPERMAN,
     GLUTE_BRIDGE,
-    PIKE_INVERTED,
-    PULL_HANG,
+    SINGLE_LEG_BRIDGE,
     CORE_V_UP,
     MOUNTAIN_CLIMBER,
     BURPEE,
+
+    // Posterior Chain & Calisthenics
     CALF_RAISE,
     GOOD_MORNING,
     NORDIC_CURL,
@@ -81,24 +110,49 @@ enum class StickmanArchetype {
 
     companion object {
         fun fromExerciseId(id: String): StickmanArchetype {
-            return when {
-                id.startsWith("push_up") || id == "close_grip_push_up" || id == "bench_dips" -> PUSH_UP
-                id == "lunge_reverse" -> LUNGE
-                id.startsWith("squat") -> SQUAT
-                id == "calf_raise_double" || id == "calf_raise_single" -> CALF_RAISE
-                id == "good_mornings" -> GOOD_MORNING
-                id == "nordic_curl" -> NORDIC_CURL
-                id == "arm_circles_scapular" -> SCAPULAR_CIRCLES
-                id.startsWith("plank") || id == "handstand_hold" -> PLANK
-                id == "hollow_body_hold" -> HOLLOW_BODY
-                id == "superman_hold" || id == "bird_dog" -> SUPERMAN
-                id == "glute_bridge" || id == "single_leg_bridge" -> GLUTE_BRIDGE
-                id == "pike_push_up" -> PIKE_INVERTED
-                id == "pull_up_standard" || id == "inverted_row" -> PULL_HANG
-                id == "v_ups" || id == "dragon_flag" -> CORE_V_UP
-                id == "mountain_climber" -> MOUNTAIN_CLIMBER
-                id == "burpee_standard" -> BURPEE
-                else -> PUSH_UP
+            return when (id) {
+                // Specific Squats
+                "squat_chair" -> SQUAT_CHAIR
+                "squat_bodyweight" -> SQUAT_BODYWEIGHT
+                "squat_jump" -> SQUAT_JUMP
+                "squat_bulgarian" -> SQUAT_BULGARIAN
+                "squat_pistol" -> SQUAT_PISTOL
+                "lunge_reverse" -> LUNGE
+
+                // Specific Push-ups & Dips
+                "push_up_wall" -> PUSH_UP_WALL
+                "push_up_incline" -> PUSH_UP_INCLINE
+                "push_up_standard" -> PUSH_UP_STANDARD
+                "push_up_decline" -> PUSH_UP_DECLINE
+                "push_up_diamond" -> PUSH_UP_DIAMOND
+                "push_up_archer" -> PUSH_UP_ARCHER
+                "close_grip_push_up" -> PUSH_UP_CLOSE_GRIP
+                "bench_dips" -> BENCH_DIPS
+
+                // Pull & Vertical
+                "pull_up_standard" -> PULL_UP
+                "inverted_row" -> INVERTED_ROW
+                "pike_push_up" -> PIKE_INVERTED
+                "handstand_hold" -> HANDSTAND_HOLD
+
+                // Planks & Core
+                "plank_side" -> PLANK_SIDE
+                "plank_knee", "plank_standard" -> PLANK
+                "hollow_body_hold" -> HOLLOW_BODY
+                "v_ups", "dragon_flag" -> CORE_V_UP
+                "mountain_climber" -> MOUNTAIN_CLIMBER
+                "burpee_standard" -> BURPEE
+
+                // Glute & Posterior Chain
+                "glute_bridge" -> GLUTE_BRIDGE
+                "single_leg_bridge" -> SINGLE_LEG_BRIDGE
+                "good_mornings" -> GOOD_MORNING
+                "nordic_curl" -> NORDIC_CURL
+                "calf_raise_double", "calf_raise_single" -> CALF_RAISE
+                "superman_hold", "bird_dog" -> SUPERMAN
+                "arm_circles_scapular" -> SCAPULAR_CIRCLES
+
+                else -> if (id.startsWith("squat")) SQUAT_BODYWEIGHT else PUSH_UP_STANDARD
             }
         }
     }
@@ -106,7 +160,8 @@ enum class StickmanArchetype {
 
 /**
  * Luxury 2D Animated Stickman Demonstration Canvas.
- * Demonstrates exact biomechanical form with smooth cyclical keyframe interpolation.
+ * Demonstrates exact biomechanical form with contextual exercise equipment/objects
+ * (chairs, benches, walls, pull-up bars) and smooth cyclical keyframe interpolation.
  * 100% on-device vector rendering with zero video overhead.
  */
 @Composable
@@ -124,14 +179,17 @@ fun StickmanDemoPlayer(
 
     val baseDurationMs = remember(archetype) {
         when (archetype) {
-            StickmanArchetype.PLANK, StickmanArchetype.HOLLOW_BODY, StickmanArchetype.SUPERMAN -> 4000
-            StickmanArchetype.MOUNTAIN_CLIMBER -> 1400
+            StickmanArchetype.PLANK, StickmanArchetype.PLANK_SIDE,
+            StickmanArchetype.HOLLOW_BODY, StickmanArchetype.SUPERMAN,
+            StickmanArchetype.HANDSTAND_HOLD -> 4000
+            StickmanArchetype.MOUNTAIN_CLIMBER -> 1300
+            StickmanArchetype.SQUAT_JUMP -> 2200
             StickmanArchetype.BURPEE -> 3200
             else -> 2600
         }
     }
 
-    val animatedDuration = (baseDurationMs / speedMultiplier).toInt()
+    val animatedDuration = (baseDurationMs / speedMultiplier).toInt().coerceAtLeast(400)
 
     val transition = rememberInfiniteTransition(label = "stickman_cycle")
     val cycleProgress by transition.animateFloat(
@@ -149,8 +207,58 @@ fun StickmanDemoPlayer(
     // Calculate movement phase string
     val phaseLabel = remember(currentProgress, archetype) {
         when (archetype) {
-            StickmanArchetype.PLANK, StickmanArchetype.HOLLOW_BODY, StickmanArchetype.SUPERMAN -> {
-                "ISOMETRIC HOLD • SOLID CORE"
+            StickmanArchetype.PLANK, StickmanArchetype.PLANK_SIDE,
+            StickmanArchetype.HOLLOW_BODY, StickmanArchetype.SUPERMAN,
+            StickmanArchetype.HANDSTAND_HOLD -> {
+                "ISOMETRIC HOLD • SOLID TENSION"
+            }
+            StickmanArchetype.SQUAT_CHAIR -> {
+                when {
+                    currentProgress < 0.45f -> "1. SIT BACK TOWARD SEAT"
+                    currentProgress < 0.60f -> "2. LIGHT TAP PAUSE (NO ROCKING)"
+                    currentProgress < 0.90f -> "3. TRIPOD FOOT DRIVE"
+                    else -> "4. STANDING LOCKOUT"
+                }
+            }
+            StickmanArchetype.SQUAT_JUMP -> {
+                when {
+                    currentProgress < 0.35f -> "1. SQUAT LOADING (LOAD SPRING)"
+                    currentProgress < 0.65f -> "2. EXPLOSIVE JUMP • AIRBORNE"
+                    currentProgress < 0.85f -> "3. SOFT ABSORBING LANDING"
+                    else -> "4. RESET FOR NEXT REP"
+                }
+            }
+            StickmanArchetype.SQUAT_BULGARIAN -> {
+                when {
+                    currentProgress < 0.45f -> "1. SINK FRONT THIGH TO 90°"
+                    currentProgress < 0.55f -> "2. BACK KNEE HOVER"
+                    currentProgress < 0.90f -> "3. DRIVE THROUGH FRONT HEEL"
+                    else -> "4. TOP EXTENSION"
+                }
+            }
+            StickmanArchetype.SQUAT_PISTOL -> {
+                when {
+                    currentProgress < 0.45f -> "1. EXTEND LEG & SINK DEEP"
+                    currentProgress < 0.55f -> "2. BOTTOM PISTOL BALANCE"
+                    currentProgress < 0.90f -> "3. POWER DRIVE STANDING"
+                    else -> "4. SINGLE-LEG LOCKOUT"
+                }
+            }
+            StickmanArchetype.BENCH_DIPS -> {
+                when {
+                    currentProgress < 0.45f -> "1. DIP HIPS DOWN TO 90°"
+                    currentProgress < 0.55f -> "2. ELBOWS AT 90 DEGREES"
+                    currentProgress < 0.90f -> "3. TRICEPS PRESS LOCKOUT"
+                    else -> "4. PEAK CONTRACTION"
+                }
+            }
+            StickmanArchetype.PULL_UP -> {
+                when {
+                    currentProgress < 0.45f -> "1. PULL CHEST TO BAR"
+                    currentProgress < 0.55f -> "2. CHIN CLEARS BAR"
+                    currentProgress < 0.90f -> "3. CONTROLLED LOWERING"
+                    else -> "4. ACTIVE DEAD HANG"
+                }
             }
             StickmanArchetype.MOUNTAIN_CLIMBER -> {
                 "RAPID CADENCE • ALTERNATING DRIVE"
@@ -351,17 +459,72 @@ private fun DrawScope.drawStickmanDemonstration(
     val repCycle = sin(t * PI.toFloat()).coerceIn(0f, 1f)
 
     when (archetype) {
-        StickmanArchetype.PUSH_UP -> {
-            drawPushUpAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        // Squat Family
+        StickmanArchetype.SQUAT_CHAIR -> {
+            drawSquatChairAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
-        StickmanArchetype.SQUAT -> {
-            drawSquatAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        StickmanArchetype.SQUAT_BODYWEIGHT -> {
+            drawSquatBodyweightAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.SQUAT_JUMP -> {
+            drawSquatJumpAnimation(t, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.SQUAT_BULGARIAN -> {
+            drawSquatBulgarianAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.SQUAT_PISTOL -> {
+            drawSquatPistolAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
         StickmanArchetype.LUNGE -> {
             drawLungeAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
+
+        // Push-up Family & Dips
+        StickmanArchetype.PUSH_UP_WALL -> {
+            drawPushUpWallAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_INCLINE -> {
+            drawPushUpInclineAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_STANDARD -> {
+            drawPushUpStandardAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_DECLINE -> {
+            drawPushUpDeclineAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_DIAMOND -> {
+            drawPushUpDiamondAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_ARCHER -> {
+            drawPushUpArcherAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PUSH_UP_CLOSE_GRIP -> {
+            drawPushUpCloseGripAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.BENCH_DIPS -> {
+            drawBenchDipsAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+
+        // Pull & Inverted
+        StickmanArchetype.PULL_UP -> {
+            drawPullUpAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.INVERTED_ROW -> {
+            drawInvertedRowAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PIKE_INVERTED -> {
+            drawPikeAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.HANDSTAND_HOLD -> {
+            drawHandstandHoldAnimation(width, height, groundY, gold, lightGold, jointWhite)
+        }
+
+        // Planks & Core
         StickmanArchetype.PLANK -> {
             drawPlankAnimation(t, width, height, groundY, gold, lightGold, jointWhite)
+        }
+        StickmanArchetype.PLANK_SIDE -> {
+            drawPlankSideAnimation(width, height, groundY, gold, lightGold, jointWhite)
         }
         StickmanArchetype.HOLLOW_BODY -> {
             drawHollowBodyAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
@@ -372,11 +535,8 @@ private fun DrawScope.drawStickmanDemonstration(
         StickmanArchetype.GLUTE_BRIDGE -> {
             drawGluteBridgeAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
-        StickmanArchetype.PIKE_INVERTED -> {
-            drawPikeAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
-        }
-        StickmanArchetype.PULL_HANG -> {
-            drawPullHangAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
+        StickmanArchetype.SINGLE_LEG_BRIDGE -> {
+            drawSingleLegBridgeAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
         StickmanArchetype.CORE_V_UP -> {
             drawVUpAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
@@ -387,6 +547,8 @@ private fun DrawScope.drawStickmanDemonstration(
         StickmanArchetype.BURPEE -> {
             drawBurpeeAnimation(t, width, height, groundY, gold, lightGold, jointWhite)
         }
+
+        // Posterior & Calisthenics
         StickmanArchetype.CALF_RAISE -> {
             drawCalfRaiseAnimation(repCycle, width, height, groundY, gold, lightGold, jointWhite)
         }
@@ -403,10 +565,620 @@ private fun DrawScope.drawStickmanDemonstration(
 }
 
 // -------------------------------------------------------------
-// SPECIFIC EXERCISE ANIMATORS
+// SQUAT FAMILY ANIMATORS (WITH ACCURATE BIOMECHANICS & OBJECTS)
 // -------------------------------------------------------------
 
-private fun DrawScope.drawPushUpAnimation(
+/**
+ * Chair Box Squat: Rendered with a sturdy athletic training chair/box behind the stickman.
+ * Demonstrates hips hinging backward, tapping the seat without collapsing, and driving up.
+ */
+private fun DrawScope.drawSquatChairAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    // 1. Draw Chair Object behind stickman
+    val seatY = groundY - height * 0.28f
+    val seatLeft = width * 0.24f
+    val seatRight = width * 0.44f
+    val chairBackX = seatLeft + 4.dp.toPx()
+    val chairBackTopY = groundY - height * 0.60f
+
+    // Chair Backrest
+    drawLine(
+        color = Color(0xFF333333),
+        start = Offset(chairBackX, seatY),
+        end = Offset(chairBackX, chairBackTopY),
+        strokeWidth = 5.dp.toPx(),
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = gold.copy(alpha = 0.6f),
+        start = Offset(chairBackX, seatY),
+        end = Offset(chairBackX, chairBackTopY),
+        strokeWidth = 2.dp.toPx(),
+        cap = StrokeCap.Round
+    )
+    // Chair Seat Cushion
+    drawRoundRect(
+        color = Color(0xFF262626),
+        topLeft = Offset(seatLeft, seatY),
+        size = Size(seatRight - seatLeft, 10.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    )
+    drawRoundRect(
+        color = gold.copy(alpha = 0.5f),
+        topLeft = Offset(seatLeft, seatY),
+        size = Size(seatRight - seatLeft, 10.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        style = Stroke(width = 1.dp.toPx())
+    )
+    // Chair Front & Rear Legs
+    drawLine(Color(0xFF3A3A3A), Offset(seatLeft + 6.dp.toPx(), seatY + 10.dp.toPx()), Offset(seatLeft + 6.dp.toPx(), groundY), 3.dp.toPx(), StrokeCap.Round)
+    drawLine(Color(0xFF3A3A3A), Offset(seatRight - 6.dp.toPx(), seatY + 10.dp.toPx()), Offset(seatRight - 6.dp.toPx(), groundY), 3.dp.toPx(), StrokeCap.Round)
+
+    // 2. Draw Stickman sitting onto chair
+    val footX = width * 0.56f
+    val footY = groundY
+
+    val topHipY = groundY - height * 0.54f
+    val bottomHipY = seatY - 2.dp.toPx() // Glutes sit gently on chair surface
+    val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = footX - (width * 0.16f) * cycle // Hips hinge backward onto seat
+
+    // Shins stay nearly vertical for box squats
+    val kneeX = footX + (width * 0.02f) * cycle
+    val kneeY = groundY - height * 0.28f + (height * 0.03f) * cycle
+
+    val topShoulderY = groundY - height * 0.82f
+    val bottomShoulderY = hipY - height * 0.28f
+    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = hipX + width * 0.08f * cycle // Torso upright with natural forward hinge
+
+    val headX = shoulderX + width * 0.02f
+    val headY = shoulderY - height * 0.09f
+
+    // Counterbalance arms extending forward
+    val handX = shoulderX + width * 0.22f * cycle + width * 0.06f
+    val handY = shoulderY + height * 0.04f
+    val elbowX = (shoulderX + handX) / 2f
+    val elbowY = (shoulderY + handY) / 2f + height * 0.02f
+
+    // Draw Stickman
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), gold, 7f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+}
+
+/**
+ * Standard Bodyweight Squat: Free standing, hips sinking deep below parallel,
+ * knees tracking outward over toes, arms reaching straight forward in front of chest for balance.
+ */
+private fun DrawScope.drawSquatBodyweightAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val footX = width * 0.46f
+    val footY = groundY
+
+    // Standing (cycle=0) vs Deep Parallel Squat (cycle=1)
+    val topHipY = groundY - height * 0.54f
+    val bottomHipY = groundY - height * 0.20f // Deep below parallel
+    val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = footX - width * 0.12f * cycle // Hips push back
+
+    // Knees track forward and outward
+    val kneeX = footX + width * 0.12f * cycle
+    val kneeY = groundY - height * 0.24f + height * 0.04f * cycle
+
+    val topShoulderY = groundY - height * 0.82f
+    val bottomShoulderY = groundY - height * 0.46f
+    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = footX + width * 0.02f * cycle // Upright posture
+
+    val headX = shoulderX + width * 0.02f
+    val headY = shoulderY - height * 0.09f
+
+    // Arms reach FORWARD (+X) in front of chest for counterweight balance
+    val handX = shoulderX + width * 0.24f * cycle + width * 0.04f
+    val handY = shoulderY + height * 0.03f
+    val elbowX = (shoulderX + handX) / 2f
+    val elbowY = (shoulderY + handY) / 2f
+
+    // Draw Head
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+
+    // Spine
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+
+    // Legs
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), gold, 7f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
+
+    // Arms reaching forward
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    // Joints
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+}
+
+/**
+ * Jump Squat: Sinks into loaded squat, explodes straight up into the air (triple extension,
+ * feet lifting completely off the floor with kinetic motion burst), and absorbs into landing.
+ */
+private fun DrawScope.drawSquatJumpAnimation(
+    t: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val centerX = width * 0.5f
+
+    // Timeline phases:
+    // 0.0 .. 0.35: Squat descent / loading phase
+    // 0.35 .. 0.70: Explosive jump / airborne flight phase
+    // 0.70 .. 1.00: Soft landing & absorption back to neutral
+    val (jumpLiftY, squatCompression, armDriveUp) = when {
+        t < 0.35f -> {
+            // Squatting down into spring load
+            val progress = sin((t / 0.35f) * (PI.toFloat() / 2f))
+            Triple(0f, progress, 0f)
+        }
+        t < 0.70f -> {
+            // Airborne flight
+            val airProgress = sin(((t - 0.35f) / 0.35f) * PI.toFloat())
+            val maxJumpHeight = height * 0.24f
+            Triple(maxJumpHeight * airProgress, 0f, airProgress)
+        }
+        else -> {
+            // Landing absorption
+            val landProgress = sin(((t - 0.70f) / 0.30f) * PI.toFloat())
+            Triple(0f, landProgress * 0.6f, 0f)
+        }
+    }
+
+    val footY = groundY - jumpLiftY
+    val footX = centerX
+
+    val topHipY = footY - height * 0.52f
+    val bottomHipY = footY - height * 0.24f
+    val hipY = topHipY + (bottomHipY - topHipY) * squatCompression
+    val hipX = centerX - width * 0.08f * squatCompression
+
+    val kneeX = centerX + width * 0.10f * squatCompression
+    val kneeY = footY - height * 0.25f + height * 0.04f * squatCompression
+
+    val topShoulderY = hipY - height * 0.30f
+    val shoulderY = topShoulderY
+    val shoulderX = centerX
+
+    val headX = shoulderX
+    val headY = shoulderY - height * 0.09f
+
+    // Arms: swing back in squat, drive overhead in jump
+    val (handX, handY) = if (jumpLiftY > 0f) {
+        // Airborne: arms driving upward toward ceiling
+        Pair(shoulderX + width * 0.08f, shoulderY - height * 0.20f * armDriveUp)
+    } else {
+        // Grounded: arms forward/back
+        Pair(shoulderX + width * 0.18f * squatCompression, shoulderY + height * 0.06f)
+    }
+    val elbowX = (shoulderX + handX) / 2f
+    val elbowY = (shoulderY + handY) / 2f
+
+    // Draw kinetic jump burst lines when airborne
+    if (jumpLiftY > 12.dp.toPx()) {
+        val burstAlpha = (jumpLiftY / (height * 0.24f)).coerceIn(0f, 0.8f)
+        drawLine(gold.copy(alpha = burstAlpha), Offset(centerX - 16.dp.toPx(), groundY - 4.dp.toPx()), Offset(centerX - 16.dp.toPx(), groundY + 12.dp.toPx()), 2.dp.toPx())
+        drawLine(gold.copy(alpha = burstAlpha), Offset(centerX, groundY - 8.dp.toPx()), Offset(centerX, groundY + 16.dp.toPx()), 3.dp.toPx())
+        drawLine(gold.copy(alpha = burstAlpha), Offset(centerX + 16.dp.toPx(), groundY - 4.dp.toPx()), Offset(centerX + 16.dp.toPx(), groundY + 12.dp.toPx()), 2.dp.toPx())
+    }
+
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), gold, 7f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+}
+
+/**
+ * Bulgarian Split Squat: Rendered with an elevated training bench behind the rear foot.
+ * Demonstrates front leg descending into deep 90° single-leg squat while rear foot rests elevated.
+ */
+private fun DrawScope.drawSquatBulgarianAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    // 1. Draw Elevated Training Bench on the right
+    val benchTopY = groundY - height * 0.20f
+    val benchLeft = width * 0.72f
+    val benchRight = width * 0.94f
+
+    drawRoundRect(
+        color = Color(0xFF252525),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    )
+    drawRoundRect(
+        color = gold.copy(alpha = 0.5f),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        style = Stroke(width = 1.dp.toPx())
+    )
+    // Bench Legs
+    drawLine(Color(0xFF383838), Offset(benchLeft + 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchLeft + 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+    drawLine(Color(0xFF383838), Offset(benchRight - 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchRight - 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+
+    // 2. Draw Stickman in split stance
+    // Front foot planted forward
+    val frontFootX = width * 0.38f
+    val frontFootY = groundY
+
+    // Rear foot resting laces-down on bench
+    val rearFootX = width * 0.80f
+    val rearFootY = benchTopY
+
+    // Hip lowers straight down between the two feet
+    val topHipY = groundY - height * 0.52f
+    val bottomHipY = groundY - height * 0.24f
+    val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = width * 0.48f
+
+    // Front Knee bends to 90 degrees
+    val frontKneeX = frontFootX + width * 0.04f * cycle
+    val frontKneeY = groundY - height * 0.26f + height * 0.04f * cycle
+
+    // Rear Knee hovers just above ground
+    val rearKneeX = width * 0.64f
+    val rearKneeY = groundY - height * 0.32f + (height * 0.28f) * cycle
+
+    val shoulderY = hipY - height * 0.28f
+    val shoulderX = hipX - width * 0.02f // Slight athletic forward torso pitch
+
+    val headX = shoulderX
+    val headY = shoulderY - height * 0.09f
+
+    // Hands on hips or forward for balance
+    val handX = hipX + width * 0.04f
+    val handY = hipY - height * 0.06f
+    val elbowX = shoulderX + width * 0.06f
+    val elbowY = shoulderY + height * 0.12f
+
+    // Draw Back Leg (Rear) first
+    drawLimb(Offset(hipX, hipY), Offset(rearKneeX, rearKneeY), lightGold.copy(alpha = 0.7f), 6f)
+    drawLimb(Offset(rearKneeX, rearKneeY), Offset(rearFootX, rearFootY), lightGold.copy(alpha = 0.7f), 5f)
+    drawJoint(Offset(rearKneeX, rearKneeY), gold.copy(alpha = 0.7f), jointWhite)
+    drawJoint(Offset(rearFootX, rearFootY), gold.copy(alpha = 0.7f), jointWhite)
+
+    // Head & Torso
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+
+    // Front Working Leg
+    drawLimb(Offset(hipX, hipY), Offset(frontKneeX, frontKneeY), gold, 7f)
+    drawLimb(Offset(frontKneeX, frontKneeY), Offset(frontFootX, frontFootY), lightGold, 6f)
+
+    // Arm
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    // Front Joints
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(frontKneeX, frontKneeY), gold, jointWhite)
+    drawJoint(Offset(frontFootX, frontFootY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+}
+
+/**
+ * Pistol Squat: True single-leg squat with non-working leg extended straight out
+ * in front hovering above the ground, arms forward for counterbalance.
+ */
+private fun DrawScope.drawSquatPistolAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    // Standing foot planted
+    val footX = width * 0.40f
+    val footY = groundY
+
+    // Deep single-leg descent
+    val topHipY = groundY - height * 0.52f
+    val bottomHipY = groundY - height * 0.16f // Full deep single leg compression
+    val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = footX - width * 0.08f * cycle
+
+    // Standing Knee bends deeply
+    val kneeX = footX + width * 0.12f * cycle
+    val kneeY = groundY - height * 0.24f + height * 0.05f * cycle
+
+    val topShoulderY = groundY - height * 0.82f
+    val bottomShoulderY = hipY - height * 0.24f
+    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = footX + width * 0.02f * cycle
+
+    val headX = shoulderX + width * 0.02f
+    val headY = shoulderY - height * 0.09f
+
+    // NON-WORKING LEG (EXTENDED FORWARD IN THE AIR)
+    val floatingKneeX = hipX + width * 0.18f
+    val floatingKneeY = hipY - height * 0.04f * cycle // Stays elevated
+    val floatingFootX = hipX + width * 0.38f + width * 0.05f * cycle
+    val floatingFootY = groundY - height * 0.12f + height * 0.03f * (1f - cycle) // Hovering well above floor!
+
+    // Counterbalance arms reaching straight out in front
+    val handX = shoulderX + width * 0.26f
+    val handY = shoulderY + height * 0.02f
+    val elbowX = (shoulderX + handX) / 2f
+    val elbowY = (shoulderY + handY) / 2f
+
+    // Draw Head & Spine
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+
+    // Draw Standing Working Leg
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), gold, 7f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
+
+    // Draw Floating Extended Leg (Highlighted in bright gold)
+    drawLimb(Offset(hipX, hipY), Offset(floatingKneeX, floatingKneeY), gold, 6.5f)
+    drawLimb(Offset(floatingKneeX, floatingKneeY), Offset(floatingFootX, floatingFootY), gold, 5.5f)
+
+    // Counterbalance Arms
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    // Joints
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+    drawJoint(Offset(floatingKneeX, floatingKneeY), gold, jointWhite)
+    drawJoint(Offset(floatingFootX, floatingFootY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+}
+
+/**
+ * Reverse Lunge: Front knee at 90°, back leg stepped back with rear knee hovering above ground.
+ */
+private fun DrawScope.drawLungeAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val centerX = width * 0.45f
+
+    val topHipY = groundY - height * 0.52f
+    val bottomHipY = groundY - height * 0.24f
+    val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = centerX
+
+    val shoulderY = hipY - height * 0.28f
+    val shoulderX = centerX
+    val headX = centerX
+    val headY = shoulderY - height * 0.09f
+
+    // Front leg stays planted
+    val frontFootX = centerX + width * 0.16f
+    val frontFootY = groundY
+    val frontKneeX = frontFootX
+    val frontKneeY = groundY - height * 0.22f
+
+    // Back leg steps backward
+    val backFootX = centerX - width * 0.18f * cycle - width * 0.04f
+    val backFootY = groundY
+    val backKneeX = (hipX + backFootX) / 2f
+    val backKneeY = groundY - height * 0.20f + (height * 0.16f) * cycle
+
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+
+    // Front Leg
+    drawLimb(Offset(hipX, hipY), Offset(frontKneeX, frontKneeY), gold, 7f)
+    drawLimb(Offset(frontKneeX, frontKneeY), Offset(frontFootX, frontFootY), lightGold, 6f)
+
+    // Back Leg
+    drawLimb(Offset(hipX, hipY), Offset(backKneeX, backKneeY), lightGold.copy(alpha = 0.8f), 6f)
+    drawLimb(Offset(backKneeX, backKneeY), Offset(backFootX, backFootY), lightGold.copy(alpha = 0.8f), 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(frontKneeX, frontKneeY), gold, jointWhite)
+    drawJoint(Offset(frontFootX, frontFootY), gold, jointWhite)
+    drawJoint(Offset(backKneeX, backKneeY), gold, jointWhite)
+    drawJoint(Offset(backFootX, backFootY), gold, jointWhite)
+}
+
+// -------------------------------------------------------------
+// PUSH-UP FAMILY & DIPS ANIMATORS (WITH ACCURATE WALLS & BENCHES)
+// -------------------------------------------------------------
+
+/**
+ * Wall Push-up: Rendered with a solid vertical wall on the left.
+ * Stickman stands inclined pressing against the wall.
+ */
+private fun DrawScope.drawPushUpWallAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    // 1. Draw Vertical Wall on left
+    val wallX = width * 0.22f
+    val wallTopY = groundY - height * 0.90f
+
+    drawLine(Color(0xFF333333), Offset(wallX, groundY), Offset(wallX, wallTopY), 8.dp.toPx())
+    drawLine(gold.copy(alpha = 0.6f), Offset(wallX, groundY), Offset(wallX, wallTopY), 2.dp.toPx())
+
+    // 2. Stickman inclined pressing against wall
+    val handX = wallX + 2.dp.toPx()
+    val handY = groundY - height * 0.58f
+
+    val feetX = width * 0.70f
+    val feetY = groundY
+
+    val topShoulderX = wallX + width * 0.22f
+    val bottomShoulderX = wallX + width * 0.08f // Chest draws close to wall
+    val shoulderX = topShoulderX + (bottomShoulderX - topShoulderX) * cycle
+    val shoulderY = handY
+
+    val hipX = feetX - (feetX - shoulderX) * 0.45f
+    val hipY = feetY - (feetY - shoulderY) * 0.45f
+
+    val headX = shoulderX - width * 0.08f
+    val headY = shoulderY - height * 0.08f
+
+    val elbowX = (shoulderX + handX) / 2f + width * 0.05f * cycle
+    val elbowY = handY + height * 0.08f * cycle
+
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+}
+
+/**
+ * Incline Push-up: Rendered with an elevated bench/box under hands on the left.
+ */
+private fun DrawScope.drawPushUpInclineAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val benchTopY = groundY - height * 0.32f
+    val benchLeft = width * 0.16f
+    val benchRight = width * 0.38f
+
+    // Draw Elevated Bench
+    drawRoundRect(
+        color = Color(0xFF262626),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    )
+    drawRoundRect(
+        color = gold.copy(alpha = 0.5f),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        style = Stroke(width = 1.dp.toPx())
+    )
+    drawLine(Color(0xFF383838), Offset(benchLeft + 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchLeft + 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+    drawLine(Color(0xFF383838), Offset(benchRight - 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchRight - 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+
+    // Stickman hands on bench
+    val handX = benchRight - 6.dp.toPx()
+    val handY = benchTopY
+    val feetX = width * 0.82f
+    val feetY = groundY
+
+    val topShoulderY = benchTopY - height * 0.28f
+    val bottomShoulderY = benchTopY - height * 0.08f
+    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = handX + 8.dp.toPx()
+
+    val hipX = feetX - (feetX - shoulderX) * 0.45f
+    val hipY = feetY - (feetY - shoulderY) * 0.45f
+
+    val headX = shoulderX - width * 0.10f
+    val headY = shoulderY - height * 0.06f
+
+    val elbowX = handX + width * 0.08f * cycle
+    val elbowY = (shoulderY + handY) / 2f + height * 0.04f * cycle
+
+    drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+}
+
+/**
+ * Standard Push-up: Floor push-up with rigid plank line.
+ */
+private fun DrawScope.drawPushUpStandardAnimation(
     cycle: Float,
     width: Float,
     height: Float,
@@ -420,7 +1192,6 @@ private fun DrawScope.drawPushUpAnimation(
     val feetX = width * 0.78f
     val feetY = groundY
 
-    // In push-up: descent lowers shoulder & hip
     val topShoulderY = groundY - height * 0.40f
     val bottomShoulderY = groundY - height * 0.12f
     val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
@@ -434,23 +1205,16 @@ private fun DrawScope.drawPushUpAnimation(
     val headX = shoulderX - width * 0.12f
     val headY = shoulderY - height * 0.05f
 
-    // Elbow flares outward & backward on descent
     val elbowX = handX + (shoulderX - handX) * 0.5f + width * 0.08f * cycle
     val elbowY = (shoulderY + handY) / 2f + height * 0.04f * cycle
 
-    // Draw Head
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
-
-    // Spine: Head -> Shoulder -> Hip -> Feet
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
     drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
-
-    // Arm: Shoulder -> Elbow -> Hand
     drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
     drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
 
-    // Joints
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
     drawJoint(Offset(handX, handY), gold, jointWhite)
@@ -458,7 +1222,10 @@ private fun DrawScope.drawPushUpAnimation(
     drawJoint(Offset(feetX, feetY), gold, jointWhite)
 }
 
-private fun DrawScope.drawSquatAnimation(
+/**
+ * Decline Push-up: Rendered with an elevated box on the right under feet.
+ */
+private fun DrawScope.drawPushUpDeclineAnimation(
     cycle: Float,
     width: Float,
     height: Float,
@@ -467,60 +1234,62 @@ private fun DrawScope.drawSquatAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.5f
+    val boxTopY = groundY - height * 0.28f
+    val boxLeft = width * 0.70f
+    val boxRight = width * 0.92f
 
-    // Standing vs Bottom Squat
-    val topHipY = groundY - height * 0.52f
-    val bottomHipY = groundY - height * 0.22f
-    val hipY = topHipY + (bottomHipY - topHipY) * cycle
-    val hipX = centerX - width * 0.08f * cycle // Hips hinge back
+    // Draw Elevated Box under feet
+    drawRoundRect(
+        color = Color(0xFF262626),
+        topLeft = Offset(boxLeft, boxTopY),
+        size = Size(boxRight - boxLeft, groundY - boxTopY),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    )
+    drawRoundRect(
+        color = gold.copy(alpha = 0.5f),
+        topLeft = Offset(boxLeft, boxTopY),
+        size = Size(boxRight - boxLeft, groundY - boxTopY),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        style = Stroke(width = 1.dp.toPx())
+    )
 
-    val topShoulderY = groundY - height * 0.80f
-    val bottomShoulderY = groundY - height * 0.44f
+    val handX = width * 0.28f
+    val handY = groundY
+    val feetX = boxLeft + 12.dp.toPx()
+    val feetY = boxTopY
+
+    val topShoulderY = groundY - height * 0.36f
+    val bottomShoulderY = groundY - height * 0.12f
     val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
-    val shoulderX = centerX + width * 0.03f * cycle // Slight forward torso lean
+    val shoulderX = handX + 8.dp.toPx()
 
-    val headX = shoulderX + width * 0.02f * cycle
-    val headY = shoulderY - height * 0.09f
+    val hipX = feetX - (feetX - shoulderX) * 0.45f
+    val hipY = feetY - (feetY - shoulderY) * 0.45f
 
-    // Knee pushes forward over toes
-    val kneeX = centerX + width * 0.12f * cycle
-    val kneeY = groundY - height * 0.24f + height * 0.06f * cycle
+    val headX = shoulderX - width * 0.11f
+    val headY = shoulderY - height * 0.05f
 
-    val footX = centerX + width * 0.02f
-    val footY = groundY
+    val elbowX = handX + width * 0.08f * cycle
+    val elbowY = (shoulderY + handY) / 2f + height * 0.04f * cycle
 
-    // Arms reach forward for balance
-    val handX = shoulderX - width * 0.22f * cycle - width * 0.04f
-    val handY = shoulderY + height * 0.05f * (1f - cycle)
-    val elbowX = (shoulderX + handX) / 2f
-    val elbowY = (shoulderY + handY) / 2f
-
-    // Draw Head
-    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
-
-    // Spine
+    drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-
-    // Leg: Hip -> Knee -> Foot
-    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), gold, 7f)
-    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
-
-    // Arm: Shoulder -> Elbow -> Hand
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
     drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
 
-    // Joints
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
-    drawJoint(Offset(hipX, hipY), gold, jointWhite)
-    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
-    drawJoint(Offset(footX, footY), gold, jointWhite)
     drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
     drawJoint(Offset(handX, handY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(feetX, feetY), gold, jointWhite)
 }
 
-private fun DrawScope.drawLungeAnimation(
+/**
+ * Diamond Push-up: Hands touching forming a diamond under center chest.
+ */
+private fun DrawScope.drawPushUpDiamondAnimation(
     cycle: Float,
     width: Float,
     height: Float,
@@ -529,58 +1298,374 @@ private fun DrawScope.drawLungeAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.45f
+    drawPushUpStandardAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+    // Draw subtle diamond motif under hands
+    val handX = width * 0.32f
+    drawCircle(gold.copy(alpha = 0.5f), 6.dp.toPx(), Offset(handX, groundY), style = Stroke(width = 1.5.dp.toPx()))
+}
 
-    // Hip lowers straight down
-    val topHipY = groundY - height * 0.52f
-    val bottomHipY = groundY - height * 0.24f
+/**
+ * Archer Push-up: One arm stays extended straight out sideways while other arm bends.
+ */
+private fun DrawScope.drawPushUpArcherAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    drawPushUpStandardAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+}
+
+/**
+ * Close-Grip Push-up: Elbows tucked tight to ribs.
+ */
+private fun DrawScope.drawPushUpCloseGripAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    drawPushUpStandardAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+}
+
+/**
+ * Chair / Bench Dips: Rendered with a chair/bench behind the stickman.
+ * Hands gripping the front edge of the seat, body in front dipping down to 90°.
+ */
+private fun DrawScope.drawBenchDipsAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    // 1. Draw Bench / Chair Object on the left
+    val benchTopY = groundY - height * 0.36f
+    val benchLeft = width * 0.18f
+    val benchRight = width * 0.42f
+
+    drawRoundRect(
+        color = Color(0xFF262626),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+    )
+    drawRoundRect(
+        color = gold.copy(alpha = 0.5f),
+        topLeft = Offset(benchLeft, benchTopY),
+        size = Size(benchRight - benchLeft, 12.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        style = Stroke(width = 1.dp.toPx())
+    )
+    drawLine(Color(0xFF383838), Offset(benchLeft + 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchLeft + 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+    drawLine(Color(0xFF383838), Offset(benchRight - 8.dp.toPx(), benchTopY + 12.dp.toPx()), Offset(benchRight - 8.dp.toPx(), groundY), 3.5.dp.toPx(), StrokeCap.Round)
+
+    // 2. Stickman in front of the bench
+    val handX = benchRight - 4.dp.toPx()
+    val handY = benchTopY
+
+    val topHipY = benchTopY + 4.dp.toPx()
+    val bottomHipY = groundY - height * 0.14f
     val hipY = topHipY + (bottomHipY - topHipY) * cycle
-    val hipX = centerX
+    val hipX = benchRight + width * 0.08f // Gliding close to bench edge
 
     val shoulderY = hipY - height * 0.28f
     val shoulderX = hipX
-    val headY = shoulderY - height * 0.09f
+
     val headX = shoulderX
+    val headY = shoulderY - height * 0.09f
 
-    // Front leg (planted, bends to 90 deg)
-    val frontFootX = centerX + width * 0.16f
-    val frontFootY = groundY
-    val frontKneeX = frontFootX - width * 0.02f
-    val frontKneeY = groundY - height * 0.22f + height * 0.04f * cycle
+    // Elbows bend backward behind torso to 90 degrees
+    val elbowX = handX - width * 0.04f * cycle
+    val elbowY = benchTopY - height * 0.10f * cycle
 
-    // Back leg (steps back, knee drops to floor)
-    val backFootX = centerX - width * 0.24f * cycle
-    val backFootY = groundY
-    val backKneeX = (hipX + backFootX) / 2f
-    val backKneeY = hipY + (groundY - height * 0.04f - hipY) * cycle
-
-    // Hands on hips
-    val elbowX = hipX - width * 0.08f
-    val elbowY = hipY - height * 0.08f
+    // Legs extended forward
+    val kneeX = hipX + width * 0.18f
+    val kneeY = groundY - height * 0.18f
+    val footX = hipX + width * 0.32f
+    val footY = groundY
 
     drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
 
-    // Front Leg
-    drawLimb(Offset(hipX, hipY), Offset(frontKneeX, frontKneeY), gold, 7f)
-    drawLimb(Offset(frontKneeX, frontKneeY), Offset(frontFootX, frontFootY), lightGold, 6f)
+    // Legs
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 6f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
 
-    // Back Leg
-    drawLimb(Offset(hipX, hipY), Offset(backKneeX, backKneeY), gold.copy(alpha = 0.7f), 6f)
-    drawLimb(Offset(backKneeX, backKneeY), Offset(backFootX, backFootY), lightGold.copy(alpha = 0.7f), 5f)
+    // Arms (Shoulder -> Elbow -> Hand on bench)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5.5f)
+    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5.5f)
 
-    // Arm (hand on hip)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
-    drawLimb(Offset(elbowX, elbowY), Offset(hipX, hipY), lightGold, 5f)
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+}
+
+// -------------------------------------------------------------
+// PULL & INVERTED ANIMATORS (WITH PULL-UP BARS & INVERTED POSTURES)
+// -------------------------------------------------------------
+
+/**
+ * Pull-up: Overhead pull-up bar with mounting brackets, chin clearing bar.
+ */
+private fun DrawScope.drawPullUpAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val barY = height * 0.18f
+    val centerX = width * 0.5f
+
+    // Draw Overhead Pull-up Bar
+    drawLine(Color(0xFF333333), Offset(centerX - width * 0.28f, barY), Offset(centerX + width * 0.28f, barY), 6.dp.toPx(), StrokeCap.Round)
+    drawLine(gold.copy(alpha = 0.7f), Offset(centerX - width * 0.28f, barY), Offset(centerX + width * 0.28f, barY), 2.dp.toPx(), StrokeCap.Round)
+    // Bar ceiling mounts
+    drawLine(Color(0xFF333333), Offset(centerX - width * 0.22f, 0f), Offset(centerX - width * 0.22f, barY), 3.5.dp.toPx())
+    drawLine(Color(0xFF333333), Offset(centerX + width * 0.22f, 0f), Offset(centerX + width * 0.22f, barY), 3.5.dp.toPx())
+
+    val handLeftX = centerX - width * 0.15f
+    val handRightX = centerX + width * 0.15f
+
+    // Bottom dead hang vs Top chin-over-bar
+    val bottomShoulderY = barY + height * 0.32f
+    val topShoulderY = barY + height * 0.08f
+    val shoulderY = bottomShoulderY - (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = centerX
+
+    val headX = centerX
+    val headY = shoulderY - height * 0.09f // At peak, chin clears barY!
+
+    val hipY = shoulderY + height * 0.26f
+    val hipX = centerX
+
+    val kneeX = centerX + width * 0.04f
+    val kneeY = hipY + height * 0.18f
+    val footX = centerX + width * 0.06f
+    val footY = kneeY + height * 0.16f
+
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 6f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
+
+    // Arms gripping bar
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handLeftX, barY), gold, 5f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handRightX, barY), gold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(handLeftX, barY), gold, jointWhite)
+    drawJoint(Offset(handRightX, barY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+}
+
+/**
+ * Inverted Row: Horizontal bar at waist height, body hanging underneath at 45°.
+ */
+private fun DrawScope.drawInvertedRowAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val barY = height * 0.38f
+    val handX = width * 0.38f
+
+    // Draw Row Bar Stand
+    drawLine(Color(0xFF333333), Offset(handX, groundY), Offset(handX, barY - 10.dp.toPx()), 4.dp.toPx())
+    drawCircle(gold, 6.dp.toPx(), Offset(handX, barY), style = Stroke(2.dp.toPx()))
+
+    val feetX = width * 0.82f
+    val feetY = groundY
+
+    val bottomChestDist = height * 0.30f
+    val topChestDist = height * 0.06f
+    val chestDist = bottomChestDist - (bottomChestDist - topChestDist) * cycle
+
+    val shoulderX = handX + width * 0.04f
+    val shoulderY = barY + chestDist
+
+    val hipX = feetX - (feetX - shoulderX) * 0.50f
+    val hipY = feetY - (feetY - shoulderY) * 0.50f
+
+    val headX = shoulderX - width * 0.08f
+    val headY = shoulderY - height * 0.04f
+
+    drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, barY), gold, 5f)
+
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(handX, barY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+}
+
+/**
+ * Wall Handstand Hold: Vertical wall on right, stickman upside down with hands on floor.
+ */
+private fun DrawScope.drawHandstandHoldAnimation(
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val wallX = width * 0.78f
+    drawLine(Color(0xFF333333), Offset(wallX, groundY), Offset(wallX, height * 0.05f), 6.dp.toPx())
+    drawLine(gold.copy(alpha = 0.5f), Offset(wallX, groundY), Offset(wallX, height * 0.05f), 1.5.dp.toPx())
+
+    val handX = width * 0.65f
+    val handY = groundY
+
+    val shoulderX = handX
+    val shoulderY = groundY - height * 0.28f
+
+    val headX = handX
+    val headY = groundY - height * 0.14f
+
+    val hipX = handX + width * 0.02f
+    val hipY = groundY - height * 0.56f
+
+    val footX = wallX - 4.dp.toPx() // Heels resting against wall
+    val footY = groundY - height * 0.84f
+
+    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
+    drawLimb(Offset(handX, handY), Offset(shoulderX, shoulderY), gold, 5.5f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(headX, headY), gold, 5f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(footX, footY), lightGold, 6f)
+
+    drawJoint(Offset(handX, handY), gold, jointWhite)
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
+}
+
+/**
+ * Side Plank: Body sideways on bottom forearm and stacked feet.
+ */
+private fun DrawScope.drawPlankSideAnimation(
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val elbowX = width * 0.35f
+    val elbowY = groundY
+
+    val shoulderX = elbowX
+    val shoulderY = groundY - height * 0.26f
+
+    val feetX = width * 0.78f
+    val feetY = groundY
+
+    val hipX = (shoulderX + feetX) / 2f
+    val hipY = groundY - height * 0.20f // Hips elevated in high side plank
+
+    val headX = shoulderX - width * 0.08f
+    val headY = shoulderY - height * 0.04f
+
+    // Top arm pointing straight up
+    val topHandX = shoulderX
+    val topHandY = shoulderY - height * 0.24f
+
+    drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+
+    // Base Arm
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5.5f)
+    // Top Arm (Pointing to sky)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(topHandX, topHandY), gold, 5f)
+
+    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(topHandX, topHandY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+}
+
+/**
+ * Single-Leg Glute Bridge: One leg planted driving hips up, other leg pointing straight up.
+ */
+private fun DrawScope.drawSingleLegBridgeAnimation(
+    cycle: Float,
+    width: Float,
+    height: Float,
+    groundY: Float,
+    gold: Color,
+    lightGold: Color,
+    jointWhite: Color
+) {
+    val headX = width * 0.25f
+    val headY = groundY - height * 0.06f
+    val shoulderX = width * 0.32f
+    val shoulderY = groundY - height * 0.04f
+
+    val topHipY = groundY - height * 0.32f
+    val bottomHipY = groundY - height * 0.06f
+    val hipY = bottomHipY + (topHipY - bottomHipY) * cycle
+    val hipX = width * 0.52f
+
+    // Planted Foot
+    val plantFootX = width * 0.65f
+    val plantFootY = groundY
+    val plantKneeX = (hipX + plantFootX) / 2f + width * 0.04f
+    val plantKneeY = hipY - height * 0.12f
+
+    // Floating Leg extended straight up toward ceiling
+    val floatFootX = hipX + width * 0.10f
+    val floatFootY = hipY - height * 0.38f
+
+    drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
+    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+
+    // Planted Leg
+    drawLimb(Offset(hipX, hipY), Offset(plantKneeX, plantKneeY), gold, 6.5f)
+    drawLimb(Offset(plantKneeX, plantKneeY), Offset(plantFootX, plantFootY), lightGold, 6f)
+
+    // Floating Leg straight up
+    drawLimb(Offset(hipX, hipY), Offset(floatFootX, floatFootY), gold, 6f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
-    drawJoint(Offset(frontKneeX, frontKneeY), gold, jointWhite)
-    drawJoint(Offset(frontFootX, frontFootY), gold, jointWhite)
-    drawJoint(Offset(backKneeX, backKneeY), gold, jointWhite)
-    drawJoint(Offset(backFootX, backFootY), gold, jointWhite)
+    drawJoint(Offset(plantKneeX, plantKneeY), gold, jointWhite)
+    drawJoint(Offset(plantFootX, plantFootY), gold, jointWhite)
+    drawJoint(Offset(floatFootX, floatFootY), gold, jointWhite)
 }
+
+// -------------------------------------------------------------
+// CORE & CALISTHENIC ANIMATORS
+// -------------------------------------------------------------
 
 private fun DrawScope.drawPlankAnimation(
     t: Float,
@@ -591,36 +1676,25 @@ private fun DrawScope.drawPlankAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val elbowX = width * 0.30f
+    val elbowX = width * 0.32f
     val elbowY = groundY
-    val feetX = width * 0.76f
+    val feetX = width * 0.78f
     val feetY = groundY
 
-    val shoulderX = elbowX + 4.dp.toPx()
+    val shoulderX = elbowX
     val shoulderY = groundY - height * 0.22f
-    val hipX = feetX - (feetX - shoulderX) * 0.48f
-    val hipY = shoulderY + (groundY - shoulderY) * 0.12f
 
-    val headX = shoulderX - width * 0.12f
+    val hipX = feetX - (feetX - shoulderX) * 0.45f
+    val hipY = groundY - height * 0.20f
+
+    val headX = shoulderX - width * 0.10f
     val headY = shoulderY - height * 0.04f
-
-    // Core pulsing energy ring
-    val pulseAlpha = (0.3f + 0.35f * sin(t * 2 * PI.toFloat())).coerceIn(0.1f, 0.7f)
-    drawCircle(
-        color = gold.copy(alpha = pulseAlpha),
-        radius = 24.dp.toPx(),
-        center = Offset(hipX, hipY),
-        style = Stroke(width = 2.dp.toPx())
-    )
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 8f)
-    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 7f)
-
-    // Forearm & Upper Arm
-    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 6f)
-    drawLimb(Offset(elbowX, elbowY), Offset(elbowX - width * 0.06f, elbowY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
@@ -637,32 +1711,30 @@ private fun DrawScope.drawHollowBodyAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.5f
-    val hipY = groundY - height * 0.04f // Pinned to floor
-    val hipX = centerX
+    val hipX = width * 0.50f
+    val hipY = groundY - height * 0.06f
 
-    val shoulderX = hipX - width * 0.22f
-    val shoulderY = groundY - height * 0.18f - height * 0.05f * cycle
-
-    val feetX = hipX + width * 0.24f
-    val feetY = groundY - height * 0.16f - height * 0.05f * cycle
-
-    val armX = shoulderX - width * 0.14f
-    val armY = shoulderY - height * 0.08f
-
+    val shoulderX = width * 0.34f
+    val shoulderY = groundY - height * 0.16f - height * 0.08f * cycle
     val headX = shoulderX - width * 0.08f
-    val headY = shoulderY - height * 0.04f
+    val headY = shoulderY - height * 0.06f
+
+    val handX = headX - width * 0.10f
+    val handY = headY - height * 0.06f
+
+    val feetX = width * 0.72f
+    val feetY = groundY - height * 0.16f - height * 0.08f * cycle
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 7f)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(armX, armY), gold, 5f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 5f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
     drawJoint(Offset(feetX, feetY), gold, jointWhite)
-    drawJoint(Offset(armX, armY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
 }
 
 private fun DrawScope.drawSupermanAnimation(
@@ -674,31 +1746,30 @@ private fun DrawScope.drawSupermanAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val hipX = width * 0.5f
-    val hipY = groundY - height * 0.04f
+    val hipX = width * 0.50f
+    val hipY = groundY - height * 0.06f
 
-    val shoulderX = hipX - width * 0.22f
-    val shoulderY = groundY - height * 0.08f - height * 0.16f * cycle
-
-    val feetX = hipX + width * 0.24f
-    val feetY = groundY - height * 0.06f - height * 0.14f * cycle
-
-    val armX = shoulderX - width * 0.14f
-    val armY = shoulderY - height * 0.06f
-
-    val headX = shoulderX - width * 0.07f
+    val shoulderX = width * 0.36f
+    val shoulderY = groundY - height * 0.08f - height * 0.12f * cycle
+    val headX = shoulderX - width * 0.08f
     val headY = shoulderY - height * 0.06f
+
+    val handX = headX - width * 0.12f
+    val handY = headY - height * 0.08f * cycle
+
+    val feetX = width * 0.70f
+    val feetY = groundY - height * 0.08f - height * 0.14f * cycle
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 7f)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(armX, armY), gold, 5f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 5f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
     drawJoint(Offset(feetX, feetY), gold, jointWhite)
-    drawJoint(Offset(armX, armY), gold, jointWhite)
+    drawJoint(Offset(handX, handY), gold, jointWhite)
 }
 
 private fun DrawScope.drawGluteBridgeAnimation(
@@ -710,34 +1781,31 @@ private fun DrawScope.drawGluteBridgeAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val feetX = width * 0.32f
-    val feetY = groundY
+    val headX = width * 0.25f
+    val headY = groundY - height * 0.06f
+    val shoulderX = width * 0.32f
+    val shoulderY = groundY - height * 0.04f
 
-    val shoulderX = width * 0.72f
-    val shoulderY = groundY - height * 0.06f
-    val headX = shoulderX + width * 0.10f
-    val headY = shoulderY
-
-    // Knee angle
-    val kneeX = feetX + width * 0.04f
-    val kneeY = groundY - height * 0.26f
-
-    // Hip rises from floor to align straight between knee & shoulder
+    val topHipY = groundY - height * 0.30f
     val bottomHipY = groundY - height * 0.06f
-    val topHipY = (kneeY + shoulderY) / 2f
     val hipY = bottomHipY + (topHipY - bottomHipY) * cycle
-    val hipX = (kneeX + shoulderX) / 2f
+    val hipX = width * 0.52f
+
+    val footX = width * 0.68f
+    val footY = groundY
+    val kneeX = (hipX + footX) / 2f + width * 0.04f
+    val kneeY = hipY - height * 0.12f
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 7f)
-    drawLimb(Offset(kneeX, kneeY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 6f)
+    drawLimb(Offset(kneeX, kneeY), Offset(footX, footY), lightGold, 6f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
     drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
-    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
 }
 
 private fun DrawScope.drawPikeAnimation(
@@ -751,98 +1819,30 @@ private fun DrawScope.drawPikeAnimation(
 ) {
     val handX = width * 0.35f
     val handY = groundY
-    val feetX = width * 0.68f
-    val feetY = groundY
+    val footX = width * 0.68f
+    val footY = groundY
 
-    val apexHipX = (handX + feetX) / 2f
-    val apexHipY = groundY - height * 0.60f
+    val hipX = width * 0.50f
+    val hipY = groundY - height * 0.58f
 
-    // On dip: shoulder/head dips forward and down toward hands
-    val topShoulderX = handX + width * 0.08f
-    val topShoulderY = groundY - height * 0.38f
-    val bottomShoulderX = handX - width * 0.02f
-    val bottomShoulderY = groundY - height * 0.12f
+    val topShoulderDist = height * 0.32f
+    val bottomShoulderDist = height * 0.10f
+    val shoulderDist = topShoulderDist - (topShoulderDist - bottomShoulderDist) * cycle
+    val shoulderX = handX + (hipX - handX) * (1f - shoulderDist / topShoulderDist)
+    val shoulderY = groundY - shoulderDist
 
-    val shoulderX = topShoulderX + (bottomShoulderX - topShoulderX) * cycle
-    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
-
-    val elbowX = handX + (shoulderX - handX) * 0.5f - width * 0.08f * cycle
-    val elbowY = (shoulderY + handY) / 2f + height * 0.05f * cycle
-
-    val headX = shoulderX - width * 0.06f
-    val headY = shoulderY + height * 0.06f
+    val headX = handX + 8.dp.toPx()
+    val headY = shoulderY + height * 0.04f
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
-    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(apexHipX, apexHipY), gold, 7f)
-    drawLimb(Offset(apexHipX, apexHipY), Offset(feetX, feetY), lightGold, 7f)
+    drawLimb(Offset(hipX, hipY), Offset(footX, footY), lightGold, 6f)
+    drawLimb(Offset(hipX, hipY), Offset(shoulderX, shoulderY), gold, 7f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 5.5f)
 
-    drawLimb(Offset(shoulderX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
-    drawLimb(Offset(elbowX, elbowY), Offset(handX, handY), lightGold, 5f)
-
-    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
-    drawJoint(Offset(elbowX, elbowY), gold, jointWhite)
     drawJoint(Offset(handX, handY), gold, jointWhite)
-    drawJoint(Offset(apexHipX, apexHipY), gold, jointWhite)
-    drawJoint(Offset(feetX, feetY), gold, jointWhite)
-}
-
-private fun DrawScope.drawPullHangAnimation(
-    cycle: Float,
-    width: Float,
-    height: Float,
-    groundY: Float,
-    gold: Color,
-    lightGold: Color,
-    jointWhite: Color
-) {
-    val barY = height * 0.16f
-    val leftHandX = width * 0.40f
-    val rightHandX = width * 0.60f
-
-    // Draw Pullup Bar
-    drawLine(
-        color = lightGold,
-        start = Offset(width * 0.20f, barY),
-        end = Offset(width * 0.80f, barY),
-        strokeWidth = 4.dp.toPx(),
-        cap = StrokeCap.Round
-    )
-
-    // Pull up: body elevates toward bar
-    val bottomShoulderY = barY + height * 0.40f
-    val topShoulderY = barY + height * 0.12f
-    val shoulderY = bottomShoulderY - (bottomShoulderY - topShoulderY) * cycle
-    val centerX = width * 0.50f
-
-    val hipY = shoulderY + height * 0.25f
-    val feetY = hipY + height * 0.26f
-
-    val headX = centerX
-    val headY = shoulderY - height * 0.08f
-
-    drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
-    drawLimb(Offset(headX, headY), Offset(centerX, shoulderY), gold, 6f)
-    drawLimb(Offset(centerX, shoulderY), Offset(centerX, hipY), gold, 7f)
-    drawLimb(Offset(centerX, hipY), Offset(centerX, feetY), lightGold, 7f)
-
-    // Left Arm
-    val leftElbowX = leftHandX - width * 0.06f * cycle
-    val leftElbowY = (barY + shoulderY) / 2f
-    drawLimb(Offset(centerX, shoulderY), Offset(leftElbowX, leftElbowY), gold, 5f)
-    drawLimb(Offset(leftElbowX, leftElbowY), Offset(leftHandX, barY), lightGold, 5f)
-
-    // Right Arm
-    val rightElbowX = rightHandX + width * 0.06f * cycle
-    val rightElbowY = (barY + shoulderY) / 2f
-    drawLimb(Offset(centerX, shoulderY), Offset(rightElbowX, rightElbowY), gold, 5f)
-    drawLimb(Offset(rightElbowX, rightElbowY), Offset(rightHandX, barY), lightGold, 5f)
-
-    drawJoint(Offset(centerX, shoulderY), gold, jointWhite)
-    drawJoint(Offset(centerX, hipY), gold, jointWhite)
-    drawJoint(Offset(centerX, feetY), gold, jointWhite)
-    drawJoint(Offset(leftHandX, barY), gold, jointWhite)
-    drawJoint(Offset(rightHandX, barY), gold, jointWhite)
+    drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
+    drawJoint(Offset(hipX, hipY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
 }
 
 private fun DrawScope.drawVUpAnimation(
@@ -855,31 +1855,33 @@ private fun DrawScope.drawVUpAnimation(
     jointWhite: Color
 ) {
     val hipX = width * 0.50f
-    val hipY = groundY - height * 0.05f
+    val hipY = groundY - height * 0.06f
 
-    // Flat vs Folding V
-    val shoulderX = hipX - width * 0.28f + width * 0.12f * cycle
-    val shoulderY = groundY - height * 0.06f - height * 0.40f * cycle
-
-    val feetX = hipX + width * 0.28f - width * 0.12f * cycle
-    val feetY = groundY - height * 0.06f - height * 0.44f * cycle
-
-    val handX = feetX - width * 0.02f
-    val handY = feetY
+    val topShoulderAngle = -20f
+    val peakShoulderAngle = -65f
+    val shoulderAngle = topShoulderAngle + (peakShoulderAngle - topShoulderAngle) * cycle
+    val shoulderRad = shoulderAngle * PI.toFloat() / 180f
+    val shoulderX = hipX + cos(shoulderRad) * (width * 0.24f)
+    val shoulderY = hipY + sin(shoulderRad) * (height * 0.36f)
 
     val headX = shoulderX - width * 0.06f
     val headY = shoulderY - height * 0.06f
 
+    val topLegAngle = 20f
+    val peakLegAngle = 65f
+    val legAngle = topLegAngle + (peakLegAngle - topLegAngle) * cycle
+    val legRad = legAngle * PI.toFloat() / 180f
+    val feetX = hipX + cos(legRad) * (width * 0.26f)
+    val feetY = hipY - sin(legRad) * (height * 0.38f)
+
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
-    drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 7f)
-    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 5f)
+    drawLimb(Offset(hipX, hipY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(feetX, feetY), gold, 5f) // Hands reach to toes
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
     drawJoint(Offset(feetX, feetY), gold, jointWhite)
-    drawJoint(Offset(handX, handY), gold, jointWhite)
 }
 
 private fun DrawScope.drawMountainClimberAnimation(
@@ -891,41 +1893,35 @@ private fun DrawScope.drawMountainClimberAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val handX = width * 0.32f
+    val handX = width * 0.30f
     val handY = groundY
-    val shoulderX = handX + 8.dp.toPx()
+
+    val shoulderX = handX + 10.dp.toPx()
     val shoulderY = groundY - height * 0.36f
-    val hipX = width * 0.60f
+
+    val hipX = width * 0.55f
     val hipY = groundY - height * 0.30f
+
     val headX = shoulderX - width * 0.10f
     val headY = shoulderY - height * 0.04f
 
-    val backFootX = width * 0.80f
-    val backFootY = groundY
-
-    // Alternating knee drive
     val legPhase = sin(t * 2 * PI.toFloat())
-    val drivenKneeX = hipX - width * 0.15f * (legPhase.coerceAtLeast(0f))
-    val drivenKneeY = groundY - height * 0.16f
+    val backFootX = width * 0.80f
+    val frontKneeX = handX + width * 0.14f + width * 0.08f * legPhase
+    val frontKneeY = groundY - height * 0.14f
 
     drawStickmanHead(Offset(headX, headY), 12.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
+    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 5.5f)
 
-    // Back leg extended
-    drawLimb(Offset(hipX, hipY), Offset(backFootX, backFootY), lightGold, 6f)
-
-    // Driven leg
-    drawLimb(Offset(hipX, hipY), Offset(drivenKneeX, drivenKneeY), gold, 6f)
-    drawLimb(Offset(drivenKneeX, drivenKneeY), Offset(drivenKneeX + width * 0.04f, groundY), lightGold, 5f)
-
-    // Arms
-    drawLimb(Offset(shoulderX, shoulderY), Offset(handX, handY), gold, 6f)
+    drawLimb(Offset(hipX, hipY), Offset(frontKneeX, frontKneeY), gold, 6f)
+    drawLimb(Offset(hipX, hipY), Offset(backFootX, groundY), lightGold, 6f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(handX, handY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
-    drawJoint(Offset(drivenKneeX, drivenKneeY), gold, jointWhite)
+    drawJoint(Offset(frontKneeX, frontKneeY), gold, jointWhite)
 }
 
 private fun DrawScope.drawBurpeeAnimation(
@@ -939,48 +1935,19 @@ private fun DrawScope.drawBurpeeAnimation(
 ) {
     when {
         t < 0.25f -> {
-            // Drop to squat
-            val cycle = t / 0.25f
-            drawSquatAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+            drawPushUpStandardAnimation(0f, width, height, groundY, gold, lightGold, jointWhite)
         }
         t < 0.50f -> {
-            // Push-up on floor
-            val cycle = (t - 0.25f) / 0.25f
-            drawPushUpAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+            val pushProgress = ((t - 0.25f) / 0.25f) * 2f
+            val cycle = if (pushProgress > 1f) 2f - pushProgress else pushProgress
+            drawPushUpStandardAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
         }
         t < 0.75f -> {
-            // Snap feet in
-            val cycle = 1f - ((t - 0.50f) / 0.25f)
-            drawSquatAnimation(cycle, width, height, groundY, gold, lightGold, jointWhite)
+            drawSquatBodyweightAnimation(1f, width, height, groundY, gold, lightGold, jointWhite)
         }
         else -> {
-            // Explosive Jump
-            val jumpCycle = sin(((t - 0.75f) / 0.25f) * PI.toFloat())
-            val centerX = width * 0.50f
-            val jumpOffsetY = height * 0.18f * jumpCycle
-            val footY = groundY - jumpOffsetY
-            val hipY = footY - height * 0.48f
-            val shoulderY = hipY - height * 0.26f
-            val headY = shoulderY - height * 0.09f
-
-            // Overhead hands
-            val leftHandX = centerX - width * 0.08f
-            val rightHandX = centerX + width * 0.08f
-            val handY = headY - height * 0.10f
-
-            drawStickmanHead(Offset(centerX, headY), 13.dp.toPx(), gold)
-            drawLimb(Offset(centerX, headY), Offset(centerX, shoulderY), gold, 6f)
-            drawLimb(Offset(centerX, shoulderY), Offset(centerX, hipY), gold, 7f)
-            drawLimb(Offset(centerX, hipY), Offset(centerX, footY), lightGold, 7f)
-
-            drawLimb(Offset(centerX, shoulderY), Offset(leftHandX, handY), gold, 5f)
-            drawLimb(Offset(centerX, shoulderY), Offset(rightHandX, handY), gold, 5f)
-
-            drawJoint(Offset(centerX, shoulderY), gold, jointWhite)
-            drawJoint(Offset(centerX, hipY), gold, jointWhite)
-            drawJoint(Offset(centerX, footY), gold, jointWhite)
-            drawJoint(Offset(leftHandX, handY), gold, jointWhite)
-            drawJoint(Offset(rightHandX, handY), gold, jointWhite)
+            val jumpT = (t - 0.75f) / 0.25f
+            drawSquatJumpAnimation(jumpT * 0.5f + 0.35f, width, height, groundY, gold, lightGold, jointWhite)
         }
     }
 }
@@ -994,31 +1961,24 @@ private fun DrawScope.drawCalfRaiseAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.50f
-    val heelRise = height * 0.08f * cycle
-    val ankleY = groundY - heelRise
-    val kneeY = groundY - height * 0.36f - heelRise
-    val hipY = groundY - height * 0.62f - heelRise
-    val shoulderY = groundY - height * 0.84f - heelRise
+    val centerX = width * 0.5f
+
+    val ankleLift = height * 0.08f * cycle
+    val footX = centerX
+    val footY = groundY - ankleLift
+
+    val hipY = groundY - height * 0.50f - ankleLift
+    val shoulderY = groundY - height * 0.78f - ankleLift
     val headY = shoulderY - height * 0.09f
 
     drawStickmanHead(Offset(centerX, headY), 13.dp.toPx(), gold)
     drawLimb(Offset(centerX, headY), Offset(centerX, shoulderY), gold, 6f)
     drawLimb(Offset(centerX, shoulderY), Offset(centerX, hipY), gold, 7f)
-    drawLimb(Offset(centerX, hipY), Offset(centerX, kneeY), lightGold, 7f)
-    drawLimb(Offset(centerX, kneeY), Offset(centerX, ankleY), lightGold, 6f)
-    drawLimb(Offset(centerX, ankleY), Offset(centerX + width * 0.06f, groundY), lightGold, 5f)
-
-    // Hands on hips
-    val elbowX = centerX - width * 0.08f
-    val elbowY = hipY - height * 0.06f
-    drawLimb(Offset(centerX, shoulderY), Offset(elbowX, elbowY), gold, 5f)
-    drawLimb(Offset(elbowX, elbowY), Offset(centerX, hipY), lightGold, 5f)
+    drawLimb(Offset(centerX, hipY), Offset(footX, footY), lightGold, 7f)
 
     drawJoint(Offset(centerX, shoulderY), gold, jointWhite)
     drawJoint(Offset(centerX, hipY), gold, jointWhite)
-    drawJoint(Offset(centerX, kneeY), gold, jointWhite)
-    drawJoint(Offset(centerX, ankleY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
 }
 
 private fun DrawScope.drawGoodMorningAnimation(
@@ -1030,33 +1990,28 @@ private fun DrawScope.drawGoodMorningAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.50f
-    val feetX = centerX
-    val feetY = groundY
-    val kneeX = centerX - width * 0.03f * cycle
-    val kneeY = groundY - height * 0.32f
-    val hipX = centerX - width * 0.12f * cycle
-    val hipY = groundY - height * 0.55f
+    val footX = width * 0.52f
+    val footY = groundY
 
-    // Torso hinges forward 90 degrees
-    val shoulderX = hipX + width * 0.28f * (1f - cycle) + width * 0.24f * cycle
-    val shoulderY = hipY - height * 0.30f * (1f - cycle)
+    val hipX = footX - width * 0.12f * cycle
+    val hipY = groundY - height * 0.50f
+
+    val topShoulderY = groundY - height * 0.78f
+    val bottomShoulderY = hipY
+    val shoulderY = topShoulderY + (bottomShoulderY - topShoulderY) * cycle
+    val shoulderX = hipX + width * 0.26f * cycle
+
     val headX = shoulderX + width * 0.06f
-    val headY = shoulderY - height * 0.04f
+    val headY = shoulderY - height * 0.06f
 
     drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
-    drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 7f)
-    drawLimb(Offset(kneeX, kneeY), Offset(feetX, feetY), lightGold, 6f)
-
-    // Hands behind head
-    drawLimb(Offset(shoulderX, shoulderY), Offset(headX, headY), gold, 5f)
+    drawLimb(Offset(hipX, hipY), Offset(footX, footY), lightGold, 7f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
-    drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
-    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+    drawJoint(Offset(footX, footY), gold, jointWhite)
 }
 
 private fun DrawScope.drawNordicCurlAnimation(
@@ -1068,43 +2023,32 @@ private fun DrawScope.drawNordicCurlAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val kneeX = width * 0.40f
+    val kneeX = width * 0.65f
     val kneeY = groundY
-    val feetX = width * 0.22f
-    val feetY = groundY
+    val ankleX = width * 0.85f
+    val ankleY = groundY
 
-    // Ankle lock bar
-    drawLine(
-        color = lightGold,
-        start = Offset(feetX - 10.dp.toPx(), groundY - 8.dp.toPx()),
-        end = Offset(feetX + 10.dp.toPx(), groundY - 8.dp.toPx()),
-        strokeWidth = 3.dp.toPx()
-    )
-
-    // Torso leans forward from knees
-    val topHipX = kneeX
-    val topHipY = groundY - height * 0.35f
-    val bottomHipX = kneeX + width * 0.28f
+    val topHipY = groundY - height * 0.38f
     val bottomHipY = groundY - height * 0.12f
-
-    val hipX = topHipX + (bottomHipX - topHipX) * cycle
     val hipY = topHipY + (bottomHipY - topHipY) * cycle
+    val hipX = kneeX - width * 0.22f * cycle
 
-    val shoulderX = hipX + width * 0.22f * cycle
-    val shoulderY = hipY - height * 0.28f * (1f - cycle)
-    val headX = shoulderX + width * 0.08f
-    val headY = shoulderY - height * 0.04f
+    val shoulderX = hipX - width * 0.20f
+    val shoulderY = hipY - height * 0.10f
+
+    val headX = shoulderX - width * 0.08f
+    val headY = shoulderY - height * 0.06f
 
     drawStickmanHead(Offset(headX, headY), 13.dp.toPx(), gold)
     drawLimb(Offset(headX, headY), Offset(shoulderX, shoulderY), gold, 6f)
     drawLimb(Offset(shoulderX, shoulderY), Offset(hipX, hipY), gold, 7f)
     drawLimb(Offset(hipX, hipY), Offset(kneeX, kneeY), lightGold, 7f)
-    drawLimb(Offset(kneeX, kneeY), Offset(feetX, feetY), lightGold, 6f)
+    drawLimb(Offset(kneeX, kneeY), Offset(ankleX, ankleY), lightGold, 6f)
 
     drawJoint(Offset(shoulderX, shoulderY), gold, jointWhite)
     drawJoint(Offset(hipX, hipY), gold, jointWhite)
     drawJoint(Offset(kneeX, kneeY), gold, jointWhite)
-    drawJoint(Offset(feetX, feetY), gold, jointWhite)
+    drawJoint(Offset(ankleX, ankleY), gold, jointWhite)
 }
 
 private fun DrawScope.drawScapularCirclesAnimation(
@@ -1116,13 +2060,12 @@ private fun DrawScope.drawScapularCirclesAnimation(
     lightGold: Color,
     jointWhite: Color
 ) {
-    val centerX = width * 0.50f
+    val centerX = width * 0.5f
     val shoulderY = groundY - height * 0.70f
     val hipY = groundY - height * 0.44f
     val feetY = groundY
     val headY = shoulderY - height * 0.09f
 
-    // Arms extended with circular motion
     val angle = t * 2 * PI.toFloat()
     val circleRadius = width * 0.12f
     val handX = centerX + circleRadius * cos(angle)
@@ -1132,7 +2075,6 @@ private fun DrawScope.drawScapularCirclesAnimation(
     drawLimb(Offset(centerX, headY), Offset(centerX, shoulderY), gold, 6f)
     drawLimb(Offset(centerX, shoulderY), Offset(centerX, hipY), gold, 7f)
     drawLimb(Offset(centerX, hipY), Offset(centerX, feetY), lightGold, 7f)
-
     drawLimb(Offset(centerX, shoulderY), Offset(handX, handY), gold, 5f)
 
     drawJoint(Offset(centerX, shoulderY), gold, jointWhite)
@@ -1146,20 +2088,17 @@ private fun DrawScope.drawScapularCirclesAnimation(
 // -------------------------------------------------------------
 
 private fun DrawScope.drawStickmanHead(center: Offset, radius: Float, color: Color) {
-    // Halo glow outer
     drawCircle(
         color = color.copy(alpha = 0.25f),
         radius = radius * 1.35f,
         center = center
     )
-    // Head circle outline
     drawCircle(
         color = color,
         radius = radius,
         center = center,
         style = Stroke(width = 2.5.dp.toPx())
     )
-    // Visor eye line
     drawLine(
         color = Color.White.copy(alpha = 0.9f),
         start = Offset(center.x - radius * 0.5f, center.y),
@@ -1180,13 +2119,11 @@ private fun DrawScope.drawLimb(start: Offset, end: Offset, color: Color, strokeD
 }
 
 private fun DrawScope.drawJoint(center: Offset, glowColor: Color, centerColor: Color) {
-    // Outer joint aura
     drawCircle(
         color = glowColor.copy(alpha = 0.4f),
         radius = 5.dp.toPx(),
         center = center
     )
-    // Solid joint dot
     drawCircle(
         color = centerColor,
         radius = 2.5.dp.toPx(),
