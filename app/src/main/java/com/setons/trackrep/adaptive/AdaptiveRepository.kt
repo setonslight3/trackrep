@@ -45,45 +45,55 @@ object AdaptiveRepository {
         routineId: String? = null,
         routineName: String? = null,
         summary: CompletedSetSummary,
-        ratingString: String
+        ratingString: String,
+        existingSessionId: String? = null
     ): AdaptiveEvaluation = withContext(Dispatchers.IO) {
         val db = getDb(context)
         val now = System.currentTimeMillis()
         val dateStr = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault()).format(Date(now))
-        val sessionId = UUID.randomUUID().toString()
+        val sessionId = existingSessionId ?: UUID.randomUUID().toString()
 
-        // 1. Insert Session Record
-        val sessionEntity = WorkoutSessionEntity(
-            id = sessionId,
-            routineId = routineId,
-            routineName = routineName,
-            exerciseId = exerciseId,
-            exerciseName = exerciseName,
-            timestampMs = now,
-            dateString = dateStr,
-            durationSeconds = summary.durationSeconds,
-            totalValidReps = summary.validReps,
-            totalPartialReps = summary.partialReps,
-            averageFormScore = summary.formConsistencyPercent,
-            fatigueVelocityLossPercent = 0f,
-            perceivedRating = ratingString,
-            isCompleted = true
-        )
-        db.sessionDao().insertSession(sessionEntity)
+        if (existingSessionId != null) {
+            // Already recorded by CoachScreen! Just update the rating
+            try {
+                db.sessionDao().updatePerceivedRating(existingSessionId, ratingString)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else {
+            // 1. Insert Session Record
+            val sessionEntity = WorkoutSessionEntity(
+                id = sessionId,
+                routineId = routineId,
+                routineName = routineName,
+                exerciseId = exerciseId,
+                exerciseName = exerciseName,
+                timestampMs = now,
+                dateString = dateStr,
+                durationSeconds = summary.durationSeconds,
+                totalValidReps = summary.validReps,
+                totalPartialReps = summary.partialReps,
+                averageFormScore = summary.formConsistencyPercent,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = ratingString,
+                isCompleted = true
+            )
+            db.sessionDao().insertSession(sessionEntity)
 
-        // 2. Insert Set Record
-        val setEntity = SetRecordEntity(
-            sessionId = sessionId,
-            exerciseId = exerciseId,
-            setNumber = summary.setNumber,
-            validReps = summary.validReps,
-            partialReps = summary.partialReps,
-            durationSeconds = summary.durationSeconds,
-            averageDepthDegrees = summary.averageDepthDegrees,
-            formConsistencyPercent = summary.formConsistencyPercent,
-            fatigueLevel = summary.fatigueLevel.name
-        )
-        db.setRecordDao().insertSet(setEntity)
+            // 2. Insert Set Record
+            val setEntity = SetRecordEntity(
+                sessionId = sessionId,
+                exerciseId = exerciseId,
+                setNumber = summary.setNumber,
+                validReps = summary.validReps,
+                partialReps = summary.partialReps,
+                durationSeconds = summary.durationSeconds,
+                averageDepthDegrees = summary.averageDepthDegrees,
+                formConsistencyPercent = summary.formConsistencyPercent,
+                fatigueLevel = summary.fatigueLevel.name
+            )
+            db.setRecordDao().insertSet(setEntity)
+        }
 
         // 3. Load or initialize current progression
         val currentProg = db.progressionDao().getProgression(exerciseId) ?: run {
@@ -171,5 +181,37 @@ object AdaptiveRepository {
 
     fun getAllSessionsFlow(context: Context): Flow<List<WorkoutSessionEntity>> {
         return getDb(context).sessionDao().getAllSessionsFlow()
+    }
+
+    suspend fun deduplicateDuplicateSessions(context: Context) = withContext(Dispatchers.IO) {
+        try {
+            val db = getDb(context)
+            val sessions = db.sessionDao().getAllSessions()
+            val toDelete = mutableListOf<String>()
+            for (i in sessions.indices) {
+                val s1 = sessions[i]
+                for (j in i + 1 until sessions.size) {
+                    val s2 = sessions[j]
+                    if (s1.exerciseId == s2.exerciseId && kotlin.math.abs(s1.timestampMs - s2.timestampMs) < 120_000L) {
+                        if (s1.videoPath != null && s2.videoPath == null) {
+                            toDelete.add(s2.id)
+                        } else if (s2.videoPath != null && s1.videoPath == null) {
+                            toDelete.add(s1.id)
+                        } else if (s1.videoPath == null && s2.videoPath == null) {
+                            if (s1.totalValidReps >= s2.totalValidReps) {
+                                toDelete.add(s2.id)
+                            } else {
+                                toDelete.add(s1.id)
+                            }
+                        }
+                    }
+                }
+            }
+            toDelete.distinct().forEach { id ->
+                db.sessionDao().deleteSessionById(id)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

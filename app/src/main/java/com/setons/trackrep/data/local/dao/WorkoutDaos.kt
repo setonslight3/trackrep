@@ -51,6 +51,12 @@ interface WorkoutSessionDao {
 
     @Query("UPDATE workout_sessions SET videoPath = :videoPath WHERE id = :sessionId")
     suspend fun updateVideoPath(sessionId: String, videoPath: String)
+
+    @Query("UPDATE workout_sessions SET perceivedRating = :rating WHERE id = :sessionId")
+    suspend fun updatePerceivedRating(sessionId: String, rating: String)
+
+    @Query("DELETE FROM workout_sessions WHERE id = :sessionId")
+    suspend fun deleteSessionById(sessionId: String)
 }
 
 @Dao

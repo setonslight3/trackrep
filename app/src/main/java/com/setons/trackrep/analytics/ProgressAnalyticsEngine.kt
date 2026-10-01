@@ -203,10 +203,17 @@ object ProgressAnalyticsEngine {
             val count = sessionCountMap[ex.id] ?: 0
             val isIsometric = ex.id.contains("plank") || ex.defaultHoldSeconds > 0
 
+            val matchingSessions = sessions.filter { s ->
+                s.exerciseId == ex.id || resolveExercise(s.exerciseId)?.id == ex.id
+            }
+            val maxSessionReps = matchingSessions.maxOfOrNull { it.totalValidReps } ?: 0
+            val maxSessionDuration = matchingSessions.maxOfOrNull { it.durationSeconds } ?: 0
+            val lastSessionMs = matchingSessions.maxOfOrNull { it.timestampMs } ?: 0L
+
             val prValue = if (isIsometric) {
-                prog?.personalRecordHoldSeconds ?: 0
+                maxOf(prog?.personalRecordHoldSeconds ?: 0, maxSessionDuration)
             } else {
-                prog?.personalRecordReps ?: 0
+                maxOf(prog?.personalRecordReps ?: 0, maxSessionReps)
             }
 
             val targetValue = if (isIsometric) {
@@ -224,9 +231,15 @@ object ProgressAnalyticsEngine {
                 currentDifficultyRank = prog?.currentDifficultyRank ?: ex.difficulty.rank,
                 targetValue = targetValue,
                 totalSessionsCompleted = count,
-                lastTrainedTimestampMs = prog?.lastTrainedTimestampMs ?: 0L
+                lastTrainedTimestampMs = maxOf(prog?.lastTrainedTimestampMs ?: 0L, lastSessionMs)
             )
-        }
+        }.sortedWith(
+            compareByDescending<ExercisePrMilestone> { it.personalRecordValue > 0 || it.totalSessionsCompleted > 0 }
+                .thenByDescending { it.personalRecordValue > 0 }
+                .thenByDescending { it.totalSessionsCompleted }
+                .thenByDescending { it.lastTrainedTimestampMs }
+                .thenBy { it.exerciseName }
+        )
     }
 
     fun computeMuscleDistribution(sessions: List<WorkoutSessionEntity>): List<MuscleVolumeStat> {

@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.setons.trackrep.exercise.catalog.ExerciseCatalog
+import com.setons.trackrep.exercise.model.MuscleGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
@@ -116,6 +121,7 @@ fun HistoryScreen(
     var streakStats by remember { mutableStateOf(StreakStats(0, 0, null)) }
     var prMilestones by remember { mutableStateOf<List<ExercisePrMilestone>>(emptyList()) }
     var muscleDistribution by remember { mutableStateOf<List<MuscleVolumeStat>>(emptyList()) }
+    var prCategoryFilter by remember { mutableStateOf("All") }
 
     // Backup & Restore state
     var backupStatusMessage by remember { mutableStateOf<String?>(null) }
@@ -130,6 +136,7 @@ fun HistoryScreen(
 
     fun refreshAllData() {
         scope.launch {
+            AdaptiveRepository.deduplicateDuplicateSessions(context)
             val db = TrackRepDatabase.getDatabase(context)
             val sessions = db.sessionDao().getAllSessions()
             val progressions = db.progressionDao().getAllProgressions()
@@ -461,74 +468,136 @@ fun HistoryScreen(
             // Personal Records Showcase (PRs)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEvents,
-                        contentDescription = null,
-                        tint = DarkPrimaryGold,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = DarkPrimaryGold,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = "Personal Records & Milestones",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
                     Text(
-                        text = "Personal Records & Milestones",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        text = "${prMilestones.count { it.personalRecordValue > 0 }} active",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DarkPrimaryGold,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                val primaryMilestones = prMilestones.take(6)
-                primaryMilestones.forEach { milestone ->
-                    OutlinedCard(
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = milestone.exerciseName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Target Goal: ${milestone.targetValue} ${milestone.personalRecordUnit} • ${milestone.totalSessionsCompleted} sessions",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
+                // Category Filter Chips
+                val filterCategories = listOf("All", "With Records", "Chest", "Legs", "Back & Core", "Cardio")
+                val chipScrollState = rememberScrollState()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(chipScrollState)
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    filterCategories.forEach { category ->
+                        val isSelected = prCategoryFilter == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { prCategoryFilter = category },
+                            label = { Text(category, fontSize = 12.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = DarkPrimaryGold.copy(alpha = 0.2f),
+                                selectedLabelColor = DarkPrimaryGold
+                            )
+                        )
+                    }
+                }
 
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (milestone.personalRecordValue > 0) DarkPrimaryGold.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+                val filteredMilestones = prMilestones.filter { milestone ->
+                    val ex = ExerciseCatalog.getById(milestone.exerciseId)
+                    when (prCategoryFilter) {
+                        "With Records" -> milestone.personalRecordValue > 0 || milestone.totalSessionsCompleted > 0
+                        "Chest" -> ex?.targetMuscle == MuscleGroup.CHEST || ex?.id?.contains("pushup") == true || ex?.id?.contains("push_up") == true || ex?.id?.contains("dip") == true
+                        "Legs" -> ex?.targetMuscle == MuscleGroup.QUADS || ex?.targetMuscle == MuscleGroup.GLUTES || ex?.targetMuscle == MuscleGroup.HAMSTRINGS || ex?.targetMuscle == MuscleGroup.CALVES || ex?.id?.contains("squat") == true || ex?.id?.contains("lunge") == true
+                        "Back & Core" -> ex?.targetMuscle == MuscleGroup.BACK || ex?.targetMuscle == MuscleGroup.CORE || ex?.id?.contains("plank") == true || ex?.id?.contains("pullup") == true || ex?.id?.contains("pull_up") == true || ex?.id?.contains("row") == true || ex?.id?.contains("dog") == true || ex?.id?.contains("bridge") == true
+                        "Cardio" -> ex?.id?.contains("jack") == true || ex?.id?.contains("burpee") == true || ex?.id?.contains("skater") == true || ex?.id?.contains("high_knees") == true || ex?.id?.contains("mountain") == true
+                        else -> true
+                    }
+                }
+
+                if (filteredMilestones.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No records matching \"$prCategoryFilter\".",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                } else {
+                    filteredMilestones.forEach { milestone ->
+                        OutlinedCard(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.EmojiEvents,
-                                        contentDescription = null,
-                                        tint = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = if (milestone.personalRecordValue > 0) "${milestone.personalRecordValue} ${milestone.personalRecordUnit}" else "Unset",
-                                        style = MaterialTheme.typography.labelMedium,
+                                        text = milestone.exerciseName,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Target Goal: ${milestone.targetValue} ${milestone.personalRecordUnit} • ${milestone.totalSessionsCompleted} sessions",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (milestone.personalRecordValue > 0) DarkPrimaryGold.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.EmojiEvents,
+                                            contentDescription = null,
+                                            tint = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = if (milestone.personalRecordValue > 0) "${milestone.personalRecordValue} ${milestone.personalRecordUnit}" else "Unset",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        )
+                                    }
                                 }
                             }
                         }

@@ -351,77 +351,6 @@ fun CoachScreen(
         }
     }
 
-    // Motion sticks green flash & spoken rep count on completed action/rep
-    var isRepCompletedFlash by remember { mutableStateOf(false) }
-
-    // Push-up Rep Completion Listener
-    LaunchedEffect(livePushUpTelemetry.validRepCount) {
-        if (livePushUpTelemetry.validRepCount > 0) {
-            isRepCompletedFlash = true
-            voiceManager.speakRep(livePushUpTelemetry.validRepCount, targetReps)
-
-            val lastRep = livePushUpTelemetry.lastCompletedRep
-            if (lastRep != null) {
-                val concentricMs = (lastRep.endTimestampMs - lastRep.bottomTimestampMs).coerceAtLeast(100L)
-                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
-                if (cue != null) {
-                    voiceManager.speakFormCue(cue)
-                }
-            }
-            delay(700)
-            isRepCompletedFlash = false
-        }
-    }
-
-    // Squat Rep Completion Listener
-    LaunchedEffect(liveSquatTelemetry.validRepCount) {
-        if (liveSquatTelemetry.validRepCount > 0) {
-            isRepCompletedFlash = true
-            voiceManager.speakRep(liveSquatTelemetry.validRepCount, targetReps)
-
-            val lastRep = liveSquatTelemetry.lastCompletedRep
-            if (lastRep != null) {
-                val concentricMs = lastRep.concentricDurationMs.coerceAtLeast(100L)
-                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
-                if (cue != null) {
-                    voiceManager.speakFormCue(cue)
-                }
-            }
-            delay(700)
-            isRepCompletedFlash = false
-        }
-    }
-
-    // Spoken form correction cues (debounced)
-    LaunchedEffect(livePushUpTelemetry.activeWarning) {
-        val warning = livePushUpTelemetry.activeWarning
-        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PUSH_UP) {
-            voiceManager.speakFormCue(warning)
-        }
-    }
-
-    LaunchedEffect(liveSquatTelemetry.activeWarning) {
-        val warning = liveSquatTelemetry.activeWarning
-        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.SQUAT) {
-            voiceManager.speakFormCue(warning)
-        }
-    }
-
-    // Plank milestones & form warnings
-    LaunchedEffect(livePlankTelemetry.milestoneVoiceCue) {
-        val cue = livePlankTelemetry.milestoneVoiceCue
-        if (cue != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
-            voiceManager.speakStatus(cue, isUrgent = false)
-        }
-    }
-
-    LaunchedEffect(livePlankTelemetry.activeWarning) {
-        val warning = livePlankTelemetry.activeWarning
-        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
-            voiceManager.speakFormCue(warning)
-        }
-    }
-
     fun toggleRecording() {
         if (isRecording) {
             isRecording = false
@@ -554,7 +483,9 @@ fun CoachScreen(
             )
             activeSetSummary = summary
             showSummaryDialog = true
-            voiceManager.speakStatus("Set complete! Great work.", isUrgent = true)
+            if (targetReps <= 0 || (selectedExercise != ExerciseFramingMode.PLANK && finalRepCount < targetReps) || (selectedExercise == ExerciseFramingMode.PLANK && finalRepCount < targetHoldSeconds)) {
+                voiceManager.speakStatus("Set complete! Great work.", isUrgent = true)
+            }
         } else {
             pushUpAnalyzer.reset()
             squatAnalyzer.reset()
@@ -592,6 +523,114 @@ fun CoachScreen(
             isRecording = true
         }
     }
+
+    // Motion sticks green flash & spoken rep count on completed action/rep
+    var isRepCompletedFlash by remember { mutableStateOf(false) }
+    var isAutoTerminatingSet by remember { mutableStateOf(false) }
+
+    // Push-up Rep Completion Listener
+    LaunchedEffect(livePushUpTelemetry.validRepCount) {
+        if (livePushUpTelemetry.validRepCount > 0) {
+            isRepCompletedFlash = true
+            voiceManager.speakRep(livePushUpTelemetry.validRepCount, targetReps)
+
+            val lastRep = livePushUpTelemetry.lastCompletedRep
+            if (lastRep != null) {
+                val concentricMs = (lastRep.endTimestampMs - lastRep.bottomTimestampMs).coerceAtLeast(100L)
+                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
+                if (cue != null) {
+                    voiceManager.speakFormCue(cue)
+                }
+            }
+
+            if (isRecording && !isAutoTerminatingSet && targetReps > 0 && livePushUpTelemetry.validRepCount >= targetReps) {
+                isAutoTerminatingSet = true
+                delay(800)
+                if (isRecording) {
+                    toggleRecording()
+                }
+                isAutoTerminatingSet = false
+            } else {
+                delay(700)
+                isRepCompletedFlash = false
+            }
+        }
+    }
+
+    // Squat Rep Completion Listener
+    LaunchedEffect(liveSquatTelemetry.validRepCount) {
+        if (liveSquatTelemetry.validRepCount > 0) {
+            isRepCompletedFlash = true
+            voiceManager.speakRep(liveSquatTelemetry.validRepCount, targetReps)
+
+            val lastRep = liveSquatTelemetry.lastCompletedRep
+            if (lastRep != null) {
+                val concentricMs = lastRep.concentricDurationMs.coerceAtLeast(100L)
+                val (fatigue, cue) = fatigueDetector.onRepCompleted(concentricMs, hadFormFault = !lastRep.isValid)
+                if (cue != null) {
+                    voiceManager.speakFormCue(cue)
+                }
+            }
+
+            if (isRecording && !isAutoTerminatingSet && targetReps > 0 && liveSquatTelemetry.validRepCount >= targetReps) {
+                isAutoTerminatingSet = true
+                delay(800)
+                if (isRecording) {
+                    toggleRecording()
+                }
+                isAutoTerminatingSet = false
+            } else {
+                delay(700)
+                isRepCompletedFlash = false
+            }
+        }
+    }
+
+    // Spoken form correction cues (debounced)
+    LaunchedEffect(livePushUpTelemetry.activeWarning) {
+        val warning = livePushUpTelemetry.activeWarning
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PUSH_UP) {
+            voiceManager.speakFormCue(warning)
+        }
+    }
+
+    LaunchedEffect(liveSquatTelemetry.activeWarning) {
+        val warning = liveSquatTelemetry.activeWarning
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.SQUAT) {
+            voiceManager.speakFormCue(warning)
+        }
+    }
+
+    // Plank milestones & form warnings
+    LaunchedEffect(livePlankTelemetry.milestoneVoiceCue) {
+        val cue = livePlankTelemetry.milestoneVoiceCue
+        if (cue != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
+            voiceManager.speakStatus(cue, isUrgent = false)
+        }
+    }
+
+    LaunchedEffect(livePlankTelemetry.activeWarning) {
+        val warning = livePlankTelemetry.activeWarning
+        if (warning != null && isRecording && selectedExercise == ExerciseFramingMode.PLANK) {
+            voiceManager.speakFormCue(warning)
+        }
+    }
+
+    // Plank Auto-Termination Listener
+    LaunchedEffect(livePlankTelemetry.holdDurationSeconds) {
+        val hold = livePlankTelemetry.holdDurationSeconds
+        if (isRecording && !isAutoTerminatingSet && selectedExercise == ExerciseFramingMode.PLANK && targetHoldSeconds > 0 && hold >= targetHoldSeconds) {
+            isAutoTerminatingSet = true
+            voiceManager.speakStatus("$hold seconds, set complete! Outstanding hold!", isUrgent = true)
+            delay(1000)
+            if (isRecording) {
+                toggleRecording()
+            }
+            isAutoTerminatingSet = false
+        }
+    }
+
+
 
     // Recording timer
     LaunchedEffect(isRecording) {
@@ -1528,6 +1567,8 @@ fun CoachScreen(
 
     fun advanceToNextExercise(rating: AdaptiveSetRating) {
         showSummaryDialog = false
+        val currentSessionId = lastRecordedSessionId
+        lastRecordedSessionId = null
         coroutineScope.launch {
             activeSetSummary?.let { summary ->
                 AdaptiveRepository.recordCompletedSet(
@@ -1535,7 +1576,8 @@ fun CoachScreen(
                     exerciseId = activeExercise.id,
                     exerciseName = activeExercise.name,
                     summary = summary,
-                    ratingString = rating.name
+                    ratingString = rating.name,
+                    existingSessionId = currentSessionId
                 )
             }
         }
@@ -1620,6 +1662,8 @@ fun CoachScreen(
                 },
                 onStartRest = { rating ->
                     showSummaryDialog = false
+                    val currentSessionId = lastRecordedSessionId
+                    lastRecordedSessionId = null
                     setManager.startRest(60)
                     voiceManager.speakStatus("Take 60 seconds rest", isUrgent = true)
                     coroutineScope.launch {
@@ -1630,7 +1674,8 @@ fun CoachScreen(
                             exerciseId = exId,
                             exerciseName = exName,
                             summary = summary,
-                            ratingString = rating.name
+                            ratingString = rating.name,
+                            existingSessionId = currentSessionId
                         )
                         if (eval.action == ProgressionAction.OVERLOAD_INCREMENT) {
                             voiceManager.speakStatus("Progressive overload unlocked", isUrgent = false)
@@ -1639,6 +1684,8 @@ fun CoachScreen(
                 },
                 onSkipToNextSet = { rating ->
                     showSummaryDialog = false
+                    val currentSessionId = lastRecordedSessionId
+                    lastRecordedSessionId = null
                     setManager.skipRest()
                     voiceManager.speakStatus("Ready for Set ${setManager.setNumber}", isUrgent = true)
                     coroutineScope.launch {
@@ -1649,12 +1696,14 @@ fun CoachScreen(
                             exerciseId = exId,
                             exerciseName = exName,
                             summary = summary,
-                            ratingString = rating.name
+                            ratingString = rating.name,
+                            existingSessionId = currentSessionId
                         )
                     }
                 },
                 onDismiss = {
                     showSummaryDialog = false
+                    lastRecordedSessionId = null
                 }
             )
         }
