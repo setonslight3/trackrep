@@ -119,6 +119,7 @@ import com.setons.trackrep.pose.TrackedPose
 import com.setons.trackrep.review.FormFlaw
 import com.setons.trackrep.review.RecordedWorkoutSession
 import com.setons.trackrep.review.SessionReviewRepository
+import com.setons.trackrep.review.SessionTelemetryHelper
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
@@ -495,6 +496,9 @@ fun CoachScreen(
             )
 
             SessionReviewRepository.addSession(newSession)
+            if (finalPoses.isNotEmpty()) {
+                SessionTelemetryHelper.saveTelemetry(context, newSessionId, finalPoses, validTimestamps)
+            }
             lastRecordedSessionId = newSessionId
 
             // Auto-persist immediately to Room DB so AI & History have permanent local access

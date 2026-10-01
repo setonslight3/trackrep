@@ -89,7 +89,90 @@ object SessionReviewRepository {
     }
 
     fun generatePosesForExercise(exerciseName: String, durationSec: Int): List<TimestampedPose> {
-        return generateSamplePushUpPoses(durationSec)
+        val lower = exerciseName.lowercase()
+        return when {
+            lower.contains("squat") || lower.contains("lunge") -> generateSampleSquatPoses(durationSec)
+            lower.contains("plank") -> generateSamplePlankPoses(durationSec)
+            else -> generateSamplePushUpPoses(durationSec)
+        }
+    }
+
+    private fun generateSamplePlankPoses(durationSec: Int): List<TimestampedPose> {
+        val list = mutableListOf<TimestampedPose>()
+        val totalMs = durationSec * 1000
+        var t = 0L
+
+        while (t <= totalMs) {
+            val breath = (Math.sin(t / 800.0) * 0.005f).toFloat()
+            val landmarks = mapOf(
+                PoseLandmark.LEFT_SHOULDER to TrackedLandmark(PoseLandmark.LEFT_SHOULDER, 0.35f, 0.50f + breath, 0.95f),
+                PoseLandmark.RIGHT_SHOULDER to TrackedLandmark(PoseLandmark.RIGHT_SHOULDER, 0.38f, 0.50f + breath, 0.95f),
+                PoseLandmark.LEFT_ELBOW to TrackedLandmark(PoseLandmark.LEFT_ELBOW, 0.35f, 0.65f, 0.92f),
+                PoseLandmark.RIGHT_ELBOW to TrackedLandmark(PoseLandmark.RIGHT_ELBOW, 0.38f, 0.65f, 0.92f),
+                PoseLandmark.LEFT_WRIST to TrackedLandmark(PoseLandmark.LEFT_WRIST, 0.30f, 0.65f, 0.90f),
+                PoseLandmark.RIGHT_WRIST to TrackedLandmark(PoseLandmark.RIGHT_WRIST, 0.33f, 0.65f, 0.90f),
+                PoseLandmark.LEFT_HIP to TrackedLandmark(PoseLandmark.LEFT_HIP, 0.55f, 0.51f + breath, 0.93f),
+                PoseLandmark.RIGHT_HIP to TrackedLandmark(PoseLandmark.RIGHT_HIP, 0.57f, 0.51f + breath, 0.93f),
+                PoseLandmark.LEFT_KNEE to TrackedLandmark(PoseLandmark.LEFT_KNEE, 0.68f, 0.53f, 0.90f),
+                PoseLandmark.RIGHT_KNEE to TrackedLandmark(PoseLandmark.RIGHT_KNEE, 0.70f, 0.53f, 0.90f),
+                PoseLandmark.LEFT_ANKLE to TrackedLandmark(PoseLandmark.LEFT_ANKLE, 0.82f, 0.55f, 0.88f),
+                PoseLandmark.RIGHT_ANKLE to TrackedLandmark(PoseLandmark.RIGHT_ANKLE, 0.84f, 0.55f, 0.88f)
+            )
+
+            val pose = TrackedPose(
+                landmarks = landmarks,
+                imageWidth = 720,
+                imageHeight = 1280,
+                isTrackingValid = true,
+                leftElbowAngle = 90.0,
+                rightElbowAngle = 90.0,
+                hipAlignmentAngle = 178.0
+            )
+
+            list.add(TimestampedPose(t, pose))
+            t += 100
+        }
+        return list
+    }
+
+    private fun generateSampleSquatPoses(durationSec: Int): List<TimestampedPose> {
+        val list = mutableListOf<TimestampedPose>()
+        val totalMs = durationSec * 1000
+        var t = 0L
+
+        while (t <= totalMs) {
+            val phase = ((t % 3200) / 3200f) * 2f * Math.PI.toFloat()
+            val squatDepth = (Math.sin(phase.toDouble()).toFloat().coerceAtLeast(0f)) * 0.18f
+
+            val landmarks = mapOf(
+                PoseLandmark.LEFT_SHOULDER to TrackedLandmark(PoseLandmark.LEFT_SHOULDER, 0.44f, 0.28f + squatDepth, 0.95f),
+                PoseLandmark.RIGHT_SHOULDER to TrackedLandmark(PoseLandmark.RIGHT_SHOULDER, 0.56f, 0.28f + squatDepth, 0.95f),
+                PoseLandmark.LEFT_ELBOW to TrackedLandmark(PoseLandmark.LEFT_ELBOW, 0.40f, 0.38f + squatDepth, 0.92f),
+                PoseLandmark.RIGHT_ELBOW to TrackedLandmark(PoseLandmark.RIGHT_ELBOW, 0.60f, 0.38f + squatDepth, 0.92f),
+                PoseLandmark.LEFT_WRIST to TrackedLandmark(PoseLandmark.LEFT_WRIST, 0.46f, 0.35f + squatDepth, 0.90f),
+                PoseLandmark.RIGHT_WRIST to TrackedLandmark(PoseLandmark.RIGHT_WRIST, 0.54f, 0.35f + squatDepth, 0.90f),
+                PoseLandmark.LEFT_HIP to TrackedLandmark(PoseLandmark.LEFT_HIP, 0.45f, 0.48f + squatDepth * 1.2f, 0.93f),
+                PoseLandmark.RIGHT_HIP to TrackedLandmark(PoseLandmark.RIGHT_HIP, 0.55f, 0.48f + squatDepth * 1.2f, 0.93f),
+                PoseLandmark.LEFT_KNEE to TrackedLandmark(PoseLandmark.LEFT_KNEE, 0.42f, 0.64f + squatDepth * 0.4f, 0.90f),
+                PoseLandmark.RIGHT_KNEE to TrackedLandmark(PoseLandmark.RIGHT_KNEE, 0.58f, 0.64f + squatDepth * 0.4f, 0.90f),
+                PoseLandmark.LEFT_ANKLE to TrackedLandmark(PoseLandmark.LEFT_ANKLE, 0.43f, 0.82f, 0.88f),
+                PoseLandmark.RIGHT_ANKLE to TrackedLandmark(PoseLandmark.RIGHT_ANKLE, 0.57f, 0.82f, 0.88f)
+            )
+
+            val pose = TrackedPose(
+                landmarks = landmarks,
+                imageWidth = 720,
+                imageHeight = 1280,
+                isTrackingValid = true,
+                leftKneeAngle = 175.0 - (squatDepth * 400.0),
+                rightKneeAngle = 175.0 - (squatDepth * 400.0),
+                hipAlignmentAngle = 160.0
+            )
+
+            list.add(TimestampedPose(t, pose))
+            t += 100
+        }
+        return list
     }
 
     private fun generateSamplePushUpPoses(durationSec: Int): List<TimestampedPose> {

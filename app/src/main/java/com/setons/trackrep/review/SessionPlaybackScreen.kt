@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Warning
 import android.content.Intent
 import androidx.core.content.FileProvider
 import com.setons.trackrep.data.local.TrackRepDatabase
+import com.setons.trackrep.video.SaveVideoChoiceDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -106,27 +107,77 @@ fun SessionPlaybackScreen(
         )
     }
 
+    var isExtractingPoses by remember { mutableStateOf(false) }
+    var extractionProgress by remember { mutableFloatStateOf(0f) }
+    var showSaveChoiceDialog by remember { mutableStateOf(false) }
+
+    var videoFile by remember(session?.videoPath) {
+        mutableStateOf(session?.videoPath?.let { File(it) }?.takeIf { it.exists() && it.length() > 0 })
+    }
+
     LaunchedEffect(sessionId) {
-        if (session == null || session?.id != sessionId) {
-            withContext(Dispatchers.IO) {
-                val db = TrackRepDatabase.getDatabase(context)
-                val entity = db.sessionDao().getSessionById(sessionId)
-                if (entity != null) {
-                    val recorded = RecordedWorkoutSession(
-                        id = entity.id,
-                        exerciseName = entity.exerciseName,
-                        videoPath = entity.videoPath,
-                        durationSeconds = entity.durationSeconds,
-                        repCount = entity.totalValidReps,
-                        dateString = entity.dateString,
-                        detectedFlaws = emptyList(),
-                        recordedPoses = SessionReviewRepository.generatePosesForExercise(entity.exerciseName, entity.durationSeconds),
-                        completedRepTimestamps = emptyList()
-                    )
-                    SessionReviewRepository.addSession(recorded)
-                    withContext(Dispatchers.Main) {
-                        session = recorded
-                    }
+        withContext(Dispatchers.IO) {
+            val db = TrackRepDatabase.getDatabase(context)
+            val entity = db.sessionDao().getSessionById(sessionId)
+            val memorySession = SessionReviewRepository.getSessionById(sessionId)
+
+            val targetId = entity?.id ?: memorySession?.id ?: sessionId
+            val exName = entity?.exerciseName ?: memorySession?.exerciseName ?: "Workout"
+            val durSec = entity?.durationSeconds ?: memorySession?.durationSeconds ?: 10
+            val vPath = entity?.videoPath ?: memorySession?.videoPath
+            val reps = entity?.totalValidReps ?: memorySession?.repCount ?: 0
+            val date = entity?.dateString ?: memorySession?.dateString ?: ""
+
+            // 1. Try disk telemetry first
+            val diskTelemetry = SessionTelemetryHelper.loadTelemetry(context, targetId)
+            val realPoses: List<TimestampedPose>
+            val repTimestamps: List<Long>
+
+            if (diskTelemetry != null && diskTelemetry.first.isNotEmpty()) {
+                realPoses = diskTelemetry.first
+                repTimestamps = diskTelemetry.second
+            } else if (memorySession != null && memorySession.recordedPoses.isNotEmpty() && memorySession.id != "sample_session_1") {
+                realPoses = memorySession.recordedPoses
+                repTimestamps = memorySession.completedRepTimestamps
+                // Cache to disk
+                SessionTelemetryHelper.saveTelemetry(context, targetId, realPoses, repTimestamps)
+            } else if (vPath != null && File(vPath).exists() && File(vPath).length() > 0) {
+                // Extract directly from user's video file!
+                withContext(Dispatchers.Main) {
+                    isExtractingPoses = true
+                    extractionProgress = 0f
+                }
+                realPoses = SessionTelemetryHelper.extractPosesFromVideo(
+                    context = context,
+                    videoFile = File(vPath),
+                    sessionId = targetId,
+                    onProgress = { p -> extractionProgress = p }
+                )
+                repTimestamps = emptyList()
+                withContext(Dispatchers.Main) {
+                    isExtractingPoses = false
+                }
+            } else {
+                realPoses = SessionReviewRepository.generatePosesForExercise(exName, durSec)
+                repTimestamps = emptyList()
+            }
+
+            val loadedSession = RecordedWorkoutSession(
+                id = targetId,
+                exerciseName = exName,
+                videoPath = vPath,
+                durationSeconds = durSec,
+                repCount = reps,
+                dateString = date,
+                detectedFlaws = memorySession?.detectedFlaws ?: emptyList(),
+                recordedPoses = realPoses,
+                completedRepTimestamps = repTimestamps
+            )
+            SessionReviewRepository.addSession(loadedSession)
+            withContext(Dispatchers.Main) {
+                session = loadedSession
+                if (vPath != null && File(vPath).exists() && File(vPath).length() > 0) {
+                    videoFile = File(vPath)
                 }
             }
         }
@@ -158,9 +209,6 @@ fun SessionPlaybackScreen(
     var exportProgress by remember { mutableFloatStateOf(0f) }
 
     // ExoPlayer for real video file if available
-    var videoFile by remember(currentSession.videoPath) {
-        mutableStateOf(currentSession.videoPath?.let { File(it) }?.takeIf { it.exists() && it.length() > 0 })
-    }
 
     LaunchedEffect(currentSession.videoPath) {
         val path = currentSession.videoPath
@@ -364,7 +412,7 @@ fun SessionPlaybackScreen(
             actions = {
                 // Save to Phone Album Button
                 IconButton(
-                    onClick = { saveWorkoutMedia() }
+                    onClick = { showSaveChoiceDialog = true }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Download,
@@ -504,12 +552,60 @@ fun SessionPlaybackScreen(
                             }
                         }
                         PlaybackDisplayMode.MOTION_STICKS_ONLY -> {
-                            MotionSticksCanvas(
-                                poses = currentSession.recordedPoses,
-                                currentPositionMs = currentPositionMs.toLong(),
-                                completedRepTimestamps = currentSession.completedRepTimestamps,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            if (isExtractingPoses) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.padding(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Shield,
+                                            contentDescription = null,
+                                            tint = DarkPrimaryGold,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Text(
+                                            text = "Analyzing Motion Sticks from Video...",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "Extracting your exact body skeleton telemetry frame-by-frame.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                        LinearProgressIndicator(
+                                            progress = { extractionProgress },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 24.dp),
+                                            color = DarkPrimaryGold,
+                                            trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                                        )
+                                        Text(
+                                            text = "${(extractionProgress * 100).toInt()}% Extracted",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = DarkSecondaryGold,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            } else {
+                                MotionSticksCanvas(
+                                    poses = currentSession.recordedPoses,
+                                    currentPositionMs = currentPositionMs.toLong(),
+                                    completedRepTimestamps = currentSession.completedRepTimestamps,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
 
@@ -563,24 +659,24 @@ fun SessionPlaybackScreen(
             ) {
                 val hasRealVideo = videoFile != null || (currentSession.videoPath != null && File(currentSession.videoPath).exists() && File(currentSession.videoPath).length() > 0)
 
-                if (hasRealVideo) {
-                    Button(
-                        onClick = { saveWorkoutMedia(forceMotionSticks = false) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkPrimaryGold,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Save Video to Gallery / Movies",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                Button(
+                    onClick = { showSaveChoiceDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkPrimaryGold,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Save Video to Gallery",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
+                if (hasRealVideo) {
                     OutlinedButton(
                         onClick = { shareWorkoutVideo() },
                         modifier = Modifier.fillMaxWidth(),
@@ -590,45 +686,82 @@ fun SessionPlaybackScreen(
                         Icon(Icons.Default.Share, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Share / Export Video to Device",
+                            text = "Share Video to Device",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-
-                    OutlinedButton(
-                        onClick = { saveWorkoutMedia(forceMotionSticks = true) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    ) {
-                        Icon(Icons.Default.Shield, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Save Motion Sticks Only (Privacy Mode)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = { saveWorkoutMedia(forceMotionSticks = true) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkPrimaryGold,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Export Motion Sticks Video to Album",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
+            }
+
+            if (showSaveChoiceDialog) {
+                val hasRealVideo = videoFile != null || (currentSession.videoPath != null && File(currentSession.videoPath).exists() && File(currentSession.videoPath).length() > 0)
+                SaveVideoChoiceDialog(
+                    exerciseName = currentSession.exerciseName,
+                    hasRawVideo = hasRealVideo,
+                    onSaveRaw = {
+                        val target = videoFile ?: currentSession.videoPath?.let { File(it) }?.takeIf { it.exists() && it.length() > 0 }
+                        if (target != null) {
+                            MediaAlbumHelper.saveVideoToPhoneAlbum(
+                                context = context,
+                                sourceFile = target,
+                                exerciseName = currentSession.exerciseName,
+                                isMotionSticksOnly = false
+                            )
+                        }
+                    },
+                    onSaveMotionSticks = {
+                        coroutineScope.launch {
+                            isExporting = true
+                            exportProgress = 0f
+                            val poses = if (currentSession.recordedPoses.isNotEmpty()) {
+                                currentSession.recordedPoses
+                            } else {
+                                SessionReviewRepository.generatePosesForExercise(currentSession.exerciseName, currentSession.durationSeconds)
+                            }
+                            MediaAlbumHelper.exportAndSaveMotionSticksToAlbum(
+                                context = context,
+                                exerciseName = currentSession.exerciseName,
+                                poses = poses,
+                                durationSeconds = currentSession.durationSeconds,
+                                completedRepTimestamps = currentSession.completedRepTimestamps,
+                                onProgress = { p -> exportProgress = p }
+                            )
+                            isExporting = false
+                        }
+                    },
+                    onSaveBoth = {
+                        val target = videoFile ?: currentSession.videoPath?.let { File(it) }?.takeIf { it.exists() && it.length() > 0 }
+                        if (target != null) {
+                            MediaAlbumHelper.saveVideoToPhoneAlbum(
+                                context = context,
+                                sourceFile = target,
+                                exerciseName = currentSession.exerciseName,
+                                isMotionSticksOnly = false
+                            )
+                        }
+                        coroutineScope.launch {
+                            isExporting = true
+                            exportProgress = 0f
+                            val poses = if (currentSession.recordedPoses.isNotEmpty()) {
+                                currentSession.recordedPoses
+                            } else {
+                                SessionReviewRepository.generatePosesForExercise(currentSession.exerciseName, currentSession.durationSeconds)
+                            }
+                            MediaAlbumHelper.exportAndSaveMotionSticksToAlbum(
+                                context = context,
+                                exerciseName = currentSession.exerciseName,
+                                poses = poses,
+                                durationSeconds = currentSession.durationSeconds,
+                                completedRepTimestamps = currentSession.completedRepTimestamps,
+                                onProgress = { p -> exportProgress = p }
+                            )
+                            isExporting = false
+                        }
+                    },
+                    onDismiss = { showSaveChoiceDialog = false }
+                )
             }
 
             // Interactive Scrubber & Timeline with Form Flaw Markers

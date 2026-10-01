@@ -83,6 +83,11 @@ import com.setons.trackrep.data.local.entity.WorkoutSessionEntity
 import com.setons.trackrep.review.SessionReviewRepository
 import com.setons.trackrep.share.WorkoutShareHelper
 import com.setons.trackrep.video.MediaAlbumHelper
+import com.setons.trackrep.video.SaveVideoChoiceDialog
+import com.setons.trackrep.review.SessionTelemetryHelper
+import com.setons.trackrep.review.TimestampedPose
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material.icons.filled.Shield
 import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
@@ -117,6 +122,11 @@ fun HistoryScreen(
     var isBackupSuccess by remember { mutableStateOf(true) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Save to Gallery & Motion Sticks export state
+    var sessionToSave by remember { mutableStateOf<WorkoutSessionEntity?>(null) }
+    var isExportingMotionSticks by remember { mutableStateOf(false) }
+    var exportProgress by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
     fun refreshAllData() {
         scope.launch {
@@ -748,11 +758,7 @@ fun HistoryScreen(
                                         Spacer(modifier = Modifier.width(6.dp))
                                         IconButton(
                                             onClick = {
-                                                MediaAlbumHelper.saveVideoToPhoneAlbum(
-                                                    context = context,
-                                                    sourceFile = File(session.videoPath!!),
-                                                    exerciseName = session.exerciseName
-                                                )
+                                                sessionToSave = session
                                             },
                                             modifier = Modifier.size(36.dp)
                                         ) {
@@ -836,6 +842,155 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    if (isExportingMotionSticks) {
+        Dialog(onDismissRequest = {}) {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = DarkPrimaryGold,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text(
+                        text = "Exporting Motion Sticks (Privacy Mode)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Rendering luxury gold skeleton tracking onto black canvas. Zero face, body, or room background recorded.",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    )
+                    LinearProgressIndicator(
+                        progress = { exportProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = DarkPrimaryGold,
+                        trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                    )
+                    Text(
+                        text = "${(exportProgress * 100).toInt()}% Encoded",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkPrimaryGold
+                    )
+                }
+            }
+        }
+    }
+
+    if (sessionToSave != null) {
+        val targetSession = sessionToSave!!
+        val hasRaw = targetSession.videoPath != null && File(targetSession.videoPath).exists() && File(targetSession.videoPath).length() > 0
+
+        SaveVideoChoiceDialog(
+            exerciseName = targetSession.exerciseName,
+            hasRawVideo = hasRaw,
+            onSaveRaw = {
+                if (hasRaw) {
+                    MediaAlbumHelper.saveVideoToPhoneAlbum(
+                        context = context,
+                        sourceFile = File(targetSession.videoPath!!),
+                        exerciseName = targetSession.exerciseName,
+                        isMotionSticksOnly = false
+                    )
+                }
+                sessionToSave = null
+            },
+            onSaveMotionSticks = {
+                scope.launch {
+                    isExportingMotionSticks = true
+                    exportProgress = 0f
+                    val telemetry = SessionTelemetryHelper.loadTelemetry(context, targetSession.id)
+                    val poses: List<TimestampedPose>
+                    val reps: List<Long>
+                    if (telemetry != null && telemetry.first.isNotEmpty()) {
+                        poses = telemetry.first
+                        reps = telemetry.second
+                    } else if (hasRaw) {
+                        poses = SessionTelemetryHelper.extractPosesFromVideo(
+                            context = context,
+                            videoFile = File(targetSession.videoPath!!),
+                            sessionId = targetSession.id,
+                            onProgress = { p -> exportProgress = p }
+                        )
+                        reps = emptyList()
+                    } else {
+                        poses = SessionReviewRepository.generatePosesForExercise(targetSession.exerciseName, targetSession.durationSeconds)
+                        reps = emptyList()
+                    }
+
+                    MediaAlbumHelper.exportAndSaveMotionSticksToAlbum(
+                        context = context,
+                        exerciseName = targetSession.exerciseName,
+                        poses = poses,
+                        durationSeconds = targetSession.durationSeconds,
+                        completedRepTimestamps = reps,
+                        onProgress = { p -> exportProgress = p }
+                    )
+                    isExportingMotionSticks = false
+                    sessionToSave = null
+                }
+            },
+            onSaveBoth = {
+                scope.launch {
+                    if (hasRaw) {
+                        MediaAlbumHelper.saveVideoToPhoneAlbum(
+                            context = context,
+                            sourceFile = File(targetSession.videoPath!!),
+                            exerciseName = targetSession.exerciseName,
+                            isMotionSticksOnly = false
+                        )
+                    }
+                    isExportingMotionSticks = true
+                    exportProgress = 0f
+                    val telemetry = SessionTelemetryHelper.loadTelemetry(context, targetSession.id)
+                    val poses: List<TimestampedPose>
+                    val reps: List<Long>
+                    if (telemetry != null && telemetry.first.isNotEmpty()) {
+                        poses = telemetry.first
+                        reps = telemetry.second
+                    } else if (hasRaw) {
+                        poses = SessionTelemetryHelper.extractPosesFromVideo(
+                            context = context,
+                            videoFile = File(targetSession.videoPath!!),
+                            sessionId = targetSession.id,
+                            onProgress = { p -> exportProgress = p }
+                        )
+                        reps = emptyList()
+                    } else {
+                        poses = SessionReviewRepository.generatePosesForExercise(targetSession.exerciseName, targetSession.durationSeconds)
+                        reps = emptyList()
+                    }
+
+                    MediaAlbumHelper.exportAndSaveMotionSticksToAlbum(
+                        context = context,
+                        exerciseName = targetSession.exerciseName,
+                        poses = poses,
+                        durationSeconds = targetSession.durationSeconds,
+                        completedRepTimestamps = reps,
+                        onProgress = { p -> exportProgress = p }
+                    )
+                    isExportingMotionSticks = false
+                    sessionToSave = null
+                }
+            },
+            onDismiss = { sessionToSave = null }
+        )
     }
 }
 
