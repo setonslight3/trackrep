@@ -182,7 +182,7 @@ fun TrackAiScreen(
                         color = Color.White
                     )
                     Text(
-                        text = if (hasApiKey) "Powered by Gemini 1.5 Flash • Developed by Setons" else "On-Device AI Engine • Developed by Setons",
+                        text = if (hasApiKey) "Powered by Gemini 2.5 Flash • Developed by Setons" else "On-Device AI Engine • Developed by Setons",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 11.sp,
                         color = DarkPrimaryGold
@@ -617,7 +617,7 @@ private fun ApiKeyConfigDialog(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "Track AI connects directly to Google Gemini 1.5 Flash. Enter your Google AI Studio API key below (free at aistudio.google.com).\n\nAs long as an API key is configured, Track communicates live with Gemini and displays direct error diagnostics if quota is exceeded.",
+                    text = "Track AI connects directly to Google Gemini 2.5 Flash. Enter your Google AI Studio API key below (free at aistudio.google.com).\n\nAs long as an API key is configured, Track communicates live with Gemini and displays direct error diagnostics if quota is exceeded.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.75f),
                     fontSize = 12.sp

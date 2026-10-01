@@ -82,6 +82,8 @@ import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.setons.trackrep.adaptive.AdaptiveRepository
 import com.setons.trackrep.adaptive.ProgressionAction
 import androidx.compose.ui.Alignment
@@ -599,6 +601,62 @@ fun CoachScreen(
         CameraTutorialDialog(onDismiss = { showTutorial = false })
     }
 
+    // Biomechanical Stickman Demo Dialog (works in fullscreen, camera on, or camera off)
+    if (showStickmanDemo) {
+        Dialog(
+            onDismissRequest = { showStickmanDemo = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xF8141414),
+                border = BorderStroke(2.dp, DarkPrimaryGold),
+                shadowElevation = 16.dp,
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = DarkPrimaryGold,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "${activeExercise.name} Form Guide",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+                        IconButton(
+                            onClick = { showStickmanDemo = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    StickmanDemoPlayer(
+                        exerciseId = activeExercise.id,
+                        heightDp = 220,
+                        showControls = true
+                    )
+                }
+            }
+        }
+    }
+
     if (isFullscreen && hasCameraPermission) {
         // FULLSCREEN IMMERSIVE CAMERA MODE
         Box(
@@ -684,58 +742,6 @@ fun CoachScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = DarkPrimaryGold
-                        )
-                    }
-                }
-            }
-
-            // Interactive Biomechanical Stickman Demo Overlay
-            if (showStickmanDemo) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0xF8141414),
-                    border = BorderStroke(2.dp, DarkPrimaryGold),
-                    shadowElevation = 12.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .align(Alignment.Center)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Visibility,
-                                    contentDescription = null,
-                                    tint = DarkPrimaryGold,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = "${activeExercise.name} Form Guide",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                            }
-                            IconButton(
-                                onClick = { showStickmanDemo = false },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        StickmanDemoPlayer(
-                            exerciseId = activeExercise.id,
-                            heightDp = 180,
-                            showControls = true
                         )
                     }
                 }

@@ -117,7 +117,7 @@ object TrackAiService {
         userMessage: String,
         structuredContext: String
     ): GeminiCallResult {
-        val candidateModels = listOf("gemini-1.5-flash", "gemini-2.0-flash")
+        val candidateModels = listOf("gemini-2.5-flash", "gemini-2.5-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash")
         var lastError: GeminiCallResult.Error? = null
 
         val systemPrompt = """
