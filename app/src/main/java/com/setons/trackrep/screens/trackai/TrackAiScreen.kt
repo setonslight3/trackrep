@@ -147,7 +147,7 @@ fun TrackAiScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         // Top Header
@@ -163,13 +163,13 @@ fun TrackAiScreen(
                 Box(
                     modifier = Modifier
                         .size(42.dp)
-                        .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = "Track AI",
-                        tint = DarkPrimaryGold,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -179,13 +179,13 @@ fun TrackAiScreen(
                         text = "Track AI Coach",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = if (hasApiKey) "Powered by Gemini 2.5 Flash • Developed by Setons" else "On-Device AI Engine • Developed by Setons",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 11.sp,
-                        color = DarkPrimaryGold
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -194,7 +194,7 @@ fun TrackAiScreen(
                 Icon(
                     imageVector = Icons.Default.Tune,
                     contentDescription = "AI Settings",
-                    tint = DarkPrimaryGold
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -249,14 +249,14 @@ fun TrackAiScreen(
                         modifier = Modifier.padding(8.dp)
                     ) {
                         CircularProgressIndicator(
-                            color = DarkPrimaryGold,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
                         Text(
                             text = "Track is reasoning about your biomechanics...",
                             style = MaterialTheme.typography.bodySmall,
-                            color = DarkPrimaryGold.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -268,8 +268,8 @@ fun TrackAiScreen(
         // Input Box
         Surface(
             shape = RoundedCornerShape(26.dp),
-            color = Color(0xFF181818),
-            border = BorderStroke(1.dp, Color(0xFF333333)),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -285,15 +285,15 @@ fun TrackAiScreen(
                         Text(
                             text = "Ask Track about workouts, form, or swaps...",
                             fontSize = 13.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     },
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     maxLines = 3
                 )
@@ -304,14 +304,14 @@ fun TrackAiScreen(
                     modifier = Modifier
                         .size(42.dp)
                         .background(
-                            if (userPrompt.isNotBlank()) DarkPrimaryGold else Color(0xFF2A2A2A),
+                            if (userPrompt.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                             CircleShape
                         )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,
                         contentDescription = "Send",
-                        tint = if (userPrompt.isNotBlank()) Color.Black else Color.Gray,
+                        tint = if (userPrompt.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -340,14 +340,14 @@ private fun UserMessageBubble(text: String) {
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp),
-            color = Color(0xFF2E2412),
-            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
             modifier = Modifier.fillMaxWidth(0.85f)
         ) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFF7E7C4),
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(14.dp)
             )
         }
@@ -365,8 +365,8 @@ private fun AiMessageCard(
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp),
-            color = Color(0xFF161616),
-            border = BorderStroke(1.dp, Color(0xFF2C2C2C)),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
@@ -378,14 +378,14 @@ private fun AiMessageCard(
                     Box(
                         modifier = Modifier
                             .size(6.dp)
-                            .background(DarkPrimaryGold, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                     )
                     Text(
                         text = "TRACK AI",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 1.sp
                     )
                 }
@@ -395,7 +395,7 @@ private fun AiMessageCard(
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.92f),
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 20.sp
                 )
 
@@ -423,8 +423,8 @@ private fun ActionConfirmationCard(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF1F1F1F),
-        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.45f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -435,7 +435,7 @@ private fun ActionConfirmationCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = DarkPrimaryGold.copy(alpha = 0.18f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
@@ -445,7 +445,7 @@ private fun ActionConfirmationCard(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
@@ -453,7 +453,7 @@ private fun ActionConfirmationCard(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkPrimaryGold
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -462,7 +462,7 @@ private fun ActionConfirmationCard(
                     text = "Schema Verified",
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 9.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
 
@@ -476,12 +476,12 @@ private fun ActionConfirmationCard(
                         text = "Swapped '${oldEx?.name ?: action.oldExerciseId}' -> '${newEx?.name ?: action.newExerciseId}'",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Reason: ${action.reason}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
 
@@ -491,8 +491,8 @@ private fun ActionConfirmationCard(
                             onClick = { onLaunchExerciseInCoach(newEx.id) },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkPrimaryGold,
-                                contentColor = Color.Black
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             modifier = Modifier.height(34.dp)
                         ) {
@@ -509,12 +509,12 @@ private fun ActionConfirmationCard(
                         text = "Adjusted Target for '${ex?.name ?: action.exerciseId}'",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = action.summary,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -524,12 +524,12 @@ private fun ActionConfirmationCard(
                         text = "Workout Schedule Updated",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Shifted forward by ${action.daysOffset} day without volume stacking.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -539,12 +539,12 @@ private fun ActionConfirmationCard(
                         text = "Custom Routine Modified",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = action.summary,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
 
@@ -552,7 +552,7 @@ private fun ActionConfirmationCard(
                     Text(
                         text = action.summary,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -569,14 +569,14 @@ private fun QuickChip(
     Surface(
         onClick = { onClick(prompt) },
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF1E1E1E),
-        border = BorderStroke(1.dp, Color(0xFF333333))
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontSize = 11.sp,
-            color = DarkPrimaryGold,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
@@ -594,8 +594,8 @@ private fun ApiKeyConfigDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Color(0xFF1C1C1C),
-            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.6f)),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -605,12 +605,12 @@ private fun ApiKeyConfigDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Key, contentDescription = null, tint = DarkPrimaryGold)
+                    Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(
                         text = "Gemini API Settings",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -619,7 +619,7 @@ private fun ApiKeyConfigDialog(
                 Text(
                     text = "Track AI connects directly to Google Gemini 2.5 Flash. Enter your Google AI Studio API key below (free at aistudio.google.com).\n\nAs long as an API key is configured, Track communicates live with Gemini and displays direct error diagnostics if quota is exceeded.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                     fontSize = 12.sp
                 )
 
@@ -632,10 +632,10 @@ private fun ApiKeyConfigDialog(
                     placeholder = { Text("AIzaSy...") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = DarkPrimaryGold,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true
                 )
@@ -649,7 +649,7 @@ private fun ApiKeyConfigDialog(
                 ) {
                     if (currentKey.isNotBlank()) {
                         TextButton(onClick = { onSaveKey("") }) {
-                            Text("Clear Key", color = Color(0xFFFF6B6B))
+                            Text("Clear Key", color = Color(0xFFFF5252))
                         }
                     } else {
                         Spacer(modifier = Modifier.width(1.dp))
@@ -657,12 +657,15 @@ private fun ApiKeyConfigDialog(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = onDismiss) {
-                            Text("Cancel", color = Color.Gray)
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
                             onClick = { onSaveKey(keyText) },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkPrimaryGold, contentColor = Color.Black)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Text("Save Key", fontWeight = FontWeight.Bold)
                         }

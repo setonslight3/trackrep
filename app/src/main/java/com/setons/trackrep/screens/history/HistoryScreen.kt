@@ -93,7 +93,6 @@ import com.setons.trackrep.review.SessionTelemetryHelper
 import com.setons.trackrep.review.TimestampedPose
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.filled.Shield
-import com.setons.trackrep.theme.DarkPrimaryGold
 import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import com.setons.trackrep.theme.WarningOrange
@@ -267,11 +266,11 @@ fun HistoryScreen(
         TabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = DarkPrimaryGold,
+            contentColor = MaterialTheme.colorScheme.primary,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                    color = DarkPrimaryGold
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         ) {
@@ -323,7 +322,7 @@ fun HistoryScreen(
                     title = "Avg Form Score",
                     value = "${lifetimeStats.averageFormAccuracy}%",
                     icon = Icons.Default.CheckCircle,
-                    accentColor = if (lifetimeStats.averageFormAccuracy >= 85) SuccessGreen else DarkPrimaryGold,
+                    accentColor = if (lifetimeStats.averageFormAccuracy >= 85) SuccessGreen else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -332,7 +331,7 @@ fun HistoryScreen(
             OutlinedCard(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.35f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -371,7 +370,7 @@ fun HistoryScreen(
                                 text = "${streakStats.currentStreakDays} Days",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = DarkPrimaryGold
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
                                 text = "Current Streak",
@@ -446,7 +445,7 @@ fun HistoryScreen(
                                     Text(
                                         text = "${stat.reps} reps (${stat.percentage.toInt()}%)",
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = DarkPrimaryGold,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -456,7 +455,7 @@ fun HistoryScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(6.dp),
-                                    color = DarkPrimaryGold,
+                                    color = MaterialTheme.colorScheme.primary,
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                             }
@@ -479,7 +478,7 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
@@ -492,7 +491,7 @@ fun HistoryScreen(
                     Text(
                         text = "${prMilestones.count { it.personalRecordValue > 0 }} active",
                         style = MaterialTheme.typography.labelMedium,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -514,8 +513,8 @@ fun HistoryScreen(
                             onClick = { prCategoryFilter = category },
                             label = { Text(category, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = DarkPrimaryGold.copy(alpha = 0.2f),
-                                selectedLabelColor = DarkPrimaryGold
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -578,7 +577,7 @@ fun HistoryScreen(
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (milestone.personalRecordValue > 0) DarkPrimaryGold.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+                                    color = if (milestone.personalRecordValue > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -588,14 +587,14 @@ fun HistoryScreen(
                                         Icon(
                                             imageVector = Icons.Default.EmojiEvents,
                                             contentDescription = null,
-                                            tint = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            tint = if (milestone.personalRecordValue > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
                                             text = if (milestone.personalRecordValue > 0) "${milestone.personalRecordValue} ${milestone.personalRecordUnit}" else "Unset",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (milestone.personalRecordValue > 0) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            color = if (milestone.personalRecordValue > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                         )
                                     }
                                 }
@@ -609,7 +608,7 @@ fun HistoryScreen(
             OutlinedCard(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -620,7 +619,7 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.UploadFile,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
@@ -667,26 +666,29 @@ fun HistoryScreen(
                                 val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
                                 exportLauncher.launch("trackrep_backup_$timestamp.json")
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkPrimaryGold),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export Backup", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Export Backup", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
 
                         OutlinedButton(
                             onClick = {
                                 importLauncher.launch(arrayOf("application/json", "*/*"))
                             },
-                            border = BorderStroke(1.dp, DarkPrimaryGold),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkPrimaryGold)
+                            Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Restore Backup", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Restore Backup", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -709,7 +711,7 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.FitnessCenter,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -759,7 +761,7 @@ fun HistoryScreen(
                                             Text(
                                                 text = session.routineName,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = DarkPrimaryGold,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
@@ -772,13 +774,13 @@ fun HistoryScreen(
 
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = if (session.averageFormScore >= 90) SuccessGreen.copy(alpha = 0.15f) else DarkPrimaryGold.copy(alpha = 0.15f)
+                                        color = if (session.averageFormScore >= 90) SuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     ) {
                                         Text(
                                             text = "${session.averageFormScore}% Form",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (session.averageFormScore >= 90) SuccessGreen else DarkPrimaryGold,
+                                            color = if (session.averageFormScore >= 90) SuccessGreen else MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
                                     }
@@ -801,8 +803,8 @@ fun HistoryScreen(
                                         },
                                         shape = RoundedCornerShape(8.dp),
                                         colors = ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = DarkPrimaryGold.copy(alpha = 0.2f),
-                                            contentColor = DarkPrimaryGold
+                                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                            contentColor = MaterialTheme.colorScheme.primary
                                         )
                                     ) {
                                         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -834,7 +836,7 @@ fun HistoryScreen(
                                             Icon(
                                                 Icons.Default.Download,
                                                 contentDescription = "Save Video to Gallery",
-                                                tint = DarkPrimaryGold,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
@@ -867,7 +869,7 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = null,
-                            tint = DarkPrimaryGold
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -894,7 +896,7 @@ fun HistoryScreen(
                     Icon(
                         imageVector = Icons.Default.Storage,
                         contentDescription = null,
-                        tint = DarkPrimaryGold
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Column {
                         Text(
@@ -930,7 +932,7 @@ fun HistoryScreen(
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
-                        tint = DarkPrimaryGold,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(36.dp)
                     )
                     Text(
@@ -948,14 +950,14 @@ fun HistoryScreen(
                     LinearProgressIndicator(
                         progress = { exportProgress },
                         modifier = Modifier.fillMaxWidth(),
-                        color = DarkPrimaryGold,
-                        trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                     )
                     Text(
                         text = "${(exportProgress * 100).toInt()}% Encoded",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -1068,7 +1070,7 @@ private fun KpiCard(
     title: String,
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color = DarkPrimaryGold,
+    accentColor: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(

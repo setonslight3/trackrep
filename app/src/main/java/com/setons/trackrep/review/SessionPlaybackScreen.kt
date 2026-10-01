@@ -81,8 +81,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.video.MediaAlbumHelper
 import kotlinx.coroutines.delay
 import java.io.File
@@ -345,7 +343,7 @@ fun SessionPlaybackScreen(
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
-                        tint = DarkPrimaryGold,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(36.dp)
                     )
                     Text(
@@ -355,7 +353,7 @@ fun SessionPlaybackScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Rendering luxury gold skeleton tracking onto black canvas. Zero face, body, or room background recorded.",
+                        text = "Rendering motion skeleton tracking onto clean canvas. Zero face, body, or room background recorded.",
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
@@ -363,14 +361,14 @@ fun SessionPlaybackScreen(
                     LinearProgressIndicator(
                         progress = { exportProgress },
                         modifier = Modifier.fillMaxWidth(),
-                        color = DarkPrimaryGold,
-                        trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                     )
                     Text(
                         text = "${(exportProgress * 100).toInt()}% Encoded",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -441,8 +439,8 @@ fun SessionPlaybackScreen(
                 Surface(
                     onClick = { displayMode = PlaybackDisplayMode.REAL_VIDEO },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) DarkPrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.REAL_VIDEO) DarkPrimaryGold else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.REAL_VIDEO) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.weight(1f)
                 ) {
                     Row(
@@ -453,7 +451,7 @@ fun SessionPlaybackScreen(
                         Icon(
                             imageVector = Icons.Default.Videocam,
                             contentDescription = null,
-                            tint = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) Color.Black else MaterialTheme.colorScheme.onSurface,
+                            tint = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -461,7 +459,7 @@ fun SessionPlaybackScreen(
                             text = "Real Video",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) Color.Black else MaterialTheme.colorScheme.onSurface
+                            color = if (displayMode == PlaybackDisplayMode.REAL_VIDEO) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -469,8 +467,8 @@ fun SessionPlaybackScreen(
                 Surface(
                     onClick = { displayMode = PlaybackDisplayMode.MOTION_STICKS_ONLY },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) DarkPrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) DarkPrimaryGold else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.weight(1f)
                 ) {
                     Row(
@@ -481,7 +479,7 @@ fun SessionPlaybackScreen(
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = null,
-                            tint = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) Color.Black else MaterialTheme.colorScheme.onSurface,
+                            tint = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -489,7 +487,7 @@ fun SessionPlaybackScreen(
                             text = "Motion Sticks Only",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) Color.Black else MaterialTheme.colorScheme.onSurface
+                            color = if (displayMode == PlaybackDisplayMode.MOTION_STICKS_ONLY) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -530,7 +528,7 @@ fun SessionPlaybackScreen(
                                         Icon(
                                             imageVector = Icons.Default.Videocam,
                                             contentDescription = null,
-                                            tint = DarkPrimaryGold,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(36.dp)
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -538,7 +536,7 @@ fun SessionPlaybackScreen(
                                             text = "No Raw Video File Attached",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = DarkPrimaryGold
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = "Switch to 'Motion Sticks Only' above to view the full motion telemetry animation.",
@@ -567,7 +565,7 @@ fun SessionPlaybackScreen(
                                         Icon(
                                             imageVector = Icons.Default.Shield,
                                             contentDescription = null,
-                                            tint = DarkPrimaryGold,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(36.dp)
                                         )
                                         Text(
@@ -587,13 +585,13 @@ fun SessionPlaybackScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(horizontal = 24.dp),
-                                            color = DarkPrimaryGold,
-                                            trackColor = DarkPrimaryGold.copy(alpha = 0.25f)
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                                         )
                                         Text(
                                             text = "${(extractionProgress * 100).toInt()}% Extracted",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = DarkSecondaryGold,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -627,7 +625,7 @@ fun SessionPlaybackScreen(
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = "Toggle Play",
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -663,8 +661,8 @@ fun SessionPlaybackScreen(
                     onClick = { showSaveChoiceDialog = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkPrimaryGold,
-                        contentColor = Color.Black
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
@@ -683,7 +681,7 @@ fun SessionPlaybackScreen(
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Share Video to Device",
@@ -774,8 +772,8 @@ fun SessionPlaybackScreen(
                     },
                     valueRange = 0f..totalDurationMs,
                     colors = SliderDefaults.colors(
-                        thumbColor = DarkPrimaryGold,
-                        activeTrackColor = DarkPrimaryGold,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
@@ -867,8 +865,8 @@ fun SessionPlaybackScreen(
                         // Coaching Correction Tip Box
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = DarkPrimaryGold.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.35f)),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -879,7 +877,7 @@ fun SessionPlaybackScreen(
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Column {
@@ -887,7 +885,7 @@ fun SessionPlaybackScreen(
                                         text = "Coaching Adjustment:",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = DarkPrimaryGold
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
                                         text = flaw.correctionTip,

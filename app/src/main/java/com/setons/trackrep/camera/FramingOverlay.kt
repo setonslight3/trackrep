@@ -27,8 +27,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 
 @Composable
@@ -37,8 +35,8 @@ fun FramingOverlay(
     framingStatus: FramingStatus,
     modifier: Modifier = Modifier
 ) {
-    val goldColor = DarkPrimaryGold
-    val activeColor = if (framingStatus.isPassing) SuccessGreen else goldColor
+    val accentColor = MaterialTheme.colorScheme.primary
+    val activeColor = if (framingStatus.isPassing) SuccessGreen else accentColor
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {

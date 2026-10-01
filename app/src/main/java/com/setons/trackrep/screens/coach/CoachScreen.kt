@@ -1067,8 +1067,8 @@ fun CoachScreen(
                     Surface(
                         onClick = { showExerciseDrawer = true },
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFF1E1E1E),
-                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
                         modifier = Modifier.widthIn(max = 160.dp)
                     ) {
                         Row(
@@ -1079,14 +1079,14 @@ fun CoachScreen(
                             Icon(
                                 imageVector = Icons.Default.FitnessCenter,
                                 contentDescription = null,
-                                tint = DarkPrimaryGold,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = activeExercise.name,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkPrimaryGold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -1098,13 +1098,13 @@ fun CoachScreen(
                         onClick = { showControlsDrawer = true },
                         modifier = Modifier
                             .size(38.dp)
-                            .background(Color(0xFF1E1E1E), CircleShape)
-                            .border(1.dp, DarkPrimaryGold.copy(alpha = 0.5f), CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Options",
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -1116,8 +1116,8 @@ fun CoachScreen(
                 Surface(
                     onClick = { showRoutineDrawer = true },
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF1E1A11),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1133,27 +1133,27 @@ fun CoachScreen(
                             Icon(
                                 imageVector = Icons.Default.DirectionsRun,
                                 contentDescription = null,
-                                tint = DarkPrimaryGold,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "${routine.name} • ${currentRoutineIndex + 1}/${routine.items.size}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkPrimaryGold,
+                                color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = DarkPrimaryGold.copy(alpha = 0.15f),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
                             Text(
                                 text = "Routine List",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = DarkPrimaryGold,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1234,8 +1234,8 @@ fun CoachScreen(
                 // CAMERA IS OFF VIEW (Sleek offline card + high-contrast exercise picker!)
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141414)),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -1251,13 +1251,13 @@ fun CoachScreen(
                         Box(
                             modifier = Modifier
                                 .size(64.dp)
-                                .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.VideocamOff,
                                 contentDescription = null,
-                                tint = DarkPrimaryGold,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -1268,7 +1268,7 @@ fun CoachScreen(
                             text = "Camera Vision is Off",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -1277,7 +1277,7 @@ fun CoachScreen(
                             text = "Turn camera on to track real-time reps, form angles, and get live posture feedback.",
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             modifier = Modifier.fillMaxWidth(0.9f)
                         )
 
@@ -1287,8 +1287,8 @@ fun CoachScreen(
                             onClick = { isCameraEnabled = true },
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkPrimaryGold,
-                                contentColor = Color.Black
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -1301,8 +1301,8 @@ fun CoachScreen(
                         // Selected Exercise Details & Change Exercise Button
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF1E1E1E),
-                            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.3f)),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -1315,21 +1315,21 @@ fun CoachScreen(
                                         Text(
                                             text = "Selected Exercise",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = DarkPrimaryGold,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = activeExercise.name,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.White
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(8.dp))
                                     TextButton(
                                         onClick = { showExerciseDrawer = true }
                                     ) {
-                                        Text("Change", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("Change", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                 }
 
@@ -1338,12 +1338,12 @@ fun CoachScreen(
                                 OutlinedButton(
                                     onClick = { showStickmanDemo = true },
                                     shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Default.PlayCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.PlayCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Watch Stickman Form Demo", color = DarkPrimaryGold, fontWeight = FontWeight.Bold)
+                                    Text("Watch Stickman Form Demo", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1482,7 +1482,7 @@ fun CoachScreen(
                         onClick = { isCameraEnabled = false },
                         modifier = Modifier
                             .size(48.dp)
-                            .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                             .border(1.dp, Color(0xFFFF5252).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
                     ) {
                         Icon(
@@ -1715,8 +1715,8 @@ fun CoachScreen(
     if (showExerciseDrawer) {
         ModalBottomSheet(
             onDismissRequest = { showExerciseDrawer = false },
-            containerColor = Color(0xFF161616),
-            contentColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
@@ -1736,24 +1736,24 @@ fun CoachScreen(
                             text = "Exercise & AI Detection",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Select your workout movement or let AI auto-switch",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.65f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                         )
                     }
                     IconButton(onClick = { showExerciseDrawer = false }) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
                 // AI Auto-Detect Movement Toggle Card with High-Contrast TrackRepSwitch
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF201D16)),
-                    border = BorderStroke(1.5.dp, if (isAutoDetectEnabled) DarkPrimaryGold else Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.5.dp, if (isAutoDetectEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -1771,13 +1771,13 @@ fun CoachScreen(
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
-                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -1786,12 +1786,12 @@ fun CoachScreen(
                                     text = "Auto-Detect Exercise",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (isAutoDetectEnabled) "Active • Camera auto-detects Push-ups, Squats, Planks & more" else "Disabled • Manual movement selection",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isAutoDetectEnabled) DarkPrimaryGold else Color.White.copy(alpha = 0.6f)
+                                    color = if (isAutoDetectEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -1809,8 +1809,8 @@ fun CoachScreen(
                 // Current Active Exercise Summary Card
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -1823,7 +1823,7 @@ fun CoachScreen(
                                 Text(
                                     text = "CURRENT TARGET",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = DarkPrimaryGold,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.ExtraBold,
                                     letterSpacing = 1.sp
                                 )
@@ -1831,12 +1831,12 @@ fun CoachScreen(
                                     text = activeExercise.name,
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "${activeExercise.difficulty.displayName} • ${activeExercise.targetMuscle.displayName}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.7f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -1854,8 +1854,8 @@ fun CoachScreen(
                                 },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = DarkPrimaryGold,
-                                    contentColor = Color.Black
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -1870,12 +1870,12 @@ fun CoachScreen(
                                     onNavigateToLibrary()
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.7f)),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("All 35 Exercises", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("All 35 Exercises", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
                     }
@@ -1886,7 +1886,7 @@ fun CoachScreen(
                     Text(
                         text = "TODAY'S ROUTINE (${routine.items.size} MOVEMENTS)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp
                     )
@@ -1903,16 +1903,16 @@ fun CoachScreen(
                             },
                             shape = RoundedCornerShape(12.dp),
                             color = when {
-                                isCurrent -> DarkPrimaryGold.copy(alpha = 0.18f)
-                                isDone -> Color(0xFF1B241C)
-                                else -> Color(0xFF1E1E1E)
+                                isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                                isDone -> SuccessGreen.copy(alpha = 0.12f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant
                             },
                             border = BorderStroke(
                                 1.dp,
                                 when {
-                                    isCurrent -> DarkPrimaryGold
+                                    isCurrent -> MaterialTheme.colorScheme.primary
                                     isDone -> SuccessGreen.copy(alpha = 0.6f)
-                                    else -> Color(0xFF333333)
+                                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                                 }
                             ),
                             modifier = Modifier.fillMaxWidth()
@@ -1934,9 +1934,9 @@ fun CoachScreen(
                                             .size(28.dp)
                                             .background(
                                                 when {
-                                                    isCurrent -> DarkPrimaryGold
+                                                    isCurrent -> MaterialTheme.colorScheme.primary
                                                     isDone -> SuccessGreen
-                                                    else -> Color(0xFF333333)
+                                                    else -> MaterialTheme.colorScheme.surface
                                                 },
                                                 CircleShape
                                             ),
@@ -1946,7 +1946,7 @@ fun CoachScreen(
                                             text = "${idx + 1}",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 12.sp,
-                                            color = if (isCurrent || isDone) Color.Black else Color.White
+                                            color = if (isCurrent || isDone) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                     Column {
@@ -1954,28 +1954,28 @@ fun CoachScreen(
                                             text = ex?.name ?: item.exerciseId,
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isCurrent) DarkPrimaryGold else Color.White
+                                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             text = "${item.targetSets} sets • " +
                                                     if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
                                                     else "${item.targetReps} reps",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.65f)
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                         )
                                     }
                                 }
                                 if (isCurrent) {
                                     Surface(
                                         shape = RoundedCornerShape(4.dp),
-                                        color = DarkPrimaryGold.copy(alpha = 0.25f)
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                                     ) {
                                         Text(
                                             text = "ACTIVE",
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontSize = 9.sp,
-                                            color = DarkPrimaryGold,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -2001,7 +2001,7 @@ fun CoachScreen(
                 Text(
                     text = "ALL MOVEMENTS (QUICK SELECT)",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp
                 )
@@ -2017,15 +2017,15 @@ fun CoachScreen(
                         Surface(
                             onClick = { selectedCategory = cat },
                             shape = RoundedCornerShape(16.dp),
-                            color = if (isCatSelected) DarkPrimaryGold else Color(0xFF222222),
-                            border = BorderStroke(1.dp, if (isCatSelected) DarkPrimaryGold else Color(0xFF444444))
+                            color = if (isCatSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (isCatSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         ) {
                             Text(
                                 text = cat,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isCatSelected) Color.Black else Color.White
+                                color = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -2074,10 +2074,10 @@ fun CoachScreen(
                             showExerciseDrawer = false
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isCurrent) DarkPrimaryGold.copy(alpha = 0.15f) else Color(0xFF1E1E1E),
+                        color = if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
                         border = BorderStroke(
                             1.dp,
-                            if (isCurrent) DarkPrimaryGold else Color(0xFF333333)
+                            if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -2103,7 +2103,7 @@ fun CoachScreen(
                                         null -> Icons.Default.FitnessCenter
                                     },
                                     contentDescription = null,
-                                    tint = if (isCurrent) DarkPrimaryGold else Color.White.copy(alpha = 0.7f),
+                                    tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Column {
@@ -2111,17 +2111,17 @@ fun CoachScreen(
                                         text = ex.name,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isCurrent) DarkPrimaryGold else Color.White
+                                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "${ex.difficulty.displayName} • ${ex.targetMuscle.displayName}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.6f)
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     )
                                 }
                             }
                             if (isCurrent) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -2138,8 +2138,8 @@ fun CoachScreen(
     if (showControlsDrawer) {
         ModalBottomSheet(
             onDismissRequest = { showControlsDrawer = false },
-            containerColor = Color(0xFF161616),
-            contentColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
@@ -2159,24 +2159,24 @@ fun CoachScreen(
                             text = "Camera & Coach Controls",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Vision feed, audio cues, and display options",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.65f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                         )
                     }
                     IconButton(onClick = { showControlsDrawer = false }) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 
                 // 1. Camera Vision Power (ON / OFF)
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, if (isCameraEnabled) DarkPrimaryGold else Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, if (isCameraEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -2212,12 +2212,12 @@ fun CoachScreen(
                                     text = "Camera Vision",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (isCameraEnabled) "Camera is actively tracking" else "Camera is paused (Off)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.65f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -2231,8 +2231,8 @@ fun CoachScreen(
                 // 2. Camera Lens (Front / Back)
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -2250,13 +2250,13 @@ fun CoachScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FlipCameraAndroid,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2265,12 +2265,12 @@ fun CoachScreen(
                                     text = "Camera Lens",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (selectedLens == CameraLens.BACK) "Rear Camera (Environment)" else "Front Camera (Selfie)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.65f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -2279,11 +2279,11 @@ fun CoachScreen(
                                 selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
                             },
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, DarkPrimaryGold)
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                         ) {
                             Text(
                                 text = if (selectedLens == CameraLens.BACK) "Use Front" else "Use Back",
-                                color = DarkPrimaryGold,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
@@ -2294,8 +2294,8 @@ fun CoachScreen(
                 // 3. Audio Voice Feedback Toggle
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -2313,13 +2313,13 @@ fun CoachScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = if (voiceManager.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2328,12 +2328,12 @@ fun CoachScreen(
                                     text = "Voice Coach Cues",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (voiceManager.isMuted) "Audio muted" else "Active spoken rep & form coaching",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.65f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -2347,8 +2347,8 @@ fun CoachScreen(
                 // 4. Immersive Fullscreen Mode
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -2366,13 +2366,13 @@ fun CoachScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Fullscreen,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2381,12 +2381,12 @@ fun CoachScreen(
                                     text = "Fullscreen Mode",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Immersive tracking without navigation bars",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.65f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -2397,8 +2397,8 @@ fun CoachScreen(
                             },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkPrimaryGold,
-                                contentColor = Color.Black
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Text("Expand", fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -2409,8 +2409,8 @@ fun CoachScreen(
                 // 5. Setup & Positioning Guide Tutorial
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222)),
-                    border = BorderStroke(1.dp, Color(0xFF333333)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -2428,13 +2428,13 @@ fun CoachScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(DarkPrimaryGold.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.HelpOutline,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -2443,12 +2443,12 @@ fun CoachScreen(
                                     text = "Setup & Calibration Guide",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "5-7 paces, floor level, 15° tilt placement",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.65f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                                 )
                             }
                         }
@@ -2458,9 +2458,9 @@ fun CoachScreen(
                                 showTutorial = true
                             },
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, DarkPrimaryGold)
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Open", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Open", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -2478,8 +2478,8 @@ fun CoachScreen(
         if (routine != null) {
             ModalBottomSheet(
                 onDismissRequest = { showRoutineDrawer = false },
-                containerColor = Color(0xFF161616),
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Column(
                     modifier = Modifier
@@ -2498,16 +2498,16 @@ fun CoachScreen(
                                 text = routine.name,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Today's Routine • ${routine.items.size} Movements",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.65f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )
                         }
                         IconButton(onClick = { showRoutineDrawer = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
 
@@ -2523,16 +2523,16 @@ fun CoachScreen(
                             },
                             shape = RoundedCornerShape(12.dp),
                             color = when {
-                                isCurrent -> DarkPrimaryGold.copy(alpha = 0.15f)
-                                isDone -> Color(0xFF1B241C)
-                                else -> Color(0xFF1F1F1F)
+                                isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                isDone -> SuccessGreen.copy(alpha = 0.15f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant
                             },
                             border = BorderStroke(
                                 1.dp,
                                 when {
-                                    isCurrent -> DarkPrimaryGold
+                                    isCurrent -> MaterialTheme.colorScheme.primary
                                     isDone -> SuccessGreen.copy(alpha = 0.6f)
-                                    else -> Color(0xFF333333)
+                                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                                 }
                             ),
                             modifier = Modifier.fillMaxWidth()
@@ -2554,9 +2554,9 @@ fun CoachScreen(
                                             .size(28.dp)
                                             .background(
                                                 when {
-                                                    isCurrent -> DarkPrimaryGold
+                                                    isCurrent -> MaterialTheme.colorScheme.primary
                                                     isDone -> SuccessGreen
-                                                    else -> Color(0xFF333333)
+                                                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                                 },
                                                 CircleShape
                                             ),
@@ -2566,7 +2566,7 @@ fun CoachScreen(
                                             Icon(
                                                 imageVector = Icons.Default.CheckCircle,
                                                 contentDescription = null,
-                                                tint = Color.Black,
+                                                tint = MaterialTheme.colorScheme.onPrimary,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         } else {
@@ -2574,7 +2574,7 @@ fun CoachScreen(
                                                 text = "${idx + 1}",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isCurrent) Color.Black else Color.White
+                                                color = if (isCurrent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -2583,12 +2583,12 @@ fun CoachScreen(
                                             text = ex?.name ?: item.exerciseId,
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isCurrent) DarkPrimaryGold else Color.White
+                                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             text = if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold • ${item.targetSets} sets" else "${item.targetReps} reps • ${item.targetSets} sets",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.6f)
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                         )
                                     }
                                 }
@@ -2596,14 +2596,14 @@ fun CoachScreen(
                                 if (isCurrent) {
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = DarkPrimaryGold,
+                                        color = MaterialTheme.colorScheme.primary,
                                     ) {
                                         Text(
                                             text = "ACTIVE",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = Color.Black,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             fontSize = 10.sp
                                         )
                                     }

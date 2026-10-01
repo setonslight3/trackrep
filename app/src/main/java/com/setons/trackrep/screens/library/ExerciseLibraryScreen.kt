@@ -78,9 +78,6 @@ import com.setons.trackrep.exercise.model.DifficultyLevel
 import com.setons.trackrep.exercise.model.Exercise
 import com.setons.trackrep.exercise.model.MuscleGroup
 import com.setons.trackrep.exercise.model.WorkoutRoutine
-import com.setons.trackrep.theme.DarkOutlineGold
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.ui.demo.StickmanDemoPlayer
@@ -132,14 +129,14 @@ fun ExerciseLibraryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(46.dp)
-                    .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Surface(
                     onClick = { selectedTab = LibraryTab.EXERCISES },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (selectedTab == LibraryTab.EXERCISES) DarkPrimaryGold else Color.Transparent,
+                    color = if (selectedTab == LibraryTab.EXERCISES) MaterialTheme.colorScheme.primary else Color.Transparent,
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp)
@@ -152,7 +149,7 @@ fun ExerciseLibraryScreen(
                         Icon(
                             imageVector = Icons.Default.FitnessCenter,
                             contentDescription = null,
-                            tint = if (selectedTab == LibraryTab.EXERCISES) Color.Black else DarkPrimaryGold,
+                            tint = if (selectedTab == LibraryTab.EXERCISES) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -160,7 +157,7 @@ fun ExerciseLibraryScreen(
                             text = "Exercises (${ExerciseCatalog.getAll().size})",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (selectedTab == LibraryTab.EXERCISES) Color.Black else Color.White
+                            color = if (selectedTab == LibraryTab.EXERCISES) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -168,7 +165,7 @@ fun ExerciseLibraryScreen(
                 Surface(
                     onClick = { selectedTab = LibraryTab.ROUTINES },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (selectedTab == LibraryTab.ROUTINES) DarkPrimaryGold else Color.Transparent,
+                    color = if (selectedTab == LibraryTab.ROUTINES) MaterialTheme.colorScheme.primary else Color.Transparent,
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp)
@@ -181,7 +178,7 @@ fun ExerciseLibraryScreen(
                         Icon(
                             imageVector = Icons.Default.FlashOn,
                             contentDescription = null,
-                            tint = if (selectedTab == LibraryTab.ROUTINES) Color.Black else DarkPrimaryGold,
+                            tint = if (selectedTab == LibraryTab.ROUTINES) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -189,7 +186,7 @@ fun ExerciseLibraryScreen(
                             text = "Routines (${WorkoutEngine.getRoutines().size})",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (selectedTab == LibraryTab.ROUTINES) Color.Black else Color.White
+                            color = if (selectedTab == LibraryTab.ROUTINES) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -287,24 +284,24 @@ fun ExercisesTabContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Search by exercise, muscle, or level...", color = Color.Gray, fontSize = 13.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search by exercise, muscle, or level...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), fontSize = 13.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
                     }
                 }
             },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = DarkPrimaryGold,
-                unfocusedBorderColor = Color(0xFF333333),
-                focusedContainerColor = Color(0xFF161616),
-                unfocusedContainerColor = Color(0xFF161616),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -326,14 +323,14 @@ fun ExercisesTabContent(
                 Surface(
                     onClick = { onMuscleSelect(muscle) },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) DarkPrimaryGold else Color(0xFF222222),
-                    border = BorderStroke(1.dp, if (isSelected) DarkPrimaryGold else Color(0xFF3A3A3A))
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Text(
                         text = muscle.displayName,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.Black else Color.White,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
@@ -354,8 +351,8 @@ fun ExercisesTabContent(
                 Surface(
                     onClick = { onDifficultySelect(level) },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) Color(0xFF382E18) else Color(0xFF1E1E1E),
-                    border = BorderStroke(1.dp, if (isSelected) DarkPrimaryGold else Color(0xFF333333))
+                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -366,13 +363,13 @@ fun ExercisesTabContent(
                             text = "L${level.rank}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = DarkPrimaryGold
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = level.displayName,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) Color.White else Color.Gray
+                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                         )
                     }
                 }
@@ -394,7 +391,7 @@ fun ExercisesTabContent(
                     Text(
                         text = "MOVEMENTS (${filteredExercises.size})",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -402,7 +399,7 @@ fun ExercisesTabContent(
                         Text(
                             text = "Filtered",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -427,8 +424,8 @@ fun ExerciseCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF1E1E1E),
-        border = BorderStroke(1.dp, if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.5f) else Color(0xFF333333)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, if (exercise.isVisionSupported) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -445,7 +442,7 @@ fun ExerciseCard(
                         text = exercise.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -461,12 +458,12 @@ fun ExerciseCard(
                     // Muscle Badge
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF2C2C2C)
+                        color = MaterialTheme.colorScheme.surface
                     ) {
                         Text(
                             text = exercise.targetMuscle.displayName,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -475,12 +472,12 @@ fun ExerciseCard(
                     // Difficulty Tier
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF382E18)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                     ) {
                         Text(
                             text = "L${exercise.difficulty.rank} • ${exercise.difficulty.displayName}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = DarkPrimaryGold,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -495,7 +492,7 @@ fun ExerciseCard(
                     Text(
                         text = "${exercise.defaultSets} × $volumeText",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -506,8 +503,8 @@ fun ExerciseCard(
             if (exercise.isVisionSupported) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = DarkPrimaryGold.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, DarkPrimaryGold)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -517,14 +514,14 @@ fun ExerciseCard(
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "AI Vision",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = DarkPrimaryGold
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -547,7 +544,7 @@ fun RoutinesTabContent(
             Text(
                 text = "CURATED WORKOUT ROUTINES",
                 style = MaterialTheme.typography.labelSmall,
-                color = DarkPrimaryGold,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -573,8 +570,8 @@ fun RoutineCard(
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1E1E1E),
-        border = BorderStroke(1.dp, Color(0xFF333333)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -589,26 +586,26 @@ fun RoutineCard(
                         text = routine.name,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = routine.tagline,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF382E18),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.6f))
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                 ) {
                     Text(
                         text = "${routine.estimatedMinutes} MIN",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -623,13 +620,13 @@ fun RoutineCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFF2A2A2A)
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     Text(
                         text = "Level ${routine.difficulty.rank} • ${routine.difficulty.displayName}",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -637,14 +634,14 @@ fun RoutineCard(
                 if (visionCount > 0) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = DarkPrimaryGold.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f))
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = "$visionCount AI Vision Moves",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = DarkPrimaryGold,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                         )
                     }
@@ -657,7 +654,7 @@ fun RoutineCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF141414), RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -674,20 +671,20 @@ fun RoutineCard(
                             Text(
                                 text = "${index + 1}.",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = DarkPrimaryGold,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = ex.name,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             if (ex.isVisionSupported) {
                                 Icon(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = null,
-                                    tint = DarkPrimaryGold,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -696,7 +693,7 @@ fun RoutineCard(
                         Text(
                             text = "${item.targetSets} sets × $volume",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -709,8 +706,8 @@ fun RoutineCard(
                 onClick = onStartClick,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkPrimaryGold,
-                    contentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -739,8 +736,8 @@ fun ExerciseDetailDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF1A1A1A),
-            border = BorderStroke(1.5.dp, DarkPrimaryGold.copy(alpha = 0.7f)),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)
@@ -762,16 +759,16 @@ fun ExerciseDetailDialog(
                             text = exercise.name,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${exercise.difficulty.displayName} • ${exercise.equipment.displayName}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = DarkPrimaryGold
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Clear, contentDescription = "Close", tint = Color.Gray)
+                        Icon(Icons.Default.Clear, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                 }
 
@@ -779,8 +776,8 @@ fun ExerciseDetailDialog(
                 if (exercise.isVisionSupported) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = DarkPrimaryGold.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, DarkPrimaryGold)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Row(
                             modifier = Modifier
@@ -789,18 +786,18 @@ fun ExerciseDetailDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = DarkPrimaryGold, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             Column {
                                 Text(
                                     text = "AI Vision Coach Supported",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = DarkPrimaryGold
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = "Real-time on-device joint angle analysis and rep counting.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                                 )
                             }
                         }
@@ -818,7 +815,7 @@ fun ExerciseDetailDialog(
                 progression?.let { prog ->
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF1E281E),
+                        color = SuccessGreen.copy(alpha = 0.12f),
                         border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -834,7 +831,7 @@ fun ExerciseDetailDialog(
                                 Column {
                                     Text("Personal Record & Target", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = SuccessGreen)
                                     val prText = if (exercise.isIsometric) "PR: ${prog.personalRecordHoldSeconds}s hold" else "PR: ${prog.personalRecordReps} reps"
-                                    Text(prText, style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                    Text(prText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             Surface(shape = RoundedCornerShape(6.dp), color = SuccessGreen.copy(alpha = 0.2f)) {
@@ -848,7 +845,7 @@ fun ExerciseDetailDialog(
                 // Volume Recommendation Card
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF242424)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
                         modifier = Modifier
@@ -858,18 +855,18 @@ fun ExerciseDetailDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Sets", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            Text("${exercise.defaultSets}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Sets", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            Text("${exercise.defaultSets}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             val targetLabel = if (exercise.isIsometric) "Hold" else "Target"
                             val targetVal = if (exercise.isIsometric) "${exercise.defaultHoldSeconds}s" else "${exercise.defaultReps} reps"
-                            Text(targetLabel, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            Text(targetVal, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = DarkPrimaryGold)
+                            Text(targetLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            Text(targetVal, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Rest", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            Text("${exercise.restSeconds}s", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Rest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            Text("${exercise.restSeconds}s", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -879,7 +876,7 @@ fun ExerciseDetailDialog(
                     Text(
                         text = "FORM EXECUTION",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -892,15 +889,15 @@ fun ExerciseDetailDialog(
                             Box(
                                 modifier = Modifier
                                     .size(20.dp)
-                                    .background(Color(0xFF333333), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = DarkPrimaryGold, fontWeight = FontWeight.Bold)
+                                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                             Text(
                                 text = step,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -927,7 +924,7 @@ fun ExerciseDetailDialog(
                                 Text(
                                     text = flaw,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                                 )
                             }
                         }
@@ -937,15 +934,15 @@ fun ExerciseDetailDialog(
                 // Pro Tip Box
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF221F16),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.3f))
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("COACH PRO TIP", style = MaterialTheme.typography.labelSmall, color = DarkPrimaryGold, fontWeight = FontWeight.ExtraBold)
+                        Text("COACH PRO TIP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                         Text(
                             text = exercise.proTip,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -958,8 +955,8 @@ fun ExerciseDetailDialog(
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (exercise.isVisionSupported) DarkPrimaryGold else Color(0xFF333333),
-                        contentColor = if (exercise.isVisionSupported) Color.Black else Color.White
+                        containerColor = if (exercise.isVisionSupported) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (exercise.isVisionSupported) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

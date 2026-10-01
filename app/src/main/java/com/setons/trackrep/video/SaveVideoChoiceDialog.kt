@@ -34,8 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 
 @Composable
 fun SaveVideoChoiceDialog(
@@ -50,9 +48,9 @@ fun SaveVideoChoiceDialog(
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1E1B16) // Luxury dark gold tinted background
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)
@@ -70,14 +68,14 @@ fun SaveVideoChoiceDialog(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = DarkPrimaryGold.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         modifier = Modifier.size(38.dp)
                     ) {
                         BoxContent(alignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.Download,
                                 contentDescription = null,
-                                tint = DarkPrimaryGold,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -87,12 +85,12 @@ fun SaveVideoChoiceDialog(
                             text = "Save to Gallery",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = exerciseName,
                             style = MaterialTheme.typography.bodySmall,
-                            color = DarkSecondaryGold
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -100,7 +98,7 @@ fun SaveVideoChoiceDialog(
                 Text(
                     text = "Choose which video format to export to your device's Movies/TrackRep album:",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                     lineHeight = 18.sp
                 )
 
@@ -125,7 +123,7 @@ fun SaveVideoChoiceDialog(
                     title = "Motion Sticks Video",
                     subtitle = "Gold skeleton telemetry on black canvas • 100% Privacy",
                     badge = "Privacy Mode",
-                    badgeColor = DarkPrimaryGold,
+                    badgeColor = MaterialTheme.colorScheme.primary,
                     onClick = {
                         onDismiss()
                         onSaveMotionSticks()
@@ -155,7 +153,7 @@ fun SaveVideoChoiceDialog(
                     TextButton(
                         onClick = onDismiss,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.White.copy(alpha = 0.7f)
+                            contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     ) {
                         Text("Cancel", fontWeight = FontWeight.SemiBold)
@@ -187,8 +185,8 @@ private fun SaveOptionItem(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF28241D),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
@@ -225,7 +223,7 @@ private fun SaveOptionItem(
                         text = title,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -245,7 +243,7 @@ private fun SaveOptionItem(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     fontSize = 11.sp,
                     lineHeight = 14.sp
                 )

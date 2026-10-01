@@ -78,8 +78,6 @@ import com.setons.trackrep.exercise.model.MuscleGroup
 import com.setons.trackrep.schedule.MissedSessionStrategy
 import com.setons.trackrep.schedule.UserProfileRepository
 import com.setons.trackrep.schedule.WorkoutScheduleEngine
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 import com.setons.trackrep.workout.WorkoutEngine
 import kotlinx.coroutines.launch
@@ -183,7 +181,7 @@ fun HomeScreen(
         val readinessScore = readinessState?.readinessPercentage ?: 100
         val readinessColor = when {
             readinessScore >= 80 -> SuccessGreen
-            readinessScore >= 60 -> DarkPrimaryGold
+            readinessScore >= 60 -> Color(0xFFFFA000)
             else -> Color(0xFFEF5350)
         }
 
@@ -271,7 +269,7 @@ fun HomeScreen(
                             val status = entry.value
                             val chipColor = when (status.phase) {
                                 RecoveryPhase.FATIGUED -> Color(0xFFEF5350)
-                                RecoveryPhase.RECOVERING -> DarkPrimaryGold
+                                RecoveryPhase.RECOVERING -> Color(0xFFFFA000)
                                 RecoveryPhase.FULLY_RECOVERED -> SuccessGreen
                             }
                             val phaseText = when (status.phase) {
@@ -462,7 +460,7 @@ fun HomeScreen(
                                                     isCompleted -> SuccessGreen
                                                     isMissed -> Color(0xFFEF5350)
                                                     item.isRestDay -> MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                                                    else -> DarkPrimaryGold
+                                                    else -> MaterialTheme.colorScheme.primary
                                                 },
                                                 CircleShape
                                             )
@@ -611,14 +609,14 @@ fun HomeScreen(
                             if (adaptedPlan?.isRecoverySafeguardActive == true) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = DarkPrimaryGold.copy(alpha = 0.2f)
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                 ) {
                                     Text(
                                         text = "ADAPTED",
                                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 9.sp,
-                                        color = DarkPrimaryGold,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -660,8 +658,8 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(10.dp))
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = DarkPrimaryGold.copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.35f)),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
@@ -723,11 +721,11 @@ fun HomeScreen(
                                     onNavigateToCoach()
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (isExerciseDone) Color(0xFF1B241C) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                                color = if (isExerciseDone) SuccessGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
                                 border = BorderStroke(
                                     1.dp,
                                     if (isExerciseDone) SuccessGreen.copy(alpha = 0.6f)
-                                    else if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.35f)
+                                    else if (exercise.isVisionSupported) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                                     else Color.Transparent
                                 ),
                                 modifier = Modifier.fillMaxWidth()
@@ -749,7 +747,7 @@ fun HomeScreen(
                                                 .size(28.dp)
                                                 .background(
                                                     if (isExerciseDone) SuccessGreen
-                                                    else if (exercise.isVisionSupported) DarkPrimaryGold.copy(alpha = 0.2f)
+                                                    else if (exercise.isVisionSupported) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                                     else MaterialTheme.colorScheme.surface,
                                                     CircleShape
                                                 ),
@@ -759,7 +757,7 @@ fun HomeScreen(
                                                 Icon(
                                                     imageVector = Icons.Default.Check,
                                                     contentDescription = "Completed",
-                                                    tint = Color.Black,
+                                                    tint = Color.White,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             } else {
@@ -767,7 +765,7 @@ fun HomeScreen(
                                                     text = "${index + 1}",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (exercise.isVisionSupported) DarkPrimaryGold else MaterialTheme.colorScheme.onSurface
+                                                    color = if (exercise.isVisionSupported) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
                                         }
@@ -777,7 +775,7 @@ fun HomeScreen(
                                                 text = exercise.name,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = if (isExerciseDone) Color.White else MaterialTheme.colorScheme.onSurface
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = if (isExerciseDone) "Completed • ${item.targetSets} sets logged"
@@ -819,14 +817,14 @@ fun HomeScreen(
                                             if (exercise.isVisionSupported) {
                                                 Surface(
                                                     shape = RoundedCornerShape(4.dp),
-                                                    color = DarkPrimaryGold.copy(alpha = 0.15f)
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                                 ) {
                                                     Text(
                                                         text = "AI VISION",
                                                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontSize = 9.sp,
-                                                        color = DarkPrimaryGold,
+                                                        color = MaterialTheme.colorScheme.primary,
                                                         fontWeight = FontWeight.Bold
                                                     )
                                                 }
@@ -834,7 +832,7 @@ fun HomeScreen(
                                             Icon(
                                                 imageVector = Icons.Default.PlayArrow,
                                                 contentDescription = "Train Now",
-                                                tint = DarkPrimaryGold,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
@@ -981,13 +979,13 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .background(DarkSecondaryGold.copy(alpha = 0.15f), CircleShape),
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.MenuBook,
                             contentDescription = "Library",
-                            tint = DarkSecondaryGold
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     Column {

@@ -45,8 +45,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.setons.trackrep.exercise.pushup.FatigueLevel
-import com.setons.trackrep.theme.DarkPrimaryGold
-import com.setons.trackrep.theme.DarkSecondaryGold
 import com.setons.trackrep.theme.SuccessGreen
 
 /**
@@ -55,7 +53,7 @@ import com.setons.trackrep.theme.SuccessGreen
 enum class AdaptiveSetRating(val label: String, val color: Color) {
     TOO_EASY("Too Easy", Color(0xFF64B5F6)),
     JUST_RIGHT("Just Right", SuccessGreen),
-    DIFFICULT("Difficult", DarkPrimaryGold),
+    DIFFICULT("Difficult", Color(0xFFFFA000)),
     COULD_NOT_COMPLETE("Could Not Complete", Color(0xFFEF5350))
 }
 
@@ -83,8 +81,8 @@ fun SetSummaryDialog(
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF141414),
-            border = BorderStroke(1.dp, DarkSecondaryGold.copy(alpha = 0.5f)),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .padding(vertical = 16.dp)
@@ -98,14 +96,14 @@ fun SetSummaryDialog(
                 // Header badge
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = DarkPrimaryGold.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.3f))
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
                     Text(
                         text = if (totalTargetSets > 1) "SET ${summary.setNumber} OF $totalTargetSets COMPLETE" else "SET ${summary.setNumber} COMPLETE",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold,
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 1.sp,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
@@ -117,7 +115,7 @@ fun SetSummaryDialog(
                     text = "Performance Breakdown",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -132,7 +130,7 @@ fun SetSummaryDialog(
                         value = "${summary.validReps}",
                         unit = "VALID REPS",
                         subtext = if (summary.partialReps > 0) "${summary.partialReps} partial" else "Full ROM",
-                        accentColor = DarkPrimaryGold,
+                        accentColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -168,7 +166,7 @@ fun SetSummaryDialog(
                         subtext = summary.fatigueLevel.label,
                         accentColor = when (summary.fatigueLevel) {
                             FatigueLevel.FRESH -> SuccessGreen
-                            FatigueLevel.MODERATE -> DarkPrimaryGold
+                            FatigueLevel.MODERATE -> Color(0xFFFFA000)
                             FatigueLevel.HIGH -> Color(0xFFFF7043)
                             FatigueLevel.EXHAUSTED -> Color(0xFFEF5350)
                         },
@@ -183,7 +181,7 @@ fun SetSummaryDialog(
                     text = "How did this set feel?",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -196,10 +194,10 @@ fun SetSummaryDialog(
                         val isSelected = selectedRating == rating
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isSelected) rating.color.copy(alpha = 0.2f) else Color(0xFF1E1E1E),
+                            color = if (isSelected) rating.color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
                             border = BorderStroke(
                                 1.dp,
-                                if (isSelected) rating.color else Color.White.copy(alpha = 0.1f)
+                                if (isSelected) rating.color else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                             ),
                             modifier = Modifier
                                 .weight(1f)
@@ -210,7 +208,7 @@ fun SetSummaryDialog(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 9.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) rating.color else Color.White.copy(alpha = 0.7f),
+                                color = if (isSelected) rating.color else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                 maxLines = 1,
                                 modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -242,8 +240,8 @@ fun SetSummaryDialog(
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF1E1E1E),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -254,7 +252,7 @@ fun SetSummaryDialog(
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
-                            tint = DarkPrimaryGold,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
@@ -262,7 +260,7 @@ fun SetSummaryDialog(
                             style = MaterialTheme.typography.bodySmall,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White.copy(alpha = 0.9f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
                         )
                     }
                 }
@@ -277,8 +275,8 @@ fun SetSummaryDialog(
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkPrimaryGold,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(14.dp)
                     ) {
@@ -297,11 +295,11 @@ fun SetSummaryDialog(
                             .fillMaxWidth()
                             .height(44.dp),
                         shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = "Do Bonus Set • 60s Rest",
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                             fontWeight = FontWeight.Medium,
                             fontSize = 13.sp
                         )
@@ -314,8 +312,8 @@ fun SetSummaryDialog(
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkPrimaryGold,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(14.dp)
                     ) {
@@ -335,11 +333,11 @@ fun SetSummaryDialog(
                             .fillMaxWidth()
                             .height(44.dp),
                         shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = "Skip Rest • Ready Now",
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                             fontWeight = FontWeight.Medium,
                             fontSize = 13.sp
                         )
@@ -361,8 +359,8 @@ private fun MetricTile(
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF1C1C1C),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         modifier = modifier
     ) {
         Column(
@@ -383,7 +381,7 @@ private fun MetricTile(
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -391,7 +389,7 @@ private fun MetricTile(
                 text = value,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp
             )
             Text(
