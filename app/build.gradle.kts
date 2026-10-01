@@ -11,11 +11,18 @@ android {
     defaultConfig {
         applicationId = "com.setons.trackrep"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 26
-        versionName = "1.2.1"
+        targetSdk = 35
+        versionCode = 27
+        versionName = "1.2.2"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 
