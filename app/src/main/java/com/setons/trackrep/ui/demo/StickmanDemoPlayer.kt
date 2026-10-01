@@ -204,84 +204,6 @@ fun StickmanDemoPlayer(
 
     val currentProgress = if (isPlaying) cycleProgress else 0.5f
 
-    // Calculate movement phase string
-    val phaseLabel = remember(currentProgress, archetype) {
-        when (archetype) {
-            StickmanArchetype.PLANK, StickmanArchetype.PLANK_SIDE,
-            StickmanArchetype.HOLLOW_BODY, StickmanArchetype.SUPERMAN,
-            StickmanArchetype.HANDSTAND_HOLD -> {
-                "ISOMETRIC HOLD • SOLID TENSION"
-            }
-            StickmanArchetype.SQUAT_CHAIR -> {
-                when {
-                    currentProgress < 0.45f -> "1. SIT BACK TOWARD SEAT"
-                    currentProgress < 0.60f -> "2. LIGHT TAP PAUSE (NO ROCKING)"
-                    currentProgress < 0.90f -> "3. TRIPOD FOOT DRIVE"
-                    else -> "4. STANDING LOCKOUT"
-                }
-            }
-            StickmanArchetype.SQUAT_JUMP -> {
-                when {
-                    currentProgress < 0.35f -> "1. SQUAT LOADING (LOAD SPRING)"
-                    currentProgress < 0.65f -> "2. EXPLOSIVE JUMP • AIRBORNE"
-                    currentProgress < 0.85f -> "3. SOFT ABSORBING LANDING"
-                    else -> "4. RESET FOR NEXT REP"
-                }
-            }
-            StickmanArchetype.SQUAT_BULGARIAN -> {
-                when {
-                    currentProgress < 0.45f -> "1. SINK FRONT THIGH TO 90°"
-                    currentProgress < 0.55f -> "2. BACK KNEE HOVER"
-                    currentProgress < 0.90f -> "3. DRIVE THROUGH FRONT HEEL"
-                    else -> "4. TOP EXTENSION"
-                }
-            }
-            StickmanArchetype.SQUAT_PISTOL -> {
-                when {
-                    currentProgress < 0.45f -> "1. EXTEND LEG & SINK DEEP"
-                    currentProgress < 0.55f -> "2. BOTTOM PISTOL BALANCE"
-                    currentProgress < 0.90f -> "3. POWER DRIVE STANDING"
-                    else -> "4. SINGLE-LEG LOCKOUT"
-                }
-            }
-            StickmanArchetype.BENCH_DIPS -> {
-                when {
-                    currentProgress < 0.45f -> "1. DIP HIPS DOWN TO 90°"
-                    currentProgress < 0.55f -> "2. ELBOWS AT 90 DEGREES"
-                    currentProgress < 0.90f -> "3. TRICEPS PRESS LOCKOUT"
-                    else -> "4. PEAK CONTRACTION"
-                }
-            }
-            StickmanArchetype.PULL_UP -> {
-                when {
-                    currentProgress < 0.45f -> "1. PULL CHEST TO BAR"
-                    currentProgress < 0.55f -> "2. CHIN CLEARS BAR"
-                    currentProgress < 0.90f -> "3. CONTROLLED LOWERING"
-                    else -> "4. ACTIVE DEAD HANG"
-                }
-            }
-            StickmanArchetype.MOUNTAIN_CLIMBER -> {
-                "RAPID CADENCE • ALTERNATING DRIVE"
-            }
-            StickmanArchetype.BURPEE -> {
-                when {
-                    currentProgress < 0.25f -> "1. DROP TO PLANK"
-                    currentProgress < 0.5f -> "2. CHEST TO FLOOR"
-                    currentProgress < 0.75f -> "3. SNAP FEET IN"
-                    else -> "4. EXPLOSIVE JUMP"
-                }
-            }
-            else -> {
-                when {
-                    currentProgress < 0.45f -> "DESCENT (ECCENTRIC)"
-                    currentProgress < 0.55f -> "PEAK CONTRACTION"
-                    currentProgress < 0.90f -> "ASCENT (CONCENTRIC)"
-                    else -> "FULL LOCKOUT"
-                }
-            }
-        }
-    }
-
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color(0xFF141414),
@@ -292,44 +214,24 @@ fun StickmanDemoPlayer(
             modifier = Modifier.padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Bar: Exercise Name & Phase Indicator
+            // Header Bar: Exercise Name
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(DarkPrimaryGold, CircleShape)
-                    )
-                    Text(
-                        text = "FORM DEMO • AI VIRTUAL MODEL",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = DarkPrimaryGold,
-                        letterSpacing = 1.sp
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF262114),
-                    border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.4f))
-                ) {
-                    Text(
-                        text = phaseLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkPrimaryGold,
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(DarkPrimaryGold, CircleShape)
+                )
+                Text(
+                    text = "FORM DEMO • AI VIRTUAL MODEL",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = DarkPrimaryGold,
+                    letterSpacing = 1.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))

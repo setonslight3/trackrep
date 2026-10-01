@@ -161,21 +161,6 @@ $structuredContext
 """.trimIndent()
 
         val fullPrompt = "$systemPrompt\n\nATHLETE QUERY: $userMessage"
-        val payload = JSONObject().apply {
-            put("contents", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("parts", JSONArray().apply {
-                        put(JSONObject().put("text", fullPrompt))
-                    })
-                })
-            })
-            put("generationConfig", JSONObject().apply {
-                put("response_mime_type", "application/json")
-                put("temperature", 0.4)
-            })
-        }
-        val payloadBytes = payload.toString().toByteArray(Charsets.UTF_8)
 
         for (model in candidateModels) {
             try {
@@ -185,8 +170,27 @@ $structuredContext
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 conn.doOutput = true
-                conn.connectTimeout = 10000
-                conn.readTimeout = 15000
+                conn.connectTimeout = 25000
+                conn.readTimeout = 45000
+
+                val payload = JSONObject().apply {
+                    put("contents", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("role", "user")
+                            put("parts", JSONArray().apply {
+                                put(JSONObject().put("text", fullPrompt))
+                            })
+                        })
+                    })
+                    put("generationConfig", JSONObject().apply {
+                        put("response_mime_type", "application/json")
+                        put("temperature", 0.4)
+                        if (model.contains("2.5") || model.contains("2.0")) {
+                            put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                        }
+                    })
+                }
+                val payloadBytes = payload.toString().toByteArray(Charsets.UTF_8)
 
                 conn.outputStream.use { os ->
                     os.write(payloadBytes)
@@ -245,11 +249,14 @@ $structuredContext
 
                 return GeminiCallResult.Error(code, userFacingError)
             } catch (e: java.net.UnknownHostException) {
-                return GeminiCallResult.Error(null, "⚠️ Network Connection Error: Could not reach Google Gemini. Please check your internet connection and try again.")
+                lastError = GeminiCallResult.Error(null, "⚠️ Network Connection Error: Could not reach Google Gemini. Please check your internet connection and try again.")
+                continue
             } catch (e: java.net.SocketTimeoutException) {
-                return GeminiCallResult.Error(null, "⚠️ Request Timeout: Google Gemini took too long to respond. Please check your internet connection and try again.")
+                lastError = GeminiCallResult.Error(null, "⚠️ Request Timeout: Google Gemini took too long to respond. Please check your internet connection and try again.")
+                continue
             } catch (e: Exception) {
-                return GeminiCallResult.Error(null, "⚠️ Gemini Connection Error: ${e.localizedMessage ?: "Failed to connect to Google Gemini"}. Please check your internet connection.")
+                lastError = GeminiCallResult.Error(null, "⚠️ Gemini Connection Error: ${e.localizedMessage ?: "Failed to connect to Google Gemini"}. Please check your internet connection.")
+                continue
             }
         }
 

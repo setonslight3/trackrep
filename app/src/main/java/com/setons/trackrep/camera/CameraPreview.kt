@@ -27,6 +27,7 @@ import java.util.concurrent.Executors
 fun CameraPreview(
     lens: CameraLens,
     modifier: Modifier = Modifier,
+    isFullscreen: Boolean = false,
     onPoseDetected: (TrackedPose) -> Unit = {},
     onVideoCaptureReady: (VideoCapture<Recorder>?) -> Unit = {},
     onCameraReady: () -> Unit = {}
@@ -34,18 +35,26 @@ fun CameraPreview(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    val scaleType = if (isFullscreen) PreviewView.ScaleType.FIT_CENTER else PreviewView.ScaleType.FILL_CENTER
+    val targetAspectRatio = if (isFullscreen) AspectRatio.RATIO_16_9 else null
+
     val previewView = remember {
         PreviewView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            scaleType = PreviewView.ScaleType.FIT_CENTER
+            this.scaleType = scaleType
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
 
-    DisposableEffect(lens) {
+    DisposableEffect(scaleType) {
+        previewView.scaleType = scaleType
+        onDispose { }
+    }
+
+    DisposableEffect(lens, targetAspectRatio) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         val executor = ContextCompat.getMainExecutor(context)
         val analysisExecutor = Executors.newSingleThreadExecutor()
@@ -61,14 +70,19 @@ fun CameraPreview(
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                .build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
+            val previewBuilder = Preview.Builder()
+            if (targetAspectRatio != null) {
+                previewBuilder.setTargetAspectRatio(targetAspectRatio)
+            }
+            val preview = previewBuilder.build().also {
+                it.surfaceProvider = previewView.surfaceProvider
+            }
 
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+            val analysisBuilder = ImageAnalysis.Builder()
+            if (targetAspectRatio != null) {
+                analysisBuilder.setTargetAspectRatio(targetAspectRatio)
+            }
+            val imageAnalysis = analysisBuilder
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 

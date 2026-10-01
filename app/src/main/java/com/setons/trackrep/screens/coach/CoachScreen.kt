@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -51,6 +52,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -92,6 +94,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -667,6 +670,7 @@ fun CoachScreen(
             // Live CameraX Feed
             CameraPreview(
                 lens = selectedLens,
+                isFullscreen = true,
                 onPoseDetected = { pose ->
                     currentPose = pose
                     if (isRecording) {
@@ -1008,7 +1012,8 @@ fun CoachScreen(
                     text = "AI Motion Coach",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
 
                 Row(
@@ -1020,7 +1025,8 @@ fun CoachScreen(
                         onClick = { showExerciseDrawer = true },
                         shape = RoundedCornerShape(20.dp),
                         color = Color(0xFF1E1E1E),
-                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f))
+                        border = BorderStroke(1.dp, DarkPrimaryGold.copy(alpha = 0.5f)),
+                        modifier = Modifier.widthIn(max = 160.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1037,7 +1043,9 @@ fun CoachScreen(
                                 text = activeExercise.name,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkPrimaryGold
+                                color = DarkPrimaryGold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -1260,7 +1268,7 @@ fun CoachScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "Selected Exercise",
                                             style = MaterialTheme.typography.labelSmall,
@@ -1274,12 +1282,11 @@ fun CoachScreen(
                                             color = Color.White
                                         )
                                     }
-                                    OutlinedButton(
-                                        onClick = { showExerciseDrawer = true },
-                                        shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, DarkPrimaryGold)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    TextButton(
+                                        onClick = { showExerciseDrawer = true }
                                     ) {
-                                        Text("Change", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Change", color = DarkPrimaryGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                 }
 
