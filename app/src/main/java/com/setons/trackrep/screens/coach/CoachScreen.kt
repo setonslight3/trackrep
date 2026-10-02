@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
@@ -184,6 +186,21 @@ object CoachModeHolder {
         this.activeRoutineIndex = routineIndex
         this.updateEventId++
     }
+
+    fun setScheduledRoutine(routine: WorkoutRoutine, index: Int = 0) {
+        val firstItem = routine.items.getOrNull(index) ?: routine.items.firstOrNull()
+        val firstEx = firstItem?.exerciseId?.let { ExerciseCatalog.getById(it) }
+        setPending(
+            exerciseId = firstItem?.exerciseId ?: "push_up_standard",
+            framingMode = firstEx?.framingMode ?: ExerciseFramingMode.PUSH_UP,
+            targetReps = firstItem?.targetReps ?: 10,
+            targetHoldSeconds = firstItem?.targetHoldSeconds ?: 0,
+            targetSets = firstItem?.targetSets ?: 3,
+            cameraEnabled = true,
+            routine = routine,
+            routineIndex = index
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,6 +249,8 @@ fun CoachScreen(
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var currentPose by remember { mutableStateOf<TrackedPose?>(null) }
     var selectedLens by remember { mutableStateOf(CameraLens.BACK) }
+    var isTorchEnabled by remember { mutableStateOf(false) }
+    var hasHardwareFlash by remember { mutableStateOf(false) }
     var activeExercise by remember {
         mutableStateOf(
             ExerciseCatalog.getById(CoachModeHolder.pendingExerciseId ?: "push_up_standard")
@@ -714,6 +733,8 @@ fun CoachScreen(
             CameraPreview(
                 lens = selectedLens,
                 isFullscreen = true,
+                isTorchEnabled = isTorchEnabled,
+                onHasFlashUnitChanged = { hasHardwareFlash = it },
                 onPoseDetected = { pose ->
                     currentPose = pose
                     if (isRecording) {
@@ -759,6 +780,16 @@ fun CoachScreen(
                 onVideoCaptureReady = { vc -> videoCapture = vc },
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Front Camera Screen Torch Illumination (Active when front lens & torch enabled)
+            if (selectedLens == CameraLens.FRONT && isTorchEnabled) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(BorderStroke(24.dp, Color(0xFFFFFBEA).copy(alpha = 0.90f)))
+                        .background(Color(0xFFFFFDE7).copy(alpha = 0.12f))
+                )
+            }
 
             // Auto-Detected Exercise Banner Notification
             AnimatedVisibility(
@@ -938,11 +969,33 @@ fun CoachScreen(
                     }
                 }
 
-                // 3. Right: Quick Flip & More Controls
+                // 3. Right: Flashlight, Quick Flip & More Controls
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(
+                        onClick = { isTorchEnabled = !isTorchEnabled },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(
+                                if (isTorchEnabled) DarkPrimaryGold.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.65f),
+                                CircleShape
+                            )
+                            .border(
+                                1.dp,
+                                if (isTorchEnabled) DarkPrimaryGold else Color.White.copy(alpha = 0.2f),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                            contentDescription = "Torch / Flashlight",
+                            tint = if (isTorchEnabled) DarkPrimaryGold else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = {
                             selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
@@ -1366,6 +1419,8 @@ fun CoachScreen(
                     ) {
                         CameraPreview(
                             lens = selectedLens,
+                            isTorchEnabled = isTorchEnabled,
+                            onHasFlashUnitChanged = { hasHardwareFlash = it },
                             onPoseDetected = { pose ->
                                 currentPose = pose
                                 if (isRecording) {
@@ -1469,6 +1524,78 @@ fun CoachScreen(
                             },
                             modifier = Modifier.fillMaxSize()
                         )
+
+                        // Front Camera Screen Torch Frame
+                        if (selectedLens == CameraLens.FRONT && isTorchEnabled) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(BorderStroke(16.dp, Color(0xFFFFFBEA).copy(alpha = 0.85f)))
+                                    .background(Color(0xFFFFFDE7).copy(alpha = 0.10f))
+                            )
+                        }
+
+                        // Quick Camera Actions Overlay (Torch, Flip Lens, Fullscreen)
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IconButton(
+                                onClick = { isTorchEnabled = !isTorchEnabled },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(
+                                        if (isTorchEnabled) DarkPrimaryGold.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.6f),
+                                        CircleShape
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isTorchEnabled) DarkPrimaryGold else Color.White.copy(alpha = 0.3f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    contentDescription = "Torch / Flashlight",
+                                    tint = if (isTorchEnabled) DarkPrimaryGold else Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    selectedLens = if (selectedLens == CameraLens.BACK) CameraLens.FRONT else CameraLens.BACK
+                                },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FlipCameraAndroid,
+                                    contentDescription = "Switch Camera",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { isFullscreen = true },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Fullscreen,
+                                    contentDescription = "Fullscreen",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -2291,7 +2418,67 @@ fun CoachScreen(
                     }
                 }
 
-                // 3. Audio Voice Feedback Toggle
+                // 3. Camera Torch / Flashlight (Front Screen Torch or Rear Hardware Flash)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        if (isTorchEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    contentDescription = null,
+                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Flashlight / Torch",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (isTorchEnabled) {
+                                        if (selectedLens == CameraLens.BACK) "Rear hardware flash is on" else "Front screen torch is illuminating"
+                                    } else {
+                                        "Illuminates dark workout spaces"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = isTorchEnabled,
+                            onCheckedChange = { isTorchEnabled = it }
+                        )
+                    }
+                }
+
+                // 4. Audio Voice Feedback Toggle
                 Card(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),

@@ -239,4 +239,81 @@ class ThemeAndNavigationTest {
         assertEquals("PUSH_UP", obj.getString("framingMode"))
         assertEquals(12, obj.getInt("defaultReps"))
     }
+
+    @Test
+    fun testComputeMuscleRecoveryIgnoresTodaySessions() {
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val sessionToday = com.setons.trackrep.data.local.entity.WorkoutSessionEntity(
+            id = "sess_today_1",
+            exerciseId = "push_up_standard",
+            exerciseName = "Standard Push-up",
+            timestampMs = System.currentTimeMillis(),
+            dateString = todayStr,
+            durationSeconds = 30,
+            totalValidReps = 12,
+            totalPartialReps = 0,
+            averageFormScore = 95,
+            fatigueVelocityLossPercent = 10f,
+            perceivedRating = "JUST_RIGHT"
+        )
+
+        // Without ignoring today: CHEST is FATIGUED (<24h)
+        val recoveryWithoutIgnore = com.setons.trackrep.adaptive.AdaptiveEngine.computeMuscleRecovery(
+            sessions = listOf(sessionToday)
+        )
+        assertEquals(com.setons.trackrep.adaptive.RecoveryPhase.FATIGUED, recoveryWithoutIgnore[com.setons.trackrep.exercise.model.MuscleGroup.CHEST]?.phase)
+
+        // With ignoring today: CHEST is FULLY_RECOVERED (no prior day fatigue)
+        val recoveryWithIgnore = com.setons.trackrep.adaptive.AdaptiveEngine.computeMuscleRecovery(
+            sessions = listOf(sessionToday),
+            ignoreTodayDateString = todayStr
+        )
+        assertEquals(com.setons.trackrep.adaptive.RecoveryPhase.FULLY_RECOVERED, recoveryWithIgnore[com.setons.trackrep.exercise.model.MuscleGroup.CHEST]?.phase)
+    }
+
+    @Test
+    fun testAdaptiveEnginePreservesScheduledBaseRoutine() {
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val sessionToday = com.setons.trackrep.data.local.entity.WorkoutSessionEntity(
+            id = "sess_today_2",
+            exerciseId = "diamond_push_up",
+            exerciseName = "Diamond Push-up",
+            timestampMs = System.currentTimeMillis(),
+            dateString = todayStr,
+            durationSeconds = 25,
+            totalValidReps = 10,
+            totalPartialReps = 0,
+            averageFormScore = 90,
+            fatigueVelocityLossPercent = 12f,
+            perceivedRating = "JUST_RIGHT"
+        )
+
+        val scheduledRoutine = com.setons.trackrep.workout.WorkoutEngine.curatedRoutines.first { it.id == "routine_upper_core_blast" }
+        val recovery = com.setons.trackrep.adaptive.AdaptiveEngine.computeMuscleRecovery(
+            sessions = listOf(sessionToday),
+            ignoreTodayDateString = todayStr
+        )
+
+        val rec = com.setons.trackrep.adaptive.AdaptiveEngine.getRecommendedAdaptiveRoutine(
+            recoveryMap = recovery,
+            baseRoutine = scheduledRoutine
+        )
+
+        // Today's scheduled routine is NOT replaced by Full-Body Foundation!
+        assertEquals("routine_upper_core_blast", rec.routine.id)
+        assertEquals(emptyList<com.setons.trackrep.exercise.model.MuscleGroup>(), rec.fatiguedMusclesAvoided)
+    }
+
+    @Test
+    fun testWorkoutSchedulePreviewExercises() {
+        for (routine in com.setons.trackrep.workout.WorkoutEngine.curatedRoutines) {
+            val exercises = com.setons.trackrep.workout.WorkoutEngine.getExercisesForRoutine(routine)
+            assertEquals(true, exercises.isNotEmpty())
+            exercises.forEach { (item, ex) ->
+                assertNotNull(ex.name)
+                assertEquals(true, item.targetSets > 0)
+                assertEquals(true, item.targetReps > 0 || item.targetHoldSeconds > 0)
+            }
+        }
+    }
 }

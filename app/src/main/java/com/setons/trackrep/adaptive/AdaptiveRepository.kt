@@ -150,14 +150,34 @@ object AdaptiveRepository {
         )
     }
 
-    suspend fun getAdaptedTodayWorkout(context: Context): AdaptedWorkoutPlan = withContext(Dispatchers.IO) {
+    suspend fun getAdaptedTodayWorkout(
+        context: Context,
+        scheduledRoutineId: String? = null,
+        activeRoutine: WorkoutRoutine? = null
+    ): AdaptedWorkoutPlan = withContext(Dispatchers.IO) {
         val db = getDb(context)
         val sessions = db.sessionDao().getAllSessions()
         val latestTimestamp = db.sessionDao().getLatestWorkoutTimestamp()
+        val todayDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
-        val recoveryMap = AdaptiveEngine.computeMuscleRecovery(sessions)
+        // Compute recovery excluding today's sessions so in-progress workouts are not interrupted
+        val recoveryMap = AdaptiveEngine.computeMuscleRecovery(sessions, ignoreTodayDateString = todayDateStr)
         val cadence = AdaptiveEngine.analyzeWorkoutCadence(latestTimestamp)
-        val rec = AdaptiveEngine.getRecommendedAdaptiveRoutine(recoveryMap)
+
+        val baseRoutine = activeRoutine
+            ?: scheduledRoutineId?.let { com.setons.trackrep.workout.WorkoutEngine.getRoutineById(it) }
+            ?: com.setons.trackrep.workout.WorkoutEngine.getDefaultTodayRoutine()
+
+        val rec = if (activeRoutine != null) {
+            AdaptiveRoutineRecommendation(
+                routine = activeRoutine,
+                explanation = "Active session in progress: ${activeRoutine.name}",
+                fatiguedMusclesAvoided = emptyList(),
+                targetMuscles = activeRoutine.targetMuscles
+            )
+        } else {
+            AdaptiveEngine.getRecommendedAdaptiveRoutine(recoveryMap, baseRoutine = baseRoutine)
+        }
 
         val allProgs = db.progressionDao().getAllProgressions().associateBy { it.exerciseId }
         val adaptedRoutine = AdaptiveEngine.applyAdaptiveTargetsToRoutine(rec.routine, allProgs, cadence)

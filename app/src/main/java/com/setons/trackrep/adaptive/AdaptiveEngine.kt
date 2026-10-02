@@ -9,6 +9,9 @@ import com.setons.trackrep.exercise.model.MuscleGroup
 import com.setons.trackrep.exercise.model.WorkoutItem
 import com.setons.trackrep.exercise.model.WorkoutRoutine
 import com.setons.trackrep.workout.WorkoutEngine
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -192,11 +195,21 @@ object AdaptiveEngine {
      */
     fun computeMuscleRecovery(
         sessions: List<WorkoutSessionEntity>,
-        nowMs: Long = System.currentTimeMillis()
+        nowMs: Long = System.currentTimeMillis(),
+        ignoreTodayDateString: String? = null
     ): Map<MuscleGroup, MuscleRecoveryStatus> {
         val lastTrainedByMuscle = mutableMapOf<MuscleGroup, Long>()
+        val ymdFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
         for (session in sessions) {
+            if (ignoreTodayDateString != null) {
+                val sessionDateStr = ymdFormat.format(Date(session.timestampMs))
+                if (sessionDateStr == ignoreTodayDateString) {
+                    // Exclude sessions performed on the current calendar day
+                    // so today's active workout does not trigger self-fatigue
+                    continue
+                }
+            }
             val exercise = ExerciseCatalog.getById(session.exerciseId)
             val muscles = mutableListOf<MuscleGroup>()
             if (exercise != null) {
@@ -330,20 +343,21 @@ object AdaptiveEngine {
      */
     fun getRecommendedAdaptiveRoutine(
         recoveryMap: Map<MuscleGroup, MuscleRecoveryStatus>,
-        defaultDifficulty: DifficultyLevel = DifficultyLevel.INTERMEDIATE
+        defaultDifficulty: DifficultyLevel = DifficultyLevel.INTERMEDIATE,
+        baseRoutine: WorkoutRoutine? = null
     ): AdaptiveRoutineRecommendation {
         val fatiguedMuscles = recoveryMap.filter { it.value.phase == RecoveryPhase.FATIGUED }.keys.toList()
 
-        // Default routine is Total-Body Athletic Burn
-        val defaultRoutine = WorkoutEngine.getDefaultTodayRoutine()
+        // Base routine to evaluate (either user's scheduled routine or default)
+        val defaultRoutine = baseRoutine ?: WorkoutEngine.getDefaultTodayRoutine()
 
-        // Check if default routine heavily stresses fatigued muscles
+        // Check if routine heavily stresses fatigued muscles from prior days
         val conflicts = defaultRoutine.targetMuscles.filter { it in fatiguedMuscles }
 
         if (conflicts.isEmpty()) {
             return AdaptiveRoutineRecommendation(
                 routine = defaultRoutine,
-                explanation = "All target muscle groups are fresh and recovered. Primed for full-body athletic training.",
+                explanation = "All target muscle groups are fresh and recovered. Primed for scheduled training.",
                 fatiguedMusclesAvoided = emptyList(),
                 targetMuscles = defaultRoutine.targetMuscles
             )

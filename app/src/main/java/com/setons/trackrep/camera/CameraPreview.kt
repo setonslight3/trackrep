@@ -2,6 +2,7 @@ package com.setons.trackrep.camera
 
 import android.view.ViewGroup
 import androidx.camera.core.AspectRatio
+import androidx.camera.core.Camera
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -13,7 +14,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -28,6 +33,8 @@ fun CameraPreview(
     lens: CameraLens,
     modifier: Modifier = Modifier,
     isFullscreen: Boolean = false,
+    isTorchEnabled: Boolean = false,
+    onHasFlashUnitChanged: (Boolean) -> Unit = {},
     onPoseDetected: (TrackedPose) -> Unit = {},
     onVideoCaptureReady: (VideoCapture<Recorder>?) -> Unit = {},
     onCameraReady: () -> Unit = {}
@@ -52,6 +59,19 @@ fun CameraPreview(
     DisposableEffect(scaleType) {
         previewView.scaleType = scaleType
         onDispose { }
+    }
+
+    var activeCamera by remember { mutableStateOf<Camera?>(null) }
+
+    LaunchedEffect(activeCamera, isTorchEnabled) {
+        val cam = activeCamera ?: return@LaunchedEffect
+        if (cam.cameraInfo.hasFlashUnit()) {
+            try {
+                cam.cameraControl.enableTorch(isTorchEnabled)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     DisposableEffect(lens, targetAspectRatio) {
@@ -90,15 +110,16 @@ fun CameraPreview(
 
             try {
                 cameraProvider.unbindAll()
-                try {
+                val boundCamera = try {
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         lens.selector,
                         preview,
                         imageAnalysis,
                         videoCapture
-                    )
-                    onVideoCaptureReady(videoCapture)
+                    ).also {
+                        onVideoCaptureReady(videoCapture)
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     cameraProvider.unbindAll()
@@ -107,9 +128,12 @@ fun CameraPreview(
                         lens.selector,
                         preview,
                         imageAnalysis
-                    )
-                    onVideoCaptureReady(null)
+                    ).also {
+                        onVideoCaptureReady(null)
+                    }
                 }
+                activeCamera = boundCamera
+                onHasFlashUnitChanged(boundCamera.cameraInfo.hasFlashUnit())
                 onCameraReady()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -117,6 +141,12 @@ fun CameraPreview(
         }, executor)
 
         onDispose {
+            try {
+                activeCamera?.cameraControl?.enableTorch(false)
+            } catch (e: Exception) {
+                // Ignore during disposal
+            }
+            activeCamera = null
             try {
                 val cameraProvider = cameraProviderFuture.get()
                 cameraProvider.unbindAll()
