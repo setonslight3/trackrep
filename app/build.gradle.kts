@@ -12,8 +12,8 @@ android {
         applicationId = "com.setons.trackrep"
         minSdk = 24
         targetSdk = 35
-        versionCode = 35
-        versionName = "1.2.10"
+        versionCode = 36
+        versionName = "1.2.11"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
