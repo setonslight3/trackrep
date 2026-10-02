@@ -41,6 +41,11 @@ object TrackActionExecutor {
                 isSuccess = true,
                 feedbackMessage = action.explanation
             )
+            is NavigateAppAction -> ActionExecutionResult(
+                action = action,
+                isSuccess = true,
+                feedbackMessage = "Navigated to ${action.destination}"
+            )
         }
 
         logAction(context, requestPrompt, action.actionType, action.summary, result.feedbackMessage, result.isSuccess)

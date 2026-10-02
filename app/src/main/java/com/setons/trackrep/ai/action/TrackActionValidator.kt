@@ -16,6 +16,7 @@ object TrackActionValidator {
             is RescheduleWorkoutAction -> validateReschedule(action)
             is ModifyRoutineAction -> validateModifyRoutine(action)
             is ExplainWorkoutAdjustmentAction -> ActionValidationResult(isValid = true, action = action)
+            is NavigateAppAction -> ActionValidationResult(isValid = true, action = action)
         }
     }
 

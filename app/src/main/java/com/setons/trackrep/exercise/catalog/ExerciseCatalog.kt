@@ -847,30 +847,67 @@ object ExerciseCatalog {
         )
     )
 
-    fun getAll(): List<Exercise> = exercises
+    private var customRepository: CustomExerciseRepository? = null
 
-    fun getById(id: String): Exercise? = exercises.firstOrNull { it.id == id }
-
-    fun getByMuscle(muscle: MuscleGroup): List<Exercise> {
-        return exercises.filter { it.targetMuscle == muscle || it.secondaryMuscles.contains(muscle) }
+    fun initialize(context: android.content.Context) {
+        customRepository = CustomExerciseRepository.getInstance(context)
     }
 
-    fun getByDifficulty(difficulty: DifficultyLevel): List<Exercise> {
-        return exercises.filter { it.difficulty == difficulty }
+    fun getAll(context: android.content.Context? = null): List<Exercise> {
+        val repo = context?.let { CustomExerciseRepository.getInstance(it) } ?: customRepository
+        val custom = repo?.getAllCustom() ?: emptyList()
+        return exercises + custom
     }
 
-    fun getByEquipment(equipment: EquipmentType): List<Exercise> {
-        return exercises.filter { it.equipment == equipment }
+    fun getById(id: String, context: android.content.Context? = null): Exercise? {
+        val repo = context?.let { CustomExerciseRepository.getInstance(it) } ?: customRepository
+        return exercises.firstOrNull { it.id == id } ?: repo?.getById(id)
     }
 
-    fun getVisionSupported(): List<Exercise> {
-        return exercises.filter { it.isVisionSupported }
+    fun isCustom(id: String, context: android.content.Context? = null): Boolean {
+        val repo = context?.let { CustomExerciseRepository.getInstance(it) } ?: customRepository
+        return repo?.isCustom(id) ?: false
     }
 
-    fun search(query: String): List<Exercise> {
+    fun addCustom(context: android.content.Context, exercise: Exercise) {
+        val repo = CustomExerciseRepository.getInstance(context)
+        repo.save(exercise)
+        customRepository = repo
+    }
+
+    fun deleteCustom(context: android.content.Context, exerciseId: String): Boolean {
+        val repo = CustomExerciseRepository.getInstance(context)
+        val res = repo.delete(exerciseId)
+        customRepository = repo
+        return res
+    }
+
+    fun getCustomOnly(context: android.content.Context? = null): List<Exercise> {
+        val repo = context?.let { CustomExerciseRepository.getInstance(it) } ?: customRepository
+        return repo?.getAllCustom() ?: emptyList()
+    }
+
+    fun getByMuscle(muscle: MuscleGroup, context: android.content.Context? = null): List<Exercise> {
+        return getAll(context).filter { it.targetMuscle == muscle || it.secondaryMuscles.contains(muscle) }
+    }
+
+    fun getByDifficulty(difficulty: DifficultyLevel, context: android.content.Context? = null): List<Exercise> {
+        return getAll(context).filter { it.difficulty == difficulty }
+    }
+
+    fun getByEquipment(equipment: EquipmentType, context: android.content.Context? = null): List<Exercise> {
+        return getAll(context).filter { it.equipment == equipment }
+    }
+
+    fun getVisionSupported(context: android.content.Context? = null): List<Exercise> {
+        return getAll(context).filter { it.isVisionSupported }
+    }
+
+    fun search(query: String, context: android.content.Context? = null): List<Exercise> {
         val q = query.trim().lowercase()
-        if (q.isEmpty()) return exercises
-        return exercises.filter {
+        val all = getAll(context)
+        if (q.isEmpty()) return all
+        return all.filter {
             it.name.lowercase().contains(q) ||
             it.targetMuscle.displayName.lowercase().contains(q) ||
             it.difficulty.displayName.lowercase().contains(q) ||

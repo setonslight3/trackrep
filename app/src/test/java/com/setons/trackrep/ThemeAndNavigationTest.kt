@@ -142,4 +142,101 @@ class ThemeAndNavigationTest {
         assertEquals(gold, lightScheme.primary)
         assertEquals(com.setons.trackrep.theme.LightBackground, lightScheme.background)
     }
+
+    @Test
+    fun testNavigateAppActionStructure() {
+        val action = com.setons.trackrep.ai.action.NavigateAppAction(
+            destination = "HISTORY",
+            buttonLabel = "Take Me to Workout History",
+            explanation = "View your personal records and past workout logs."
+        )
+        assertEquals("NAVIGATE_APP", action.actionType)
+        assertEquals("HISTORY", action.destination)
+        assertEquals("Take Me to Workout History", action.buttonLabel)
+        assertEquals(true, action.explanation.contains("personal records"))
+    }
+
+    @Test
+    fun testNavigateAppActionValidation() {
+        val action = com.setons.trackrep.ai.action.NavigateAppAction(
+            destination = "COACH",
+            buttonLabel = "Launch AI Coach",
+            explanation = "Start live tracking."
+        )
+        val validation = com.setons.trackrep.ai.action.TrackActionValidator.validate(action)
+        assertEquals(true, validation.isValid)
+    }
+
+    @Test
+    fun testOnDeviceReasoningNavigationBestReps() {
+        val result = com.setons.trackrep.ai.service.TrackAiService.evaluateOnDeviceReasoning("Where are my best reps and records?")
+        assertNotNull(result)
+        assertEquals(true, result.actions.isNotEmpty())
+        val action = result.actions.first() as com.setons.trackrep.ai.action.NavigateAppAction
+        assertEquals("HISTORY", action.destination)
+        assertEquals("Take Me to History & Best Reps", action.buttonLabel)
+    }
+
+    @Test
+    fun testOnDeviceReasoningNavigationCustomExercises() {
+        val result = com.setons.trackrep.ai.service.TrackAiService.evaluateOnDeviceReasoning("How do I add custom exercises?")
+        assertNotNull(result)
+        assertEquals(true, result.actions.isNotEmpty())
+        val action = result.actions.first() as com.setons.trackrep.ai.action.NavigateAppAction
+        assertEquals("EXERCISE_LIBRARY", action.destination)
+        assertEquals("Take Me to Exercise Library", action.buttonLabel)
+    }
+
+    @Test
+    fun testExerciseCatalogBuiltInCountAndArchetypes() {
+        val all = com.setons.trackrep.exercise.catalog.ExerciseCatalog.getAll()
+        assertEquals(true, all.size >= 35)
+        val pushUp = com.setons.trackrep.exercise.catalog.ExerciseCatalog.getById("push_up_standard")
+        assertNotNull(pushUp)
+        assertEquals(true, pushUp!!.isVisionSupported)
+        assertEquals(com.setons.trackrep.camera.ExerciseFramingMode.PUSH_UP, pushUp.framingMode)
+    }
+
+    @Test
+    fun testCustomExerciseJsonRoundtrip() {
+        val custom = com.setons.trackrep.exercise.model.Exercise(
+            id = "custom_test_dip",
+            name = "Parallel Bar Dip",
+            targetMuscle = com.setons.trackrep.exercise.model.MuscleGroup.ARMS,
+            secondaryMuscles = listOf(com.setons.trackrep.exercise.model.MuscleGroup.CHEST, com.setons.trackrep.exercise.model.MuscleGroup.SHOULDERS),
+            difficulty = com.setons.trackrep.exercise.model.DifficultyLevel.ADVANCED,
+            equipment = com.setons.trackrep.exercise.model.EquipmentType.BODYWEIGHT,
+            framingMode = com.setons.trackrep.camera.ExerciseFramingMode.PUSH_UP,
+            defaultSets = 4,
+            defaultReps = 12,
+            restSeconds = 60,
+            instructions = listOf("Grip parallel bars firmly.", "Lower until elbows reach 90 degrees.", "Drive upward to full lockout."),
+            commonFlaws = listOf("Shrugging shoulders", "Partial depth"),
+            proTip = "Maintain a slight forward lean to emphasize triceps and lower chest."
+        )
+
+        assertEquals(true, custom.isVisionSupported)
+
+        val obj = org.json.JSONObject().apply {
+            put("id", custom.id)
+            put("name", custom.name)
+            put("targetMuscle", custom.targetMuscle.name)
+            put("secondaryMuscles", org.json.JSONArray(custom.secondaryMuscles.map { it.name }))
+            put("difficulty", custom.difficulty.name)
+            put("equipment", custom.equipment.name)
+            put("framingMode", custom.framingMode?.name)
+            put("defaultSets", custom.defaultSets)
+            put("defaultReps", custom.defaultReps)
+            put("defaultHoldSeconds", custom.defaultHoldSeconds)
+            put("restSeconds", custom.restSeconds)
+            put("instructions", org.json.JSONArray(custom.instructions))
+            put("commonFlaws", org.json.JSONArray(custom.commonFlaws))
+            put("proTip", custom.proTip)
+        }
+
+        assertEquals("custom_test_dip", obj.getString("id"))
+        assertEquals("Parallel Bar Dip", obj.getString("name"))
+        assertEquals("PUSH_UP", obj.getString("framingMode"))
+        assertEquals(12, obj.getInt("defaultReps"))
+    }
 }

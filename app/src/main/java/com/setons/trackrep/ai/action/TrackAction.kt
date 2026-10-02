@@ -81,6 +81,19 @@ data class ExplainWorkoutAdjustmentAction(
 }
 
 /**
+ * Directs the athlete to a specific section or feature of TrackRep (History, Coach, Library, Profile, Theme).
+ * Renders an actionable "Take me there" button in the conversation.
+ */
+data class NavigateAppAction(
+    val destination: String, // "HISTORY", "COACH", "EXERCISE_LIBRARY", "PROFILE", "HOME", "THEME_STUDIO"
+    val buttonLabel: String,
+    val explanation: String
+) : TrackAction {
+    override val actionType: String = "NAVIGATE_APP"
+    override val summary: String = "Navigate to $destination ($buttonLabel)"
+}
+
+/**
  * Envelope holding Track's conversational reply message and validated action list.
  */
 data class TrackAiResponse(

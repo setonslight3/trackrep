@@ -23,14 +23,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Tune
+import com.setons.trackrep.ai.action.NavigateAppAction
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -87,6 +90,7 @@ data class ChatMessage(
 @Composable
 fun TrackAiScreen(
     onNavigateToCoach: () -> Unit = {},
+    onNavigateToDestination: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -208,6 +212,7 @@ fun TrackAiScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            QuickChip("My Best Reps", "Where can I find my best reps and records? How do I get there?") { submitQuery(it) }
             QuickChip("Wrist relief", "My wrists hurt. Can we swap standard push-ups?") { submitQuery(it) }
             QuickChip("Reschedule missed", "I missed yesterday's workout. Reschedule it without stacking.") { submitQuery(it) }
             QuickChip("+2 Push-up Reps", "Increase push-up target by 2 reps.") { submitQuery(it) }
@@ -236,7 +241,8 @@ fun TrackAiScreen(
                             val ex = ExerciseCatalog.getById(exerciseId)
                             CoachModeHolder.pendingExerciseMode = ex?.framingMode
                             onNavigateToCoach()
-                        }
+                        },
+                        onNavigateToDestination = onNavigateToDestination
                     )
                 }
             }
@@ -357,7 +363,8 @@ private fun UserMessageBubble(text: String) {
 @Composable
 private fun AiMessageCard(
     message: ChatMessage,
-    onLaunchExerciseInCoach: (String) -> Unit
+    onLaunchExerciseInCoach: (String) -> Unit,
+    onNavigateToDestination: (String) -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -406,7 +413,8 @@ private fun AiMessageCard(
                         message.actions.forEach { action ->
                             ActionConfirmationCard(
                                 action = action,
-                                onLaunchExerciseInCoach = onLaunchExerciseInCoach
+                                onLaunchExerciseInCoach = onLaunchExerciseInCoach,
+                                onNavigateToDestination = onNavigateToDestination
                             )
                         }
                     }
@@ -419,7 +427,8 @@ private fun AiMessageCard(
 @Composable
 private fun ActionConfirmationCard(
     action: TrackAction,
-    onLaunchExerciseInCoach: (String) -> Unit
+    onLaunchExerciseInCoach: (String) -> Unit,
+    onNavigateToDestination: (String) -> Unit = {}
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -546,6 +555,45 @@ private fun ActionConfirmationCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
+                }
+
+                is NavigateAppAction -> {
+                    Text(
+                        text = action.explanation,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { onNavigateToDestination(action.destination) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Explore,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = action.buttonLabel,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
 
                 else -> {

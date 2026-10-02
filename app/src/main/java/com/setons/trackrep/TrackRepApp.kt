@@ -75,9 +75,10 @@ fun TrackRepApp() {
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
         val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey || CoachModeHolder.isImmersiveFullscreen
 
-        // If first launch, show onboarding
+        // If first launch, show onboarding and initialize catalog
         LaunchedEffect(Unit) {
             try {
+                com.setons.trackrep.exercise.catalog.ExerciseCatalog.initialize(context)
                 val completed = repository.isOnboardingCompleted()
                 if (!completed) {
                     backStack.add(OnboardingNavKey)
@@ -208,6 +209,19 @@ fun TrackRepApp() {
                                     backStack.removeLastOrNull()
                                 }
                                 backStack.add(CoachNavKey)
+                            },
+                            onNavigateToDestination = { destination ->
+                                while (backStack.size > 1) {
+                                    backStack.removeLastOrNull()
+                                }
+                                when (destination.uppercase()) {
+                                    "HISTORY" -> backStack.add(HistoryNavKey)
+                                    "COACH" -> backStack.add(CoachNavKey)
+                                    "EXERCISE_LIBRARY", "LIBRARY" -> backStack.add(ExerciseLibraryNavKey)
+                                    "PROFILE", "THEME", "THEME_STUDIO" -> backStack.add(ProfileNavKey)
+                                    "HOME" -> { /* Root HomeNavKey */ }
+                                    else -> backStack.add(HistoryNavKey)
+                                }
                             }
                         )
                     }

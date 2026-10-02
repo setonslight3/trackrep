@@ -29,9 +29,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessibilityNew
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PlayArrow
@@ -54,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -93,11 +97,15 @@ fun ExerciseLibraryScreen(
     onNavigateToCoach: (ExerciseFramingMode?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(LibraryTab.EXERCISES) }
     var selectedExerciseForDetail by remember { mutableStateOf<Exercise?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedMuscleFilter by remember { mutableStateOf<MuscleGroup?>(null) }
     var selectedDifficultyFilter by remember { mutableStateOf<DifficultyLevel?>(null) }
+    var isCustomOnlyFilter by remember { mutableStateOf(false) }
+    var showCreateCustomDialog by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = modifier
@@ -110,17 +118,47 @@ fun ExerciseLibraryScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            Text(
-                text = "Training Library",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "30+ calibrated movements • 5 difficulty tiers • Balanced workouts",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Training Library",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Calibrated movements • AI Vision • Custom library",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                }
+
+                Button(
+                    onClick = { showCreateCustomDialog = true },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Custom Exercise",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Custom",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -153,8 +191,9 @@ fun ExerciseLibraryScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                        val totalExercisesCount = remember(refreshTrigger) { ExerciseCatalog.getAll(context).size }
                         Text(
-                            text = "Exercises (${ExerciseCatalog.getAll().size})",
+                            text = "Exercises ($totalExercisesCount)",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (selectedTab == LibraryTab.EXERCISES) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -203,6 +242,9 @@ fun ExerciseLibraryScreen(
                     onMuscleSelect = { selectedMuscleFilter = if (selectedMuscleFilter == it) null else it },
                     selectedDifficulty = selectedDifficultyFilter,
                     onDifficultySelect = { selectedDifficultyFilter = if (selectedDifficultyFilter == it) null else it },
+                    isCustomOnly = isCustomOnlyFilter,
+                    onCustomOnlyToggle = { isCustomOnlyFilter = !isCustomOnlyFilter },
+                    refreshTrigger = refreshTrigger,
                     onExerciseClick = { selectedExerciseForDetail = it }
                 )
             }
@@ -211,7 +253,7 @@ fun ExerciseLibraryScreen(
                     routines = WorkoutEngine.getRoutines(),
                     onSelectRoutine = { routine ->
                         val firstItem = routine.items.firstOrNull()
-                        val ex = firstItem?.let { ExerciseCatalog.getById(it.exerciseId) }
+                        val ex = firstItem?.let { ExerciseCatalog.getById(it.exerciseId, context) }
                         if (ex != null && firstItem != null) {
                             CoachModeHolder.setPending(
                                 exerciseId = ex.id,
@@ -248,6 +290,21 @@ fun ExerciseLibraryScreen(
                     cameraEnabled = true
                 )
                 onNavigateToCoach(resolvedMode)
+            },
+            onDeleteCustom = { id ->
+                ExerciseCatalog.deleteCustom(context, id)
+                refreshTrigger++
+            }
+        )
+    }
+
+    if (showCreateCustomDialog) {
+        CreateCustomExerciseDialog(
+            onDismissRequest = { showCreateCustomDialog = false },
+            onSaveExercise = { newEx ->
+                ExerciseCatalog.addCustom(context, newEx)
+                showCreateCustomDialog = false
+                refreshTrigger++
             }
         )
     }
@@ -261,10 +318,14 @@ fun ExercisesTabContent(
     onMuscleSelect: (MuscleGroup) -> Unit,
     selectedDifficulty: DifficultyLevel?,
     onDifficultySelect: (DifficultyLevel) -> Unit,
+    isCustomOnly: Boolean = false,
+    onCustomOnlyToggle: () -> Unit = {},
+    refreshTrigger: Int = 0,
     onExerciseClick: (Exercise) -> Unit
 ) {
-    val allExercises = remember { ExerciseCatalog.getAll() }
-    val filteredExercises = remember(searchQuery, selectedMuscle, selectedDifficulty) {
+    val context = LocalContext.current
+    val allExercises = remember(refreshTrigger) { ExerciseCatalog.getAll(context) }
+    val filteredExercises = remember(searchQuery, selectedMuscle, selectedDifficulty, isCustomOnly, refreshTrigger) {
         allExercises.filter { ex ->
             val matchesSearch = if (searchQuery.isBlank()) true else {
                 val q = searchQuery.trim().lowercase()
@@ -275,7 +336,8 @@ fun ExercisesTabContent(
             }
             val matchesMuscle = selectedMuscle == null || ex.targetMuscle == selectedMuscle || ex.secondaryMuscles.contains(selectedMuscle)
             val matchesDiff = selectedDifficulty == null || ex.difficulty == selectedDifficulty
-            matchesSearch && matchesMuscle && matchesDiff
+            val matchesCustom = !isCustomOnly || ExerciseCatalog.isCustom(ex.id, context)
+            matchesSearch && matchesMuscle && matchesDiff && matchesCustom
         }
     }
 
@@ -309,7 +371,7 @@ fun ExercisesTabContent(
                 .height(52.dp)
         )
 
-        // Muscle Group Filter Chips Row
+        // Muscle Group & Custom Filter Chips Row
         val muscleScroll = rememberScrollState()
         Row(
             modifier = Modifier
@@ -318,6 +380,34 @@ fun ExercisesTabContent(
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // Custom Filter Chip
+            val customCount = remember(refreshTrigger) { ExerciseCatalog.getCustomOnly(context).size }
+            Surface(
+                onClick = onCustomOnlyToggle,
+                shape = RoundedCornerShape(16.dp),
+                color = if (isCustomOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(1.dp, if (isCustomOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = if (isCustomOnly) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = "Custom ($customCount)",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isCustomOnly) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isCustomOnly) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
             MuscleGroup.values().forEach { muscle ->
                 val isSelected = selectedMuscle == muscle
                 Surface(
@@ -421,6 +511,9 @@ fun ExerciseCard(
     exercise: Exercise,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val isCustom = remember(exercise.id) { ExerciseCatalog.isCustom(exercise.id, context) }
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
@@ -450,11 +543,27 @@ fun ExerciseCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Badges row: Target muscle + Difficulty + Volume
+                // Badges row: Custom + Target muscle + Difficulty + Volume
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    if (isCustom) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(
+                                text = "AI Custom",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
                     // Muscle Badge
                     Surface(
                         shape = RoundedCornerShape(6.dp),
@@ -725,7 +834,8 @@ fun RoutineCard(
 fun ExerciseDetailDialog(
     exercise: Exercise,
     onDismiss: () -> Unit,
-    onLaunchCoach: (ExerciseFramingMode?) -> Unit
+    onLaunchCoach: (ExerciseFramingMode?) -> Unit,
+    onDeleteCustom: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var progression by remember { mutableStateOf<ExerciseProgressionEntity?>(null) }
@@ -972,6 +1082,36 @@ fun ExerciseDetailDialog(
                         text = if (exercise.isVisionSupported) "Launch in AI Coach" else "Start Exercise",
                         fontWeight = FontWeight.ExtraBold
                     )
+                }
+
+                // Delete Custom Exercise (if custom)
+                if (ExerciseCatalog.isCustom(exercise.id, context) && onDeleteCustom != null) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            onDeleteCustom(exercise.id)
+                            onDismiss()
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Custom Exercise",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Delete Custom Movement",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }

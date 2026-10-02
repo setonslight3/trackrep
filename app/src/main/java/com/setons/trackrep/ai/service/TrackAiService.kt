@@ -4,6 +4,7 @@ import android.content.Context
 import com.setons.trackrep.ai.action.AdjustTargetAction
 import com.setons.trackrep.ai.action.ExplainWorkoutAdjustmentAction
 import com.setons.trackrep.ai.action.ModifyRoutineAction
+import com.setons.trackrep.ai.action.NavigateAppAction
 import com.setons.trackrep.ai.action.ReplaceExerciseAction
 import com.setons.trackrep.ai.action.RescheduleWorkoutAction
 import com.setons.trackrep.ai.action.TrackAction
@@ -150,11 +151,20 @@ You cannot directly alter user data. You must output a JSON object conforming to
       "type": "EXPLAIN_ADJUSTMENT",
       "topic": "Form Cues",
       "explanation": "Detailed biomechanical guidance"
+    },
+    {
+      "type": "NAVIGATE_APP",
+      "destination": "HISTORY",
+      "buttonLabel": "Take Me to History & Best Reps",
+      "explanation": "Directs the athlete to the requested screen. Destinations: 'HISTORY', 'COACH', 'EXERCISE_LIBRARY', 'PROFILE', 'HOME'"
     }
   ]
 }
 
-When the athlete asks about their past workouts, workout history, performance, progress, or how they performed today, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence.
+NAVIGATION ASSISTANCE RULE:
+When the athlete asks where something is, how to get there, how to see their best reps or workout records, where to change themes, where to find exercises, or how to start a workout, you MUST explain where it is located in the app (e.g. "Tap the History tab in the bottom navigation bar...") AND generate a NAVIGATE_APP action with the appropriate destination ("HISTORY", "COACH", "EXERCISE_LIBRARY", "PROFILE", or "HOME") and an encouraging buttonLabel (e.g. "Take Me to History & Best Reps", "Take Me to AI Vision Coach", "Take Me to Exercise Library", "Take Me to Profile & Theme Studio").
+
+When the athlete asks about their past workouts, workout history, performance, progress, or how they performed today, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence, and offer a NAVIGATE_APP action to HISTORY.
 
 CONTEXT OF CURRENT ATHLETE & WORKOUT:
 $structuredContext
@@ -327,6 +337,15 @@ $structuredContext
                                 )
                             )
                         }
+                        "NAVIGATE_APP" -> {
+                            actions.add(
+                                NavigateAppAction(
+                                    destination = item.optString("destination", "HISTORY").uppercase(),
+                                    buttonLabel = item.optString("buttonLabel", "Take Me There"),
+                                    explanation = item.optString("explanation", "Navigation requested")
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -495,6 +514,13 @@ $structuredContext
                                 "• ${s.dateString}: ${s.exerciseName} — ${s.totalValidReps} reps (Form score: ${s.averageFormScore}%)"
                             }
                             historyReply = "Here is the analysis of your recent logged workouts:\n\n$summaryLines\n\nOverall, you have completed $totalReps total reps with an average form consistency score of $avgScore%. Keep your tempo controlled and finish every repetition with full lockout!"
+                            actions.add(
+                                NavigateAppAction(
+                                    destination = "HISTORY",
+                                    buttonLabel = "View Full History & Records",
+                                    explanation = "Open History screen"
+                                )
+                            )
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -503,12 +529,60 @@ $structuredContext
                 reply = historyReply ?: "I'm ready to analyze your workout history! Once you complete and log sets with the camera coach, I'll provide detailed breakdowns of your rep counts, form consistency scores, and progressive overload."
             }
 
-            // 11. Conversational Continuity (e.g. "continue", "next", "ok")
+            // 11. Navigation Assistance: Best Reps, Personal Records, History & "How do I get there"
+            q.contains("best rep") || q.contains("best") || q.contains("record") || q.contains("how do i get there") || q.contains("where to go") || q.contains("where do i find") || q.contains("take me there") || (q.contains("where") && (q.contains("history") || q.contains("rep") || q.contains("stat") || q.contains("past"))) -> {
+                actions.add(
+                    NavigateAppAction(
+                        destination = "HISTORY",
+                        buttonLabel = "Take Me to History & Best Reps",
+                        explanation = "Navigate to History and Personal Records screen"
+                    )
+                )
+                reply = "Your best reps, all-time personal records, consistency streaks, and recorded set videos are located in the **History** tab in the bottom navigation bar. You can scroll through your exercises to view your peak rep counts.\n\nTap the button below and I'll take you straight there!"
+            }
+
+            // 12. Navigation: AI Vision Coach / Camera / Start Workout
+            q.contains("coach") || q.contains("start workout") || q.contains("start training") || q.contains("start set") || (q.contains("where") && q.contains("camera")) -> {
+                actions.add(
+                    NavigateAppAction(
+                        destination = "COACH",
+                        buttonLabel = "Take Me to AI Vision Coach",
+                        explanation = "Navigate to AI Vision Coach camera screen"
+                    )
+                )
+                reply = "The real-time computer vision camera coach is located in the **Coach** tab. Position your phone, calibrate framing, and let's execute your workout!\n\nTap below to launch Coach mode."
+            }
+
+            // 13. Navigation: Exercise Library & Custom Exercises
+            (q.contains("exercise") && (q.contains("where") || q.contains("library") || q.contains("catalog") || q.contains("custom") || q.contains("add"))) || q.contains("library") -> {
+                actions.add(
+                    NavigateAppAction(
+                        destination = "EXERCISE_LIBRARY",
+                        buttonLabel = "Take Me to Exercise Library",
+                        explanation = "Navigate to Exercise Library and Custom Exercise Studio"
+                    )
+                )
+                reply = "You can browse all 35+ exercises and create your own **Custom Exercises with AI Vision** in the **Library** tab! You can also filter by muscle group or difficulty.\n\nTap below to open the Exercise Library."
+            }
+
+            // 14. Navigation: Profile, Theme Studio & Custom Styling
+            q.contains("theme") || q.contains("color") || q.contains("custom theme") || q.contains("styling") || q.contains("profile") || (q.contains("where") && q.contains("setting")) -> {
+                actions.add(
+                    NavigateAppAction(
+                        destination = "PROFILE",
+                        buttonLabel = "Take Me to Profile & Theme Studio",
+                        explanation = "Navigate to Profile and Custom Theme Studio"
+                    )
+                )
+                reply = "You can customize your theme colors, rainbow swatches, color wheel, dark/light accents, and training schedule in the **Profile** tab.\n\nTap below to open your Theme & Styling Studio!"
+            }
+
+            // 15. Conversational Continuity (e.g. "continue", "next", "ok")
             q == "continue" || q.startsWith("continue") || q == "next" || q == "proceed" || q == "tell me more" || q == "go on" || q == "ok" || q == "okay" || q == "got it" -> {
                 reply = "Ready when you are! Ask me about form cues (e.g. hip sagging, phone placement), swap exercises for joint relief (e.g. wrist or knee), adjust rep targets, or start a set in the Coach tab."
             }
 
-            // 12. Unrecognized Query in On-Device Mode
+            // 16. Unrecognized Query in On-Device Mode
             else -> {
                 reply = "I'm operating in On-Device mode and didn't recognize \"$query\".\n\nIn this mode, you can ask:\n• \"What exercises did I complete today?\"\n• \"Analyze my past workouts\"\n• \"Swap push-ups for wrist relief\"\n• \"Increase push-up target by 2 reps\"\n• \"Fix hip sagging\" or \"Camera setup\"\n\n💡 Tip: For open-ended natural conversation and reasoning, add your Google Gemini API key in settings (⚙️ at top right)."
             }
