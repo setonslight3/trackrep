@@ -6,6 +6,7 @@ import com.setons.trackrep.data.local.CoachPreferences
 import com.setons.trackrep.ui.components.TrackRepSwitch
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,7 +68,12 @@ import androidx.compose.ui.unit.sp
 import com.setons.trackrep.data.local.entity.UserProfileEntity
 import com.setons.trackrep.reminder.WorkoutReminderScheduler
 import com.setons.trackrep.schedule.UserProfileRepository
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.HorizontalDivider
 import com.setons.trackrep.schedule.WorkoutScheduleEngine
+import com.setons.trackrep.theme.ThemeManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -75,10 +81,13 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     isDarkTheme: Boolean,
     onToggleTheme: (Boolean) -> Unit,
+    themeManager: ThemeManager? = null,
     onNavigateToOnboarding: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val manager = themeManager ?: remember { ThemeManager.getInstance(context) }
+    var showThemeStudioSheet by remember { mutableStateOf(false) }
     val repository = remember { UserProfileRepository.getInstance(context) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -167,7 +176,7 @@ fun ProfileScreen(
             }
         }
 
-        // Theme Toggle Card
+        // Theme & Styling Studio Card
         ElevatedCard(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.elevatedCardColors(
@@ -175,40 +184,96 @@ fun ProfileScreen(
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
-                        contentDescription = "Theme",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Column {
-                        Text(
-                            text = if (isDarkTheme) "Dark Theme: Black + Gold" else "Light Theme: White + Red",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = "Theme",
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        Text(
-                            text = if (isDarkTheme) "Deep black canvas with metallic gold accents" else "Clean white canvas with crimson accents",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
+                        Column {
+                            Text(
+                                text = if (isDarkTheme) "Dark Theme Active" else "Light Theme Active",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (isDarkTheme) "Obsidian canvas with custom accents" else "Clean white canvas with custom accents",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
                     }
+
+                    TrackRepSwitch(
+                        checked = isDarkTheme,
+                        onCheckedChange = onToggleTheme
+                    )
                 }
 
-                TrackRepSwitch(
-                    checked = isDarkTheme,
-                    onCheckedChange = onToggleTheme
-                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+                // Custom Accent Color Preview & Theme Studio trigger
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .border(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape)
+                        )
+                        Column {
+                            Text(
+                                text = "Accent: ${ThemeManager.colorToHex(MaterialTheme.colorScheme.primary)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Rainbow presets & wheel available",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { showThemeStudioSheet = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Customize", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
             }
         }
 
@@ -607,5 +672,12 @@ fun ProfileScreen(
                 )
             }
         }
+    }
+
+    if (showThemeStudioSheet) {
+        CustomThemeStudioSheet(
+            themeManager = manager,
+            onDismissRequest = { showThemeStudioSheet = false }
+        )
     }
 }

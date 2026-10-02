@@ -54,17 +54,23 @@ import com.setons.trackrep.screens.library.ExerciseLibraryScreen
 import com.setons.trackrep.screens.onboarding.OnboardingScreen
 import com.setons.trackrep.screens.profile.ProfileScreen
 import com.setons.trackrep.screens.trackai.TrackAiScreen
+import com.setons.trackrep.theme.ThemeManager
 import com.setons.trackrep.theme.TrackRepTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackRepApp() {
-    val systemInDark = isSystemInDarkTheme()
-    var isDarkTheme by remember { mutableStateOf(systemInDark) }
     val context = LocalContext.current
+    val themeManager = remember { ThemeManager.getInstance(context) }
+    val systemInDark = isSystemInDarkTheme()
+    val isDarkTheme = themeManager.isDark(systemInDark)
     val repository = remember { UserProfileRepository.getInstance(context) }
 
-    TrackRepTheme(darkTheme = isDarkTheme) {
+    TrackRepTheme(
+        darkTheme = isDarkTheme,
+        darkAccent = themeManager.darkAccent,
+        lightAccent = themeManager.lightAccent
+    ) {
         val backStack = rememberNavBackStack(HomeNavKey)
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
         val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey || CoachModeHolder.isImmersiveFullscreen
@@ -215,7 +221,10 @@ fun TrackRepApp() {
                     entry<ProfileNavKey> {
                         ProfileScreen(
                             isDarkTheme = isDarkTheme,
-                            onToggleTheme = { isDarkTheme = it },
+                            onToggleTheme = { checked ->
+                                themeManager.setThemeMode(if (checked) "DARK" else "LIGHT")
+                            },
+                            themeManager = themeManager,
                             onNavigateToOnboarding = {
                                 backStack.add(OnboardingNavKey)
                             }
