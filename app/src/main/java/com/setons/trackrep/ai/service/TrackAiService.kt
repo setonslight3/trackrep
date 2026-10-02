@@ -11,6 +11,7 @@ import com.setons.trackrep.ai.action.TrackAction
 import com.setons.trackrep.ai.action.TrackActionExecutor
 import com.setons.trackrep.ai.action.TrackActionValidator
 import com.setons.trackrep.ai.action.TrackAiResponse
+import com.setons.trackrep.ai.action.UpdateScheduleDayAction
 import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.workout.WorkoutEngine
@@ -157,12 +158,24 @@ You cannot directly alter user data. You must output a JSON object conforming to
       "destination": "HISTORY",
       "buttonLabel": "Take Me to History & Best Reps",
       "explanation": "Directs the athlete to the requested screen. Destinations: 'HISTORY', 'COACH', 'EXERCISE_LIBRARY', 'PROFILE', 'HOME'"
+    },
+    {
+      "type": "UPDATE_SCHEDULE_DAY",
+      "dayOfWeek": "Wednesday",
+      "newRoutineId": "routine_lower_beginner",
+      "routineName": "Beginner Legs & Glute Strength",
+      "isRestDay": false,
+      "reason": "Athlete requested leg day"
     }
   ]
 }
 
 NAVIGATION ASSISTANCE RULE:
 When the athlete asks where something is, how to get there, how to see their best reps or workout records, where to change themes, where to find exercises, or how to start a workout, you MUST explain where it is located in the app (e.g. "Tap the History tab in the bottom navigation bar...") AND generate a NAVIGATE_APP action with the appropriate destination ("HISTORY", "COACH", "EXERCISE_LIBRARY", "PROFILE", or "HOME") and an encouraging buttonLabel (e.g. "Take Me to History & Best Reps", "Take Me to AI Vision Coach", "Take Me to Exercise Library", "Take Me to Profile & Theme Studio").
+
+SCHEDULE ASSISTANCE & CUSTOMIZATION RULE:
+When the athlete asks about their upcoming routine, weekly schedule, or what workout they have on a specific day (e.g. 'What am I doing on Wednesday?', 'What is my workout schedule?'), inspect their 'weeklySchedule' in the context below and explain clearly what routine and exercises are planned for that day.
+When the athlete asks to customize, edit, or swap their schedule (e.g. 'Change Wednesday to leg day', 'Make Friday a rest day', 'Set Monday to upper body'), generate an UPDATE_SCHEDULE_DAY action with the appropriate dayOfWeek, newRoutineId / isRestDay, and an appropriate explanation. Be mindful of their fitnessLevel in 'athleteProfile' (e.g. if fitnessLevel is BEGINNER, assign beginner routines like 'routine_lower_beginner' or 'routine_upper_beginner', not advanced ones).
 
 When the athlete asks about their past workouts, workout history, performance, progress, or how they performed today, analyze their recent workout sessions provided in the structured context below and give an encouraging, biomechanically insightful breakdown of their reps, form consistency scores, fatigue trends, and cadence, and offer a NAVIGATE_APP action to HISTORY.
 
@@ -343,6 +356,18 @@ $structuredContext
                                     destination = item.optString("destination", "HISTORY").uppercase(),
                                     buttonLabel = item.optString("buttonLabel", "Take Me There"),
                                     explanation = item.optString("explanation", "Navigation requested")
+                                )
+                            )
+                        }
+                        "UPDATE_SCHEDULE_DAY" -> {
+                            actions.add(
+                                UpdateScheduleDayAction(
+                                    dayOfWeek = item.optString("dayOfWeek", "Today"),
+                                    dateString = if (item.has("dateString")) item.getString("dateString") else null,
+                                    newRoutineId = if (item.has("newRoutineId")) item.getString("newRoutineId") else null,
+                                    routineName = if (item.has("routineName")) item.getString("routineName") else null,
+                                    isRestDay = item.optBoolean("isRestDay", false),
+                                    reason = item.optString("reason", "Schedule adjusted by Track AI")
                                 )
                             )
                         }
@@ -577,14 +602,128 @@ $structuredContext
                 reply = "You can customize your theme colors, rainbow swatches, color wheel, dark/light accents, and training schedule in the **Profile** tab.\n\nTap below to open your Theme & Styling Studio!"
             }
 
-            // 15. Conversational Continuity (e.g. "continue", "next", "ok")
-            q == "continue" || q.startsWith("continue") || q == "next" || q == "proceed" || q == "tell me more" || q == "go on" || q == "ok" || q == "okay" || q == "got it" -> {
-                reply = "Ready when you are! Ask me about form cues (e.g. hip sagging, phone placement), swap exercises for joint relief (e.g. wrist or knee), adjust rep targets, or start a set in the Coach tab."
+            // 15. Schedule Editing & Customization (e.g. "change wednesday to leg day", "make friday rest")
+            (q.contains("change") || q.contains("make") || q.contains("set") || q.contains("swap") || q.contains("edit") || q.contains("update")) &&
+            (q.contains("monday") || q.contains("tuesday") || q.contains("wednesday") || q.contains("thursday") || q.contains("friday") || q.contains("saturday") || q.contains("sunday") || q.contains("schedule") || q.contains("workout")) -> {
+                val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+                val matchedDay = days.firstOrNull { q.contains(it.lowercase()) } ?: "Wednesday"
+                val isRest = q.contains("rest")
+
+                val profileTier = if (context != null) {
+                    try {
+                        val repo = com.setons.trackrep.schedule.UserProfileRepository.getInstance(context)
+                        runBlocking { repo.getProfile().fitnessLevel }
+                    } catch (_: Exception) { "BEGINNER" }
+                } else "BEGINNER"
+
+                val isBeginner = profileTier.contains("BEGINNER", ignoreCase = true)
+                val isNovice = profileTier.contains("NOVICE", ignoreCase = true)
+
+                val selectedRoutine = when {
+                    isRest -> null
+                    q.contains("leg") || q.contains("lower") -> {
+                        when {
+                            isBeginner -> WorkoutEngine.getRoutineById("routine_lower_beginner")
+                            isNovice -> WorkoutEngine.getRoutineById("routine_lower_novice")
+                            else -> WorkoutEngine.getRoutineById("routine_lower_posterior_power")
+                        } ?: WorkoutEngine.getRoutineById("routine_lower_beginner")
+                    }
+                    q.contains("upper") || q.contains("push") || q.contains("chest") || q.contains("arm") -> {
+                        when {
+                            isBeginner -> WorkoutEngine.getRoutineById("routine_upper_beginner")
+                            isNovice -> WorkoutEngine.getRoutineById("routine_upper_novice")
+                            else -> WorkoutEngine.getRoutineById("routine_upper_core_blast")
+                        } ?: WorkoutEngine.getRoutineById("routine_upper_beginner")
+                    }
+                    else -> {
+                        when {
+                            isBeginner -> WorkoutEngine.getRoutineById("routine_full_body_foundation")
+                            isNovice -> WorkoutEngine.getRoutineById("routine_novice_builder")
+                            else -> WorkoutEngine.getRoutineById("routine_total_body_burn")
+                        } ?: WorkoutEngine.getRoutineById("routine_full_body_foundation")
+                    }
+                }
+
+                val action = UpdateScheduleDayAction(
+                    dayOfWeek = matchedDay,
+                    newRoutineId = selectedRoutine?.id ?: if (isRest) "routine_active_recovery" else null,
+                    routineName = selectedRoutine?.name ?: if (isRest) "Rest & Active Recovery" else null,
+                    isRestDay = isRest,
+                    reason = if (isRest) "Athlete scheduled rest day" else "Athlete customized schedule to ${selectedRoutine?.name}"
+                )
+                actions.add(action)
+                actions.add(
+                    NavigateAppAction(
+                        destination = "HOME",
+                        buttonLabel = "View Updated Schedule",
+                        explanation = "Navigate to Home schedule"
+                    )
+                )
+
+                reply = if (isRest) {
+                    "Done! I've updated your schedule for **$matchedDay** to a **Rest & Active Recovery Day**. Giving your muscular and nervous systems time to rebuild prevents overtraining.\n\nTap below to review your updated week on the Home screen."
+                } else {
+                    val rName = selectedRoutine?.name ?: "Workout"
+                    val diff = selectedRoutine?.difficulty?.displayName ?: "Beginner"
+                    "Done! I've updated your schedule for **$matchedDay** to **$rName** ($diff level). You can see the full planned exercises on your Home screen.\n\nTap below to check out your updated schedule!"
+                }
             }
 
-            // 16. Unrecognized Query in On-Device Mode
+            // 16. Schedule Inspection & Queries (e.g. "what is my schedule", "what am i doing on wednesday", "check routine for friday")
+            (q.contains("schedule") || q.contains("workout") || q.contains("exercise") || q.contains("routine") || q.contains("doing") || q.contains("have")) &&
+            (q.contains("monday") || q.contains("tuesday") || q.contains("wednesday") || q.contains("thursday") || q.contains("friday") || q.contains("saturday") || q.contains("sunday") || q.contains("week") || q.contains("schedule") || q.contains("tomorrow")) -> {
+                val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+                val matchedDay = days.firstOrNull { q.contains(it.lowercase()) }
+
+                var scheduleReply: String? = null
+                if (context != null) {
+                    try {
+                        val repo = com.setons.trackrep.schedule.UserProfileRepository.getInstance(context)
+                        val week = runBlocking { repo.getWeeklySchedule() }
+                        if (week.isNotEmpty()) {
+                            if (matchedDay != null) {
+                                val dayItem = week.firstOrNull { it.dayOfWeek.equals(matchedDay, ignoreCase = true) }
+                                if (dayItem != null) {
+                                    if (dayItem.isRestDay) {
+                                        scheduleReply = "**$matchedDay** (${dayItem.dateString}) is scheduled as a **Rest & Active Recovery Day**.\n\nMuscles repair and consolidate strength during rest. Light mobility or stretching is recommended."
+                                    } else {
+                                        val routine = WorkoutEngine.getRoutineById(dayItem.routineId)
+                                        val exList = routine?.items?.mapNotNull { ExerciseCatalog.getById(it.exerciseId)?.name }
+                                        val exStr = exList?.joinToString("\n") { "• $it" } ?: "Focus: ${dayItem.targetMusclesCsv}"
+                                        scheduleReply = "On **$matchedDay** (${dayItem.dateString}), you have scheduled:\n\n**${dayItem.routineName}** (~${routine?.estimatedMinutes ?: 20} mins • ${routine?.difficulty?.displayName ?: "Beginner"})\nFocus: ${dayItem.targetMusclesCsv.replace(",", ", ")}\n\nPlanned Movements:\n$exStr\n\nYou can also manually edit this day or ask me to change it anytime!"
+                                    }
+                                }
+                            } else {
+                                val lines = week.joinToString("\n") { d ->
+                                    val status = if (d.isRestDay) "Rest & Recovery" else "${d.routineName} (${d.targetMusclesCsv})"
+                                    "• **${d.dayOfWeek}** (${d.dateString.takeLast(5)}): $status"
+                                }
+                                scheduleReply = "Here is your 7-day training schedule for this week:\n\n$lines\n\nYou can tap on any day in the Home screen to edit the routine or swap it to a rest day!"
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                actions.add(
+                    NavigateAppAction(
+                        destination = "HOME",
+                        buttonLabel = "View Schedule on Home",
+                        explanation = "Open Home screen schedule"
+                    )
+                )
+                reply = scheduleReply ?: "You can check and customize your full weekly training schedule on the **Home** screen! Tap the button below to preview your workouts."
+            }
+
+            // 17. Conversational Continuity (e.g. "continue", "next", "ok")
+            q == "continue" || q.startsWith("continue") || q == "next" || q == "proceed" || q == "tell me more" || q == "go on" || q == "ok" || q == "okay" || q == "got it" -> {
+                reply = "Ready when you are! Ask me about your weekly schedule (e.g. 'What am I doing on Wednesday?'), customize any day (e.g. 'Change Wednesday to leg day'), swap exercises for joint relief, adjust targets, or start a workout."
+            }
+
+            // 18. Unrecognized Query in On-Device Mode
             else -> {
-                reply = "I'm operating in On-Device mode and didn't recognize \"$query\".\n\nIn this mode, you can ask:\n• \"What exercises did I complete today?\"\n• \"Analyze my past workouts\"\n• \"Swap push-ups for wrist relief\"\n• \"Increase push-up target by 2 reps\"\n• \"Fix hip sagging\" or \"Camera setup\"\n\n💡 Tip: For open-ended natural conversation and reasoning, add your Google Gemini API key in settings (⚙️ at top right)."
+                reply = "I'm operating in On-Device mode and didn't recognize \"$query\".\n\nIn this mode, you can ask:\n• \"What is my schedule for Wednesday?\"\n• \"Change Wednesday to leg day\"\n• \"Make Friday a rest day\"\n• \"What exercises did I complete today?\"\n• \"Swap push-ups for wrist relief\"\n• \"Increase push-up target by 2 reps\"\n\n💡 Tip: For open-ended natural conversation and reasoning, add your Google Gemini API key in settings (⚙️ at top right)."
             }
         }
 

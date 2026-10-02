@@ -94,6 +94,29 @@ data class NavigateAppAction(
 }
 
 /**
+ * Modifies an athlete's scheduled workout for a specific day of the week (e.g. Wednesday -> Leg Day, or Friday -> Rest Day).
+ */
+data class UpdateScheduleDayAction(
+    val dayOfWeek: String,
+    val dateString: String? = null,
+    val newRoutineId: String? = null,
+    val routineName: String? = null,
+    val isRestDay: Boolean = false,
+    val reason: String
+) : TrackAction {
+    override val actionType: String = "UPDATE_SCHEDULE_DAY"
+    override val summary: String = buildString {
+        append("Update schedule for $dayOfWeek: ")
+        if (isRestDay) {
+            append("Set to Rest & Active Recovery")
+        } else {
+            append("Set to ${routineName ?: newRoutineId ?: "custom routine"}")
+        }
+        append(" ($reason)")
+    }
+}
+
+/**
  * Envelope holding Track's conversational reply message and validated action list.
  */
 data class TrackAiResponse(

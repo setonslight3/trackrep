@@ -51,9 +51,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import com.setons.trackrep.exercise.model.DifficultyLevel
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -112,6 +114,7 @@ fun HomeScreen(
     var selectedScheduleDay by remember { mutableStateOf<ScheduledWorkoutEntity?>(null) }
     var missedSessions by remember { mutableStateOf<List<ScheduledWorkoutEntity>>(emptyList()) }
     var showWeekPreviewSheet by remember { mutableStateOf(false) }
+    var editingScheduleDay by remember { mutableStateOf<ScheduledWorkoutEntity?>(null) }
 
     fun refreshSchedule() {
         scope.launch {
@@ -121,6 +124,8 @@ fun HomeScreen(
                 val todayItem = week.firstOrNull { it.dateString == todayDateStr }
                 if (selectedScheduleDay == null) {
                     selectedScheduleDay = todayItem ?: week.firstOrNull()
+                } else {
+                    selectedScheduleDay = week.firstOrNull { it.dateString == selectedScheduleDay?.dateString } ?: todayItem ?: week.firstOrNull()
                 }
                 val sessions = AdaptiveRepository.getRecentSessions(context, limit = 10)
                 recentSessions = sessions
@@ -540,18 +545,35 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
                                     }
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = if (sel.isRestDay) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Text(
-                                            text = if (sel.isRestDay) "REST" else "TRAIN",
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (sel.isRestDay) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                                            fontSize = 10.sp
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = if (sel.isRestDay) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = if (sel.isRestDay) "REST" else "TRAIN",
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (sel.isRestDay) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = { editingScheduleDay = sel },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = "Edit Routine",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
 
@@ -1425,18 +1447,38 @@ fun HomeScreen(
                                     }
                                 }
 
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (item.isRestDay) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = if (item.isRestDay) "REST" else "TRAIN",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (item.isRestDay) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (item.isRestDay) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = if (item.isRestDay) "REST" else "TRAIN",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (item.isRestDay) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            showWeekPreviewSheet = false
+                                            editingScheduleDay = item
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Routine",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -1501,6 +1543,201 @@ fun HomeScreen(
                                         fontSize = 12.sp
                                     )
                                 }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+        }
+    }
+
+    // Modal Bottom Sheet: Customize Day's Routine / Rest Day
+    if (editingScheduleDay != null) {
+        val dayToEdit = editingScheduleDay!!
+        ModalBottomSheet(
+            onDismissRequest = { editingScheduleDay = null },
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Customize ${dayToEdit.dayOfWeek}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${dayToEdit.dateString} • Select workout routine or assign Rest Day",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    }
+                    IconButton(onClick = { editingScheduleDay = null }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+
+                // Quick Rest Day Option
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (dayToEdit.isRestDay) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        if (dayToEdit.isRestDay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    ),
+                    onClick = {
+                        scope.launch {
+                            userProfileRepo.updateScheduledDay(
+                                dateString = dayToEdit.dateString,
+                                routineId = "routine_active_recovery",
+                                routineName = "Rest & Active Recovery",
+                                targetMusclesCsv = "MOBILITY,RECOVERY",
+                                isRestDay = true,
+                                notes = "Muscles repair and consolidate strength. Light stretching recommended."
+                            )
+                            refreshSchedule()
+                            editingScheduleDay = null
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Rest & Active Recovery Day",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Scheduled off-day for neuromuscular recovery, mobility & tissue repair",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                        if (dayToEdit.isRestDay) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "AVAILABLE ROUTINES",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+
+                val allRoutines = WorkoutEngine.getRoutines()
+                allRoutines.forEach { routine ->
+                    val isSelected = !dayToEdit.isRestDay && dayToEdit.routineId == routine.id
+                    val diffColor = when (routine.difficulty) {
+                        DifficultyLevel.BEGINNER -> Color(0xFF4CAF50)
+                        DifficultyLevel.NOVICE -> Color(0xFF03A9F4)
+                        DifficultyLevel.INTERMEDIATE -> Color(0xFFFFA000)
+                        DifficultyLevel.ADVANCED -> Color(0xFFFF5722)
+                        DifficultyLevel.ELITE -> Color(0xFF9C27B0)
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        ),
+                        onClick = {
+                            scope.launch {
+                                userProfileRepo.updateScheduledDay(
+                                    dateString = dayToEdit.dateString,
+                                    routineId = routine.id,
+                                    routineName = routine.name,
+                                    targetMusclesCsv = routine.targetMuscles.joinToString(",") { it.name },
+                                    isRestDay = false,
+                                    notes = routine.tagline
+                                )
+                                refreshSchedule()
+                                editingScheduleDay = null
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = routine.name,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = diffColor.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = routine.difficulty.displayName,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = diffColor,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 9.sp,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = routine.tagline,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                                Text(
+                                    text = "${routine.items.size} movements • ~${routine.estimatedMinutes} mins • ${routine.targetMuscles.joinToString { it.displayName }}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp
+                                )
+                            }
+
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }

@@ -17,6 +17,7 @@ object TrackActionValidator {
             is ModifyRoutineAction -> validateModifyRoutine(action)
             is ExplainWorkoutAdjustmentAction -> ActionValidationResult(isValid = true, action = action)
             is NavigateAppAction -> ActionValidationResult(isValid = true, action = action)
+            is UpdateScheduleDayAction -> validateUpdateScheduleDay(action)
         }
     }
 
@@ -141,6 +142,31 @@ object TrackActionValidator {
             )
         }
 
+        return ActionValidationResult(isValid = true, action = action)
+    }
+
+    private fun validateUpdateScheduleDay(action: UpdateScheduleDayAction): ActionValidationResult {
+        val validDays = listOf(
+            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+            "mon", "tue", "wed", "thu", "fri", "sat", "sun", "today", "tomorrow"
+        )
+        if (action.dayOfWeek.trim().lowercase() !in validDays) {
+            return ActionValidationResult(
+                isValid = false,
+                action = action,
+                rejectionReason = "Invalid day identifier: '${action.dayOfWeek}'."
+            )
+        }
+        if (!action.isRestDay && action.newRoutineId != null) {
+            val routine = com.setons.trackrep.workout.WorkoutEngine.getRoutineById(action.newRoutineId)
+            if (routine == null && !action.newRoutineId.startsWith("routine_")) {
+                return ActionValidationResult(
+                    isValid = false,
+                    action = action,
+                    rejectionReason = "Routine with ID '${action.newRoutineId}' not found in catalog."
+                )
+            }
+        }
         return ActionValidationResult(isValid = true, action = action)
     }
 }

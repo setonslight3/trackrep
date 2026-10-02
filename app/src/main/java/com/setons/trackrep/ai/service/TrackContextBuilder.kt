@@ -85,6 +85,47 @@ object TrackContextBuilder {
         }
         json.put("recentSessions", sessionsArr)
 
+        // 4. Athlete Profile & Fitness Tier
+        try {
+            val userRepo = com.setons.trackrep.schedule.UserProfileRepository.getInstance(context)
+            val profile = userRepo.getProfile()
+            val profileObj = JSONObject().apply {
+                put("fitnessLevel", profile.fitnessLevel)
+                put("goal", profile.goal)
+                put("equipment", profile.equipment)
+                put("availableDays", profile.availableDaysCsv)
+                put("preferredTimeOfDay", profile.preferredTimeOfDay)
+                put("workoutDurationMinutes", profile.workoutDurationMinutes)
+            }
+            json.put("athleteProfile", profileObj)
+
+            // 5. Weekly Schedule & Planned Routines
+            val schedule = userRepo.getWeeklySchedule()
+            val scheduleArr = JSONArray()
+            schedule.forEach { day ->
+                val dayRoutine = if (!day.isRestDay) WorkoutEngine.getRoutineById(day.routineId) else null
+                scheduleArr.put(JSONObject().apply {
+                    put("dayOfWeek", day.dayOfWeek)
+                    put("date", day.dateString)
+                    put("isRestDay", day.isRestDay)
+                    put("routineName", day.routineName)
+                    put("routineId", day.routineId)
+                    put("targetMuscles", day.targetMusclesCsv)
+                    if (dayRoutine != null) {
+                        put("difficulty", dayRoutine.difficulty.displayName)
+                        put("estimatedMinutes", dayRoutine.estimatedMinutes)
+                        val exList = JSONArray()
+                        dayRoutine.items.forEach { itm ->
+                            val ex = ExerciseCatalog.getById(itm.exerciseId)
+                            exList.put(ex?.name ?: itm.exerciseId)
+                        }
+                        put("movements", exList)
+                    }
+                })
+            }
+            json.put("weeklySchedule", scheduleArr)
+        } catch (_: Exception) {}
+
         return json.toString(2)
     }
 }

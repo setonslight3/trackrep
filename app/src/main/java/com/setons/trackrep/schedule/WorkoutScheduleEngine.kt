@@ -130,40 +130,32 @@ object WorkoutScheduleEngine {
         equipment: String
     ): List<WorkoutRoutine> {
         return when (level) {
-            DifficultyLevel.BEGINNER -> listOf(
-                WorkoutEngine.getRoutineById("routine_full_body_foundation")
-                    ?: WorkoutEngine.curatedRoutines[0],
-                WorkoutEngine.getRoutineById("routine_novice_builder")
-                    ?: WorkoutEngine.curatedRoutines[1]
-            )
-            DifficultyLevel.NOVICE -> listOf(
-                WorkoutEngine.getRoutineById("routine_novice_builder")
-                    ?: WorkoutEngine.curatedRoutines[1],
-                WorkoutEngine.getRoutineById("routine_total_body_burn")
-                    ?: WorkoutEngine.curatedRoutines[2]
-            )
-            DifficultyLevel.INTERMEDIATE -> listOf(
-                WorkoutEngine.getRoutineById("routine_total_body_burn")
-                    ?: WorkoutEngine.curatedRoutines[2],
-                WorkoutEngine.getRoutineById("routine_upper_core_blast")
-                    ?: WorkoutEngine.curatedRoutines[3],
+            DifficultyLevel.BEGINNER -> listOfNotNull(
+                WorkoutEngine.getRoutineById("routine_full_body_foundation"),
+                WorkoutEngine.getRoutineById("routine_upper_beginner"),
+                WorkoutEngine.getRoutineById("routine_lower_beginner")
+            ).ifEmpty { listOf(WorkoutEngine.curatedRoutines[0]) }
+            DifficultyLevel.NOVICE -> listOfNotNull(
+                WorkoutEngine.getRoutineById("routine_novice_builder"),
+                WorkoutEngine.getRoutineById("routine_upper_novice"),
+                WorkoutEngine.getRoutineById("routine_lower_novice")
+            ).ifEmpty { listOf(WorkoutEngine.curatedRoutines[1]) }
+            DifficultyLevel.INTERMEDIATE -> listOfNotNull(
+                WorkoutEngine.getRoutineById("routine_total_body_burn"),
+                WorkoutEngine.getRoutineById("routine_upper_core_blast"),
                 WorkoutEngine.getRoutineById("routine_lower_posterior_power")
-                    ?: WorkoutEngine.curatedRoutines[4]
-            )
-            DifficultyLevel.ADVANCED, DifficultyLevel.ELITE -> listOf(
-                WorkoutEngine.getRoutineById("routine_upper_core_blast")
-                    ?: WorkoutEngine.curatedRoutines[3],
-                WorkoutEngine.getRoutineById("routine_lower_posterior_power")
-                    ?: WorkoutEngine.curatedRoutines[4],
+            ).ifEmpty { listOf(WorkoutEngine.curatedRoutines[2]) }
+            DifficultyLevel.ADVANCED, DifficultyLevel.ELITE -> listOfNotNull(
+                WorkoutEngine.getRoutineById("routine_upper_core_blast"),
+                WorkoutEngine.getRoutineById("routine_lower_posterior_power"),
                 WorkoutEngine.getRoutineById("routine_elite_calisthenics")
-                    ?: WorkoutEngine.curatedRoutines[5]
-            )
+            ).ifEmpty { listOf(WorkoutEngine.curatedRoutines[3]) }
         }
     }
 
     /**
      * Validates that consecutive training days do not heavily fatigue identical muscle groups.
-     * If two adjacent days both heavily load chest/shoulders, adjusts routine order.
+     * If two adjacent days both heavily load chest/shoulders, adjusts routine order to an appropriate lower body routine.
      */
     fun applyRecoverySafeguards(
         schedule: List<ScheduledWorkoutEntity>
@@ -182,7 +174,13 @@ object WorkoutScheduleEngine {
 
                 // If identical heavy compound muscle groups clash on back-to-back days
                 if (overlap.size >= 2) {
-                    val lowerRoutine = WorkoutEngine.getRoutineById("routine_lower_posterior_power")
+                    val nextRoutine = WorkoutEngine.getRoutineById(next.routineId)
+                    val lowerRoutine = when (nextRoutine?.difficulty) {
+                        DifficultyLevel.BEGINNER -> WorkoutEngine.getRoutineById("routine_lower_beginner")
+                        DifficultyLevel.NOVICE -> WorkoutEngine.getRoutineById("routine_lower_novice")
+                        else -> WorkoutEngine.getRoutineById("routine_lower_posterior_power")
+                    } ?: WorkoutEngine.getRoutineById("routine_lower_beginner")
+
                     if (lowerRoutine != null && !next.routineId.contains("lower")) {
                         result[i + 1] = next.copy(
                             routineId = lowerRoutine.id,

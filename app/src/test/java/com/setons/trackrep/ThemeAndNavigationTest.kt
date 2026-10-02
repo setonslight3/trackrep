@@ -316,4 +316,78 @@ class ThemeAndNavigationTest {
             }
         }
     }
+
+    @Test
+    fun testBeginnerRoutinesContainOnlyBeginnerExercises() {
+        val upperBeginner = com.setons.trackrep.workout.WorkoutEngine.getRoutineById("routine_upper_beginner")
+        assertNotNull(upperBeginner)
+        assertEquals(com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER, upperBeginner!!.difficulty)
+        val upperExercises = com.setons.trackrep.workout.WorkoutEngine.getExercisesForRoutine(upperBeginner)
+        upperExercises.forEach { (_, ex) ->
+            assertEquals(com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER, ex.difficulty)
+        }
+
+        val lowerBeginner = com.setons.trackrep.workout.WorkoutEngine.getRoutineById("routine_lower_beginner")
+        assertNotNull(lowerBeginner)
+        assertEquals(com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER, lowerBeginner!!.difficulty)
+        val lowerExercises = com.setons.trackrep.workout.WorkoutEngine.getExercisesForRoutine(lowerBeginner)
+        lowerExercises.forEach { (_, ex) ->
+            assertEquals(com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER, ex.difficulty)
+        }
+    }
+
+    @Test
+    fun testScheduleEngineAssignsOnlyBeginnerRoutinesToBeginners() {
+        val pool = com.setons.trackrep.schedule.WorkoutScheduleEngine.selectRoutinesForLevelAndEquipment(
+            level = com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER,
+            equipment = "NONE"
+        )
+        assertEquals(true, pool.isNotEmpty())
+        pool.forEach { routine ->
+            assertEquals(com.setons.trackrep.exercise.model.DifficultyLevel.BEGINNER, routine.difficulty)
+        }
+    }
+
+    @Test
+    fun testTrackAiScheduleActionValidation() {
+        val validAction = com.setons.trackrep.ai.action.UpdateScheduleDayAction(
+            dayOfWeek = "Wednesday",
+            newRoutineId = "routine_lower_beginner",
+            reason = "Leg day request"
+        )
+        val validResult = com.setons.trackrep.ai.action.TrackActionValidator.validate(validAction)
+        assertEquals(true, validResult.isValid)
+
+        val invalidDayAction = com.setons.trackrep.ai.action.UpdateScheduleDayAction(
+            dayOfWeek = "Funday",
+            newRoutineId = "routine_lower_beginner",
+            reason = "Invalid day"
+        )
+        val invalidResult = com.setons.trackrep.ai.action.TrackActionValidator.validate(invalidDayAction)
+        assertEquals(false, invalidResult.isValid)
+    }
+
+    @Test
+    fun testTrackAiOnDeviceScheduleReasoning() {
+        // Test modifying Wednesday to Leg Day
+        val legDayResponse = com.setons.trackrep.ai.service.TrackAiService.evaluateOnDeviceReasoning("change wednesday to leg day")
+        val updateAction = legDayResponse.actions.filterIsInstance<com.setons.trackrep.ai.action.UpdateScheduleDayAction>().firstOrNull()
+        assertNotNull(updateAction)
+        assertEquals("Wednesday", updateAction!!.dayOfWeek)
+        assertEquals("routine_lower_beginner", updateAction.newRoutineId)
+        assertEquals(false, updateAction.isRestDay)
+
+        // Test modifying Friday to Rest Day
+        val restDayResponse = com.setons.trackrep.ai.service.TrackAiService.evaluateOnDeviceReasoning("make friday a rest day")
+        val restAction = restDayResponse.actions.filterIsInstance<com.setons.trackrep.ai.action.UpdateScheduleDayAction>().firstOrNull()
+        assertNotNull(restAction)
+        assertEquals("Friday", restAction!!.dayOfWeek)
+        assertEquals(true, restAction.isRestDay)
+
+        // Test querying Wednesday routine
+        val queryResponse = com.setons.trackrep.ai.service.TrackAiService.evaluateOnDeviceReasoning("what is my workout on wednesday")
+        val navAction = queryResponse.actions.filterIsInstance<com.setons.trackrep.ai.action.NavigateAppAction>().firstOrNull()
+        assertNotNull(navAction)
+        assertEquals("HOME", navAction!!.destination)
+    }
 }

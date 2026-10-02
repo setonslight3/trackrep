@@ -46,6 +46,7 @@ object TrackActionExecutor {
                 isSuccess = true,
                 feedbackMessage = "Navigated to ${action.destination}"
             )
+            is UpdateScheduleDayAction -> executeUpdateScheduleDay(context, action)
         }
 
         logAction(context, requestPrompt, action.actionType, action.summary, result.feedbackMessage, result.isSuccess)
@@ -187,6 +188,63 @@ object TrackActionExecutor {
             isSuccess = true,
             feedbackMessage = "Modified routine: added ${action.addedExerciseIds.size}, removed ${action.removedExerciseIds.size} exercises. Reason: ${action.reason}."
         )
+    }
+
+    private suspend fun executeUpdateScheduleDay(
+        context: Context?,
+        action: UpdateScheduleDayAction
+    ): ActionExecutionResult {
+        if (context == null) {
+            return ActionExecutionResult(
+                action = action,
+                isSuccess = true,
+                feedbackMessage = "Schedule update queued for ${action.dayOfWeek}."
+            )
+        }
+        return try {
+            val userProfileRepo = com.setons.trackrep.schedule.UserProfileRepository.getInstance(context)
+            val routine = action.newRoutineId?.let { WorkoutEngine.getRoutineById(it) }
+            val routineName = if (action.isRestDay) "Rest & Active Recovery"
+                              else (routine?.name ?: action.routineName ?: "Custom Workout")
+            val targetMuscles = if (action.isRestDay) "MOBILITY,RECOVERY"
+                                else (routine?.targetMuscles?.joinToString(",") { it.name } ?: "FULL_BODY")
+            val routineId = if (action.isRestDay) "routine_active_recovery"
+                            else (routine?.id ?: action.newRoutineId ?: "custom_routine")
+            val notes = if (action.isRestDay) "Muscles repair and consolidate strength. Light stretching recommended."
+                        else (routine?.tagline ?: action.reason)
+
+            if (!action.dateString.isNullOrBlank()) {
+                userProfileRepo.updateScheduledDay(
+                    dateString = action.dateString,
+                    routineId = routineId,
+                    routineName = routineName,
+                    targetMusclesCsv = targetMuscles,
+                    isRestDay = action.isRestDay,
+                    notes = notes
+                )
+            } else {
+                userProfileRepo.updateScheduledDayByDayName(
+                    dayOfWeek = action.dayOfWeek,
+                    routineId = routineId,
+                    routineName = routineName,
+                    targetMusclesCsv = targetMuscles,
+                    isRestDay = action.isRestDay,
+                    notes = notes
+                )
+            }
+
+            ActionExecutionResult(
+                action = action,
+                isSuccess = true,
+                feedbackMessage = "Updated ${action.dayOfWeek} to $routineName."
+            )
+        } catch (e: Exception) {
+            ActionExecutionResult(
+                action = action,
+                isSuccess = false,
+                feedbackMessage = "Failed to update schedule: ${e.message}"
+            )
+        }
     }
 
     private suspend fun logAction(

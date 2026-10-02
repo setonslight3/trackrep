@@ -104,6 +104,57 @@ class UserProfileRepository(context: Context) {
         updated
     }
 
+    suspend fun updateScheduledDay(
+        dateString: String,
+        routineId: String,
+        routineName: String,
+        targetMusclesCsv: String,
+        isRestDay: Boolean,
+        notes: String
+    ): List<ScheduledWorkoutEntity> = withContext(Dispatchers.IO) {
+        val existing = scheduleDao.getWorkoutForDate(dateString)
+        if (existing != null) {
+            val updated = existing.copy(
+                routineId = routineId,
+                routineName = routineName,
+                targetMusclesCsv = targetMusclesCsv,
+                isRestDay = isRestDay,
+                notes = notes,
+                status = if (isRestDay) "REST" else "SCHEDULED"
+            )
+            scheduleDao.upsertWorkout(updated)
+        }
+        scheduleDao.getWeeklySchedule()
+    }
+
+    suspend fun updateScheduledDayByDayName(
+        dayOfWeek: String,
+        routineId: String,
+        routineName: String,
+        targetMusclesCsv: String,
+        isRestDay: Boolean,
+        notes: String
+    ): List<ScheduledWorkoutEntity> = withContext(Dispatchers.IO) {
+        val currentWeek = scheduleDao.getWeeklySchedule()
+        val target = currentWeek.firstOrNull {
+            it.dayOfWeek.equals(dayOfWeek, ignoreCase = true) ||
+            it.dayOfWeek.startsWith(dayOfWeek, ignoreCase = true) ||
+            dayOfWeek.startsWith(it.dayOfWeek, ignoreCase = true)
+        }
+        if (target != null) {
+            val updated = target.copy(
+                routineId = routineId,
+                routineName = routineName,
+                targetMusclesCsv = targetMusclesCsv,
+                isRestDay = isRestDay,
+                notes = notes,
+                status = if (isRestDay) "REST" else "SCHEDULED"
+            )
+            scheduleDao.upsertWorkout(updated)
+        }
+        scheduleDao.getWeeklySchedule()
+    }
+
     suspend fun resetOnboarding() = withContext(Dispatchers.IO) {
         val current = getProfile()
         profileDao.upsertProfile(current.copy(isOnboardingCompleted = false))

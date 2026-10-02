@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Tune
 import com.setons.trackrep.ai.action.NavigateAppAction
+import com.setons.trackrep.ai.action.UpdateScheduleDayAction
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -593,6 +595,35 @@ private fun ActionConfirmationCard(
                             contentDescription = null,
                             modifier = Modifier.size(14.dp)
                         )
+                    }
+                }
+
+                is UpdateScheduleDayAction -> {
+                    Text(
+                        text = "Schedule Updated: ${action.dayOfWeek}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = action.summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { onNavigateToDestination("HOME") },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("View in Schedule", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

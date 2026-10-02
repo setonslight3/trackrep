@@ -46,6 +46,62 @@ object WorkoutEngine {
             )
         ),
         WorkoutRoutine(
+            id = "routine_upper_beginner",
+            name = "Beginner Upper Body & Arms",
+            tagline = "Gentle wall pressing, arm activation & core bracing for beginners",
+            difficulty = DifficultyLevel.BEGINNER,
+            estimatedMinutes = 15,
+            targetMuscles = listOf(MuscleGroup.CHEST, MuscleGroup.SHOULDERS, MuscleGroup.ARMS, MuscleGroup.CORE),
+            items = listOf(
+                WorkoutItem("push_up_wall", targetSets = 3, targetReps = 12, restSeconds = 45),
+                WorkoutItem("arm_circles_scapular", targetSets = 3, targetReps = 15, restSeconds = 30),
+                WorkoutItem("plank_knee", targetSets = 3, targetReps = 0, targetHoldSeconds = 30, restSeconds = 45),
+                WorkoutItem("bird_dog", targetSets = 3, targetReps = 10, restSeconds = 45)
+            )
+        ),
+        WorkoutRoutine(
+            id = "routine_lower_beginner",
+            name = "Beginner Legs & Glute Strength",
+            tagline = "Chair squats, glute bridges & calf raises built for joint comfort & stability",
+            difficulty = DifficultyLevel.BEGINNER,
+            estimatedMinutes = 15,
+            targetMuscles = listOf(MuscleGroup.QUADS, MuscleGroup.GLUTES, MuscleGroup.CALVES, MuscleGroup.HAMSTRINGS),
+            items = listOf(
+                WorkoutItem("squat_chair", targetSets = 3, targetReps = 12, restSeconds = 45),
+                WorkoutItem("glute_bridge", targetSets = 3, targetReps = 15, restSeconds = 45),
+                WorkoutItem("calf_raise_double", targetSets = 3, targetReps = 15, restSeconds = 45),
+                WorkoutItem("bird_dog", targetSets = 3, targetReps = 10, restSeconds = 45)
+            )
+        ),
+        WorkoutRoutine(
+            id = "routine_upper_novice",
+            name = "Novice Upper Body & Press",
+            tagline = "Incline pressing, tricep bench dips & posterior chain posture strength",
+            difficulty = DifficultyLevel.NOVICE,
+            estimatedMinutes = 18,
+            targetMuscles = listOf(MuscleGroup.CHEST, MuscleGroup.SHOULDERS, MuscleGroup.ARMS, MuscleGroup.BACK),
+            items = listOf(
+                WorkoutItem("push_up_incline", targetSets = 3, targetReps = 10, restSeconds = 60),
+                WorkoutItem("bench_dips", targetSets = 3, targetReps = 10, restSeconds = 60),
+                WorkoutItem("superman_hold", targetSets = 3, targetReps = 12, restSeconds = 45),
+                WorkoutItem("plank_side", targetSets = 3, targetReps = 0, targetHoldSeconds = 30, restSeconds = 45)
+            )
+        ),
+        WorkoutRoutine(
+            id = "routine_lower_novice",
+            name = "Novice Lower Body & Hips",
+            tagline = "Reverse lunges, good mornings & calf conditioning for progressive leg power",
+            difficulty = DifficultyLevel.NOVICE,
+            estimatedMinutes = 18,
+            targetMuscles = listOf(MuscleGroup.QUADS, MuscleGroup.GLUTES, MuscleGroup.HAMSTRINGS, MuscleGroup.CALVES),
+            items = listOf(
+                WorkoutItem("lunge_reverse", targetSets = 3, targetReps = 10, restSeconds = 60),
+                WorkoutItem("glute_bridge", targetSets = 3, targetReps = 15, restSeconds = 45),
+                WorkoutItem("good_mornings", targetSets = 3, targetReps = 12, restSeconds = 45),
+                WorkoutItem("calf_raise_double", targetSets = 3, targetReps = 15, restSeconds = 45)
+            )
+        ),
+        WorkoutRoutine(
             id = "routine_total_body_burn",
             name = "Total-Body Athletic Burn",
             tagline = "Signature TrackRep full-body session with AI Vision on-device coaching",
