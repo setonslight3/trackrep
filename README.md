@@ -58,6 +58,23 @@ A complete 9-journey interactive verification test guide is available in the rep
 
 ---
 
+## 📜 Version History & Changelog
+
+A detailed list of all releases, features added, enhancements, bug fixes, and architectural changes from Phase 0 to present is maintained in [**CHANGELOG.md**](CHANGELOG.md).
+
+| Latest Version | Release Date | Key Focus | Highlights |
+| :---: | :---: | :--- | :--- |
+| [**v1.2.14**](CHANGELOG.md#v1214---2026-10-03) | 2026-10-03 | APK Signature & Compatibility | Explicit v1/v2/v3 release signing, 4-byte zipalign, install fix |
+| [**v1.2.13**](CHANGELOG.md#v1213---2026-10-02) | 2026-10-02 | Beginner Tier & Schedule Editing | Dedicated beginner routines, manual schedule sheet, Track AI assistant |
+| [**v1.2.12**](CHANGELOG.md#v1212---2026-10-02) | 2026-10-02 | Camera Flashlight & Schedule Preview | Dual flashlight torch, home workout bugfix, week ahead preview |
+| [**v1.2.10**](CHANGELOG.md#v1210---2026-10-02) | 2026-10-02 | AI Navigation & Custom Exercises | 'Take Me There' buttons, custom exercise creator with AI vision |
+| [**v1.2.9**](CHANGELOG.md#v129---2026-10-02) | 2026-10-02 | Color Studio | Dynamic theme engine, Hue wheel, RGB sliders, rainbow presets |
+| [**v1.0.0 GA**](CHANGELOG.md#v100-ga---2026-09-23) | 2026-09-23 | General Availability | ProGuard/R8 optimization, QA verification runbook, device tuning |
+
+👉 For the complete chronological list of all 30+ versions, view [**CHANGELOG.md**](CHANGELOG.md).
+
+---
+
 ## 🚀 Building & Running
 
 ### Prerequisites
