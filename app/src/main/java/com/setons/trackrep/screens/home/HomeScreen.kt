@@ -52,10 +52,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import com.setons.trackrep.exercise.model.DifficultyLevel
+import com.setons.trackrep.workout.RoutineEditorHolder
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -156,6 +159,22 @@ fun HomeScreen(
             refreshSchedule()
         } catch (e: Exception) {
             android.util.Log.e("HomeScreen", "Error initializing home data", e)
+        }
+    }
+
+    LaunchedEffect(RoutineEditorHolder.shouldOpenEditorOnHome, weeklySchedule) {
+        if (RoutineEditorHolder.shouldOpenEditorOnHome && weeklySchedule.isNotEmpty()) {
+            val targetDate = RoutineEditorHolder.targetDayDateString
+            val targetDay = if (!targetDate.isNullOrBlank()) {
+                weeklySchedule.firstOrNull { it.dateString == targetDate }
+            } else {
+                weeklySchedule.firstOrNull { it.dateString == todayDateStr }
+            } ?: weeklySchedule.firstOrNull()
+            if (targetDay != null) {
+                editingScheduleDay = targetDay
+            }
+            RoutineEditorHolder.shouldOpenEditorOnHome = false
+            RoutineEditorHolder.targetDayDateString = null
         }
     }
 
@@ -434,18 +453,38 @@ fun HomeScreen(
                                 letterSpacing = 1.2.sp
                             )
                         }
-                        TextButton(
-                            onClick = { showWeekPreviewSheet = true },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Preview Week",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            TextButton(
+                                onClick = {
+                                    val target = selectedScheduleDay ?: weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
+                                    if (target != null) {
+                                        editingScheduleDay = target
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Edit Routine",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            TextButton(
+                                onClick = { showWeekPreviewSheet = true },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Preview Week",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
 
@@ -563,15 +602,24 @@ fun HomeScreen(
                                             )
                                         }
 
-                                        IconButton(
+                                        OutlinedButton(
                                             onClick = { editingScheduleDay = sel },
-                                            modifier = Modifier.size(28.dp)
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Edit,
                                                 contentDescription = "Edit Routine",
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Edit",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
@@ -754,10 +802,18 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = onNavigateToLibrary,
+                            onClick = {
+                                val target = weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
+                                if (target != null) {
+                                    editingScheduleDay = target
+                                }
+                            },
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Browse Library", fontSize = 12.sp)
+                            Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Edit Routine", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                         Button(
                             onClick = onNavigateToCoach,
@@ -808,17 +864,37 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = "${todayRoutine.estimatedMinutes} MIN • LEVEL ${todayRoutine.difficulty.rank}",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+                            OutlinedButton(
+                                onClick = {
+                                    val target = weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
+                                    if (target != null) {
+                                        editingScheduleDay = target
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit Routine", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "${todayRoutine.estimatedMinutes} MIN • LEVEL ${todayRoutine.difficulty.rank}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
 
@@ -1032,7 +1108,7 @@ fun HomeScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = {
@@ -1058,15 +1134,37 @@ fun HomeScreen(
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
+                                .weight(1.3f)
+                                .height(48.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("Start Routine", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val target = weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
+                                if (target != null) {
+                                    editingScheduleDay = target
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                                Text("Start Routine with Coach", fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                Text("Swap", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                             }
                         }
 
@@ -1465,18 +1563,27 @@ fun HomeScreen(
                                         )
                                     }
 
-                                    IconButton(
+                                    OutlinedButton(
                                         onClick = {
                                             showWeekPreviewSheet = false
                                             editingScheduleDay = item
                                         },
-                                        modifier = Modifier.size(28.dp)
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Edit,
                                             contentDescription = "Edit Routine",
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Edit",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
@@ -1609,6 +1716,10 @@ fun HomeScreen(
                                 isRestDay = true,
                                 notes = "Muscles repair and consolidate strength. Light stretching recommended."
                             )
+                            if (dayToEdit.dateString == todayDateStr) {
+                                CoachModeHolder.activeRoutine = null
+                                CoachModeHolder.activeRoutineIndex = 0
+                            }
                             refreshSchedule()
                             editingScheduleDay = null
                         }
@@ -1680,6 +1791,10 @@ fun HomeScreen(
                                     isRestDay = false,
                                     notes = routine.tagline
                                 )
+                                if (dayToEdit.dateString == todayDateStr) {
+                                    CoachModeHolder.activeRoutine = routine
+                                    CoachModeHolder.activeRoutineIndex = 0
+                                }
                                 refreshSchedule()
                                 editingScheduleDay = null
                             }

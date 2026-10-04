@@ -219,6 +219,10 @@ fun TrackRepApp() {
                                     "COACH" -> backStack.add(CoachNavKey)
                                     "EXERCISE_LIBRARY", "LIBRARY" -> backStack.add(ExerciseLibraryNavKey)
                                     "PROFILE", "THEME", "THEME_STUDIO" -> backStack.add(ProfileNavKey)
+                                    "EDIT_ROUTINE", "ROUTINE", "ROUTINES", "EDIT_SCHEDULE", "SCHEDULE" -> {
+                                        com.setons.trackrep.workout.RoutineEditorHolder.requestOpenEditor()
+                                        // Root HomeNavKey is already active
+                                    }
                                     "HOME" -> { /* Root HomeNavKey */ }
                                     else -> backStack.add(HistoryNavKey)
                                 }

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.2.15 - Instant Routine Editor Routing in Track AI, Quick Swapper in Coach & Home Screen Controls](#v1215---2026-10-04)
 - [v1.2.14 - Enhanced APK Signature Compatibility & Schedule Customization](#v1214---2026-10-03)
 - [v1.2.13 - Beginner Difficulty Filtering, Customizable Weekly Schedule & Track AI Assistant](#v1213---2026-10-02)
 - [v1.2.12 - Dual Camera Flashlight Torch, Workout State Persistence & Week Ahead Preview](#v1212---2026-10-02)
@@ -38,6 +39,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+---
+
+## [v1.2.15] - 2026-10-04
+
+### Added
+- **Direct Routine Customization Routing in Track AI**:
+  - Track AI automatically detects queries about editing, customizing, changing, swapping, or finding workout routines.
+  - Returns a high-priority `NAVIGATE_APP("EDIT_ROUTINE", "Take Me Straight to Routine Editor")` action that takes athletes directly to the routine customization sheet on the Home screen.
+  - Updated Google Gemini system prompt with `ROUTINE EDITING & CUSTOMIZATION NAVIGATION RULE` ensuring Track AI never misdirects users to the Coach tab for routine customization.
+  - Added an **"Edit Routine"** Quick Suggestion Chip to the chat screen for 1-tap navigation.
+- **In-Coach Routine Selector & Swapper**:
+  - Athletes can now select and swap workout routines directly inside `CoachScreen`.
+  - Added a "Choose Routine" banner when no routine is selected and a "Swap" button when an active routine is loaded.
+  - Full routine catalog drawer with difficulty badges, target muscles, and movement previews for seamless in-session routine switching.
+- **Enhanced Home Screen Routine Access**:
+  - Prominent "Edit Routine" and "Swap" buttons added directly on Today's Workout Card, Scheduled Rest Day Card, and the Weekly Training Schedule header.
+  - Upgraded day selection and week preview buttons to clear `OutlinedButton`s ("Edit").
+  - Real-time state synchronization: editing today's routine or rest day in the schedule customizer instantly updates `CoachModeHolder.activeRoutine`.
 
 ---
 

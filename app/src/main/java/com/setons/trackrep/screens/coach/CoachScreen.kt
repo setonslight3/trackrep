@@ -42,6 +42,11 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.foundation.layout.PaddingValues
+import com.setons.trackrep.exercise.model.DifficultyLevel
+import com.setons.trackrep.workout.WorkoutEngine
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -231,6 +236,7 @@ fun CoachScreen(
     var showExerciseDrawer by remember { mutableStateOf(false) }
     var showControlsDrawer by remember { mutableStateOf(false) }
     var showRoutineDrawer by remember { mutableStateOf(false) }
+    var showRoutinePickerInDrawer by remember { mutableStateOf(false) }
     var showTutorial by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
     LaunchedEffect(isFullscreen) {
@@ -1165,9 +1171,13 @@ fun CoachScreen(
             }
 
             // Routine Progress Banner (if active workout routine)
-            currentRoutine?.let { routine ->
+            if (currentRoutine != null) {
+                val routine = currentRoutine!!
                 Surface(
-                    onClick = { showRoutineDrawer = true },
+                    onClick = {
+                        showRoutinePickerInDrawer = false
+                        showRoutineDrawer = true
+                    },
                     shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
@@ -1198,13 +1208,96 @@ fun CoachScreen(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "Movements",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                onClick = {
+                                    showRoutinePickerInDrawer = true
+                                    showRoutineDrawer = true
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SwapHoriz,
+                                        contentDescription = "Swap",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Swap",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Surface(
+                    onClick = {
+                        showRoutinePickerInDrawer = true
+                        showRoutineDrawer = true
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsRun,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "No Routine Selected • Tap to choose a routine",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
                             Text(
-                                text = "Routine List",
+                                text = "Choose Routine",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
@@ -2662,25 +2755,154 @@ fun CoachScreen(
     // -------------------------------------------------------------
     if (showRoutineDrawer) {
         val routine = currentRoutine
-        if (routine != null) {
-            ModalBottomSheet(
-                onDismissRequest = { showRoutineDrawer = false },
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+        ModalBottomSheet(
+            onDismissRequest = {
+                showRoutineDrawer = false
+                showRoutinePickerInDrawer = false
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
+                if (routine == null || showRoutinePickerInDrawer) {
+                    // Routine Picker / Swapper View
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (routine != null) {
+                                IconButton(onClick = { showRoutinePickerInDrawer = false }) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = if (routine != null) "Swap Routine" else "Choose a Routine",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Select a workout routine to track with AI Vision",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        IconButton(onClick = {
+                            showRoutineDrawer = false
+                            showRoutinePickerInDrawer = false
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+
+                    val allRoutines = WorkoutEngine.getRoutines()
+                    allRoutines.forEach { r ->
+                        val isSelected = routine?.id == r.id
+                        val diffColor = when (r.difficulty) {
+                            DifficultyLevel.BEGINNER -> Color(0xFF4CAF50)
+                            DifficultyLevel.NOVICE -> Color(0xFF03A9F4)
+                            DifficultyLevel.INTERMEDIATE -> Color(0xFFFFA000)
+                            DifficultyLevel.ADVANCED -> Color(0xFFFF5722)
+                            DifficultyLevel.ELITE -> Color(0xFF9C27B0)
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            ),
+                            onClick = {
+                                currentRoutine = r
+                                currentRoutineIndex = 0
+                                CoachModeHolder.activeRoutine = r
+                                CoachModeHolder.activeRoutineIndex = 0
+                                showRoutinePickerInDrawer = false
+                                if (r.items.isNotEmpty()) {
+                                    selectRoutineExercise(0)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = r.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = diffColor.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = r.difficulty.displayName,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = diffColor,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 9.sp,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = r.tagline,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                    Text(
+                                        text = "${r.items.size} movements • ~${r.estimatedMinutes} mins • ${r.targetMuscles.joinToString { it.displayName }}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 11.sp
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Active Routine Movements Checklist
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = routine.name,
                                 style = MaterialTheme.typography.titleLarge,
@@ -2693,8 +2915,19 @@ fun CoachScreen(
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )
                         }
-                        IconButton(onClick = { showRoutineDrawer = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedButton(
+                                onClick = { showRoutinePickerInDrawer = true },
+                                modifier = Modifier.padding(end = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Swap", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = { showRoutineDrawer = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
+                            }
                         }
                     }
 
@@ -2799,8 +3032,17 @@ fun CoachScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    OutlinedButton(
+                        onClick = { showRoutinePickerInDrawer = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Switch or Swap to Another Routine", fontWeight = FontWeight.Bold)
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }

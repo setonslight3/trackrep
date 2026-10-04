@@ -214,6 +214,7 @@ fun TrackAiScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            QuickChip("Edit Routine", "Where do I edit or customize my workout routine? Take me there.") { submitQuery(it) }
             QuickChip("My Best Reps", "Where can I find my best reps and records? How do I get there?") { submitQuery(it) }
             QuickChip("Wrist relief", "My wrists hurt. Can we swap standard push-ups?") { submitQuery(it) }
             QuickChip("Reschedule missed", "I missed yesterday's workout. Reschedule it without stacking.") { submitQuery(it) }

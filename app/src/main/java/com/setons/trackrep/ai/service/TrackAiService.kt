@@ -155,9 +155,9 @@ You cannot directly alter user data. You must output a JSON object conforming to
     },
     {
       "type": "NAVIGATE_APP",
-      "destination": "HISTORY",
-      "buttonLabel": "Take Me to History & Best Reps",
-      "explanation": "Directs the athlete to the requested screen. Destinations: 'HISTORY', 'COACH', 'EXERCISE_LIBRARY', 'PROFILE', 'HOME'"
+      "destination": "EDIT_ROUTINE",
+      "buttonLabel": "Take Me Straight to Routine Editor",
+      "explanation": "Directs the athlete to the requested screen. Destinations: 'HISTORY', 'COACH', 'EXERCISE_LIBRARY', 'PROFILE', 'HOME', 'EDIT_ROUTINE'"
     },
     {
       "type": "UPDATE_SCHEDULE_DAY",
@@ -170,8 +170,14 @@ You cannot directly alter user data. You must output a JSON object conforming to
   ]
 }
 
+ROUTINE EDITING & CUSTOMIZATION NAVIGATION RULE:
+When the athlete asks how to edit, change, swap, customize, or find their routines, or where to edit their routine/schedule (e.g. 'How do I edit my routine?', 'I want to change my routine', 'Where do I edit routine?', 'Can I customize my routine?', 'Where do I find routine to edit?'):
+1. DO NOT tell them it is inside the Coach screen. Routine editing is NOT located inside the Coach tab!
+2. Explain clearly that they can customize or swap routines directly on the Home tab (via the "Edit Routine" or "Swap" buttons on Today's Workout Card, or by tapping "Edit Routine" / "Preview Week" on the Weekly Training Schedule card).
+3. ALWAYS include a NAVIGATE_APP action with destination "EDIT_ROUTINE" and buttonLabel "Take Me Straight to Routine Editor" so tapping it takes them directly into the routine customization screen on Home!
+
 NAVIGATION ASSISTANCE RULE:
-When the athlete asks where something is, how to get there, how to see their best reps or workout records, where to change themes, where to find exercises, or how to start a workout, you MUST explain where it is located in the app (e.g. "Tap the History tab in the bottom navigation bar...") AND generate a NAVIGATE_APP action with the appropriate destination ("HISTORY", "COACH", "EXERCISE_LIBRARY", "PROFILE", or "HOME") and an encouraging buttonLabel (e.g. "Take Me to History & Best Reps", "Take Me to AI Vision Coach", "Take Me to Exercise Library", "Take Me to Profile & Theme Studio").
+When the athlete asks where something is, how to get there, how to see their best reps or workout records, where to change themes, where to find exercises, or how to start a workout, you MUST explain where it is located in the app (e.g. "Tap the History tab in the bottom navigation bar...") AND generate a NAVIGATE_APP action with the appropriate destination ("HISTORY", "COACH", "EXERCISE_LIBRARY", "PROFILE", "HOME", or "EDIT_ROUTINE") and an encouraging buttonLabel (e.g. "Take Me to History & Best Reps", "Take Me to AI Vision Coach", "Take Me to Exercise Library", "Take Me to Profile & Theme Studio", "Take Me Straight to Routine Editor").
 
 SCHEDULE ASSISTANCE & CUSTOMIZATION RULE:
 When the athlete asks about their upcoming routine, weekly schedule, or what workout they have on a specific day (e.g. 'What am I doing on Wednesday?', 'What is my workout schedule?'), inspect their 'weeklySchedule' in the context below and explain clearly what routine and exercises are planned for that day.
@@ -552,6 +558,23 @@ $structuredContext
                     }
                 }
                 reply = historyReply ?: "I'm ready to analyze your workout history! Once you complete and log sets with the camera coach, I'll provide detailed breakdowns of your rep counts, form consistency scores, and progressive overload."
+            }
+
+            // 11a. Routine Editing & Customization Navigation ("Where do I edit routine", "Can't find routine", "Edit routine")
+            q.contains("edit routine") || q.contains("change routine") || q.contains("swap routine") ||
+            q.contains("customize routine") || q.contains("customise routine") || q.contains("routine edit") ||
+            q.contains("routine editor") ||
+            (q.contains("routine") && (q.contains("where") || q.contains("how") || q.contains("find") ||
+             q.contains("look") || q.contains("access") || q.contains("cant find") || q.contains("can't find") ||
+             q.contains("cannot find") || q.contains("switch") || q.contains("choose") || q.contains("select") || q.contains("pick"))) -> {
+                actions.add(
+                    NavigateAppAction(
+                        destination = "EDIT_ROUTINE",
+                        buttonLabel = "Take Me Straight to Routine Editor",
+                        explanation = "Open Routine Customization Sheet"
+                    )
+                )
+                reply = "You can customize or swap your workout routine directly on the **Home** tab! Look for the **Edit Routine** or **Swap** buttons on **Today's Workout Card**, or tap **Edit Routine** on your **Weekly Training Schedule**.\n\nTap the button below and I'll open the Routine Editor for you right now!"
             }
 
             // 11. Navigation Assistance: Best Reps, Personal Records, History & "How do I get there"
