@@ -12,8 +12,8 @@ android {
         applicationId = "com.setons.trackrep"
         minSdk = 24
         targetSdk = 35
-        versionCode = 41
-        versionName = "1.2.16"
+        versionCode = 42
+        versionName = "1.2.17"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
@@ -32,6 +32,8 @@ android {
             }
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = false
         }
     }
 
@@ -56,6 +58,8 @@ android {
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        excludes += "META-INF/*.version"
+        excludes += "META-INF/INDEX.LIST"
       }
     }
 }

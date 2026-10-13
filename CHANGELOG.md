@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.2.17 - Package Installer Compatibility Fix, Manifest Schema Repair & Tri-Scheme Signing](#v1217---2026-10-13)
 - [v1.2.16 - Weekly Schedule Duplication Fix, Clean 7-Day Symmetrical Grid & Auto-Pruning Engine](#v1216---2026-10-13)
 - [v1.2.15 - Instant Routine Editor Routing in Track AI, Quick Swapper in Coach & Home Screen Controls](#v1215---2026-10-04)
 - [v1.2.14 - Enhanced APK Signature Compatibility & Schedule Customization](#v1214---2026-10-03)
@@ -40,6 +41,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+---
+
+## [v1.2.17] - 2026-10-13
+
+### Fixed
+- **Package Installation Error ("App not installed as package appears to be invalid")**:
+  - Fixed malformed `android:windowSoftInputMode` attribute located incorrectly under `<application>` tag in `AndroidManifest.xml`, moving it to `<activity android:name=".MainActivity">`. This resolves strict OEM PackageParser validation failures on ColorOS, OxygenOS, Realme UI, and MIUI.
+  - Configured Gradle signing pipeline with native, clean v1 (JAR signing), v2, and v3 signatures, verified across all API levels without signature corruption or double-signing artifacts.
 
 ---
 
