@@ -143,7 +143,18 @@ fun HistoryScreen(
             recordedSessions = sessions
             readinessState = AdaptiveRepository.getAthleteReadiness(context)
 
-            val dashboard = ProgressAnalyticsEngine.buildDashboardData(sessions, progressions)
+            val profile = db.userProfileDao().getProfile()
+            val scheduledDays = profile?.availableDaysCsv
+                ?.split(",")
+                ?.map { it.trim().uppercase(Locale.US) }
+                ?.filter { it.isNotBlank() }
+                ?.toSet() ?: setOf("MON", "WED", "FRI")
+
+            val dashboard = ProgressAnalyticsEngine.buildDashboardData(
+                sessions = sessions,
+                progressions = progressions,
+                scheduledDaysOfWeek = scheduledDays
+            )
             lifetimeStats = dashboard.lifetime
             streakStats = dashboard.streaks
             prMilestones = dashboard.milestones
@@ -367,7 +378,7 @@ fun HistoryScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${streakStats.currentStreakDays} Days",
+                                text = "${streakStats.currentStreakDays} ${if (streakStats.currentStreakDays == 1) "Workout" else "Workouts"}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary
@@ -381,7 +392,7 @@ fun HistoryScreen(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${streakStats.bestStreakDays} Days",
+                                text = "${streakStats.bestStreakDays} ${if (streakStats.bestStreakDays == 1) "Workout" else "Workouts"}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -398,9 +409,9 @@ fun HistoryScreen(
 
                     Text(
                         text = if (streakStats.currentStreakDays > 0) {
-                            "🔥 Exceptional discipline! Keep your daily momentum alive."
+                            "🔥 Exceptional discipline! Workout streak active across your scheduled training days."
                         } else {
-                            "⚡ Start a session today to build your training streak."
+                            "⚡ Complete your next scheduled workout to build your training streak."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)

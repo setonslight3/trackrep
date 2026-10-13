@@ -159,6 +159,138 @@ class ProgressAnalyticsEngineTest {
     }
 
     @Test
+    fun testComputeStreaks_RestDaysBetweenWorkoutsDoNotBreakStreak() {
+        // Mon 2026-09-21, Wed 2026-09-23, Fri 2026-09-25
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.SEPTEMBER, 25) // Friday
+        }
+
+        val monCal = (cal.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 21) }
+        val wedCal = (cal.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 23) }
+        val friCal = (cal.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 25) }
+
+        val sessions = listOf(
+            WorkoutSessionEntity(
+                exerciseId = "pushup",
+                exerciseName = "Push-Up",
+                timestampMs = monCal.timeInMillis,
+                dateString = dayFormat.format(monCal.time),
+                durationSeconds = 60,
+                totalValidReps = 10,
+                totalPartialReps = 0,
+                averageFormScore = 90,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            ),
+            WorkoutSessionEntity(
+                exerciseId = "squat",
+                exerciseName = "Squat",
+                timestampMs = wedCal.timeInMillis,
+                dateString = dayFormat.format(wedCal.time),
+                durationSeconds = 60,
+                totalValidReps = 15,
+                totalPartialReps = 0,
+                averageFormScore = 90,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            ),
+            WorkoutSessionEntity(
+                exerciseId = "plank",
+                exerciseName = "Plank",
+                timestampMs = friCal.timeInMillis,
+                dateString = dayFormat.format(friCal.time),
+                durationSeconds = 45,
+                totalValidReps = 0,
+                totalPartialReps = 0,
+                averageFormScore = 95,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            )
+        )
+
+        val scheduledDays = setOf("MON", "WED", "FRI")
+        val streaks = ProgressAnalyticsEngine.computeStreaks(sessions, scheduledDays, cal)
+        // 3 completed workouts on scheduled days with rest days in-between should yield a 3-workout streak
+        assertEquals(3, streaks.currentStreakDays)
+        assertEquals(3, streaks.bestStreakDays)
+    }
+
+    @Test
+    fun testComputeStreaks_MissedScheduledWorkoutDayBreaksStreak() {
+        // Mon 2026-09-21 (trained), Wed 2026-09-23 (MISSED!), Fri 2026-09-25 (trained)
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.SEPTEMBER, 25) // Friday
+        }
+
+        val monCal = (cal.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 21) }
+        val friCal = (cal.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 25) }
+
+        val sessions = listOf(
+            WorkoutSessionEntity(
+                exerciseId = "pushup",
+                exerciseName = "Push-Up",
+                timestampMs = monCal.timeInMillis,
+                dateString = dayFormat.format(monCal.time),
+                durationSeconds = 60,
+                totalValidReps = 10,
+                totalPartialReps = 0,
+                averageFormScore = 90,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            ),
+            WorkoutSessionEntity(
+                exerciseId = "plank",
+                exerciseName = "Plank",
+                timestampMs = friCal.timeInMillis,
+                dateString = dayFormat.format(friCal.time),
+                durationSeconds = 45,
+                totalValidReps = 0,
+                totalPartialReps = 0,
+                averageFormScore = 95,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            )
+        )
+
+        val scheduledDays = setOf("MON", "WED", "FRI")
+        val streaks = ProgressAnalyticsEngine.computeStreaks(sessions, scheduledDays, cal)
+        // Wednesday was missed, so streak reset on Friday to 1
+        assertEquals(1, streaks.currentStreakDays)
+        assertEquals(1, streaks.bestStreakDays)
+    }
+
+    @Test
+    fun testComputeStreaks_CurrentStreakAliveOnRestDay() {
+        // Mon 2026-09-21 (trained). Reference date is Tuesday 2026-09-22 (Rest Day).
+        val calTue = Calendar.getInstance().apply {
+            set(2026, Calendar.SEPTEMBER, 22) // Tuesday (Rest Day)
+        }
+
+        val monCal = (calTue.clone() as Calendar).apply { set(2026, Calendar.SEPTEMBER, 21) }
+
+        val sessions = listOf(
+            WorkoutSessionEntity(
+                exerciseId = "pushup",
+                exerciseName = "Push-Up",
+                timestampMs = monCal.timeInMillis,
+                dateString = dayFormat.format(monCal.time),
+                durationSeconds = 60,
+                totalValidReps = 10,
+                totalPartialReps = 0,
+                averageFormScore = 90,
+                fatigueVelocityLossPercent = 0f,
+                perceivedRating = "JUST_RIGHT"
+            )
+        )
+
+        val scheduledDays = setOf("MON", "WED", "FRI")
+        val streaks = ProgressAnalyticsEngine.computeStreaks(sessions, scheduledDays, calTue)
+        // Tuesday is rest day; streak is still alive from Monday's workout!
+        assertEquals(1, streaks.currentStreakDays)
+        assertEquals(1, streaks.bestStreakDays)
+    }
+
+    @Test
     fun testComputeMilestones() {
         val progressions = listOf(
             ExerciseProgressionEntity(

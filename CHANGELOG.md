@@ -57,6 +57,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Missed Session Banner Recovery**:
   - Resolved issue where missed workout warnings remained stuck after actioning because stale duplicate entries remained in `SCHEDULED` status.
   - Deduplicated missed session detection and resolution routines so resolving updates the exact calendar date cleanly.
+- **Workout-Day Consistency Streak (Schedule-Aware Streaks)**:
+  - Fixed streak calculation to count consecutive **workout days** according to the athlete's scheduled active days (`availableDaysCsv`) rather than strict calendar days.
+  - Scheduled rest days between workouts (e.g. Tuesdays/Thursdays/weekends for Mon-Wed-Fri routines) no longer break the training streak.
+  - Streaks only reset when an athlete actually misses a scheduled workout day.
+  - Updated streak UI in History screen to display `"X Workouts"` with contextual motivational status.
 
 ---
 

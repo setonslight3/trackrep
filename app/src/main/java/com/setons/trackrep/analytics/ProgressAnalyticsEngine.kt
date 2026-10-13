@@ -74,8 +74,27 @@ object ProgressAnalyticsEngine {
         )
     }
 
+    private fun getDayAbbreviation(cal: Calendar): String {
+        return when (cal.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> "MON"
+            Calendar.TUESDAY -> "TUE"
+            Calendar.WEDNESDAY -> "WED"
+            Calendar.THURSDAY -> "THU"
+            Calendar.FRIDAY -> "FRI"
+            Calendar.SATURDAY -> "SAT"
+            Calendar.SUNDAY -> "SUN"
+            else -> ""
+        }
+    }
+
+    /**
+     * Calculates the athlete's workout day streak according to their scheduled active days.
+     * Rest days between workouts do NOT break the streak. A streak only breaks when a scheduled
+     * workout day passes without a completed workout.
+     */
     fun computeStreaks(
         sessions: List<WorkoutSessionEntity>,
+        scheduledDaysOfWeek: Set<String> = emptySet(),
         referenceCalendar: Calendar = Calendar.getInstance()
     ): StreakStats {
         if (sessions.isEmpty()) {
@@ -92,13 +111,18 @@ object ProgressAnalyticsEngine {
             return StreakStats(0, 0, null)
         }
 
-        val todayStr = dayFormat.format(referenceCalendar.time)
-        val calYesterday = (referenceCalendar.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
-        val yesterdayStr = dayFormat.format(calYesterday.time)
+        val activeDatesSet = activeDates.toSet()
+        val targetScheduledDays = if (scheduledDaysOfWeek.isNotEmpty()) {
+            scheduledDaysOfWeek.map { it.uppercase(Locale.US) }.toSet()
+        } else {
+            setOf("MON", "WED", "FRI")
+        }
 
+        val todayCal = referenceCalendar.clone() as Calendar
+        val todayStr = dayFormat.format(todayCal.time)
         val lastActiveDate = activeDates.last()
 
-        // 1. Calculate Best Streak across history
+        // 1. Calculate Best Streak & Trailing Streak across history
         var bestStreak = 0
         var tempStreak = 0
         var prevCal: Calendar? = null
@@ -111,38 +135,60 @@ object ProgressAnalyticsEngine {
             if (prevCal == null) {
                 tempStreak = 1
             } else {
-                val diffDays = (currCal.timeInMillis - prevCal.timeInMillis) / (1000 * 60 * 60 * 24)
-                if (diffDays == 1L) {
+                // Check if any scheduled workout day was missed strictly between prevCal and currCal
+                var missedScheduledDay = false
+                val checkCal = (prevCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
+                while (checkCal.before(currCal)) {
+                    val dayAbbr = getDayAbbreviation(checkCal)
+                    val checkDateStr = dayFormat.format(checkCal.time)
+                    if (dayAbbr in targetScheduledDays && checkDateStr !in activeDatesSet) {
+                        missedScheduledDay = true
+                        break
+                    }
+                    checkCal.add(Calendar.DAY_OF_YEAR, 1)
+                }
+
+                if (!missedScheduledDay) {
                     tempStreak++
-                } else if (diffDays > 1L) {
+                } else {
                     tempStreak = 1
                 }
             }
+
             if (tempStreak > bestStreak) {
                 bestStreak = tempStreak
             }
             prevCal = currCal
         }
 
-        // 2. Calculate Current Streak (must touch today or yesterday to be active)
+        // 2. Calculate Current Streak
+        // Active if athlete trained today, or hasn't missed any scheduled workout days before today.
         var currentStreak = 0
-        if (lastActiveDate == todayStr || lastActiveDate == yesterdayStr) {
-            val reverseDates = activeDates.reversed()
-            var expectedCal = Calendar.getInstance().apply {
-                time = dayFormat.parse(lastActiveDate) ?: Date()
-            }
+        val lastCal = Calendar.getInstance().apply {
+            time = dayFormat.parse(lastActiveDate) ?: Date()
+        }
 
-            for (dateStr in reverseDates) {
-                val currCal = Calendar.getInstance().apply {
-                    time = dayFormat.parse(dateStr) ?: Date()
-                }
-                val diffDays = (expectedCal.timeInMillis - currCal.timeInMillis) / (1000 * 60 * 60 * 24)
-                if (diffDays == 0L) {
-                    currentStreak++
-                    expectedCal.add(Calendar.DAY_OF_YEAR, -1)
-                } else {
+        if (lastActiveDate == todayStr) {
+            currentStreak = tempStreak
+        } else {
+            val yesterdayCal = (todayCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+            val checkCal = (lastCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) }
+            var missedScheduledDayBeforeToday = false
+
+            while (!checkCal.after(yesterdayCal)) {
+                val dayAbbr = getDayAbbreviation(checkCal)
+                val checkDateStr = dayFormat.format(checkCal.time)
+                if (dayAbbr in targetScheduledDays && checkDateStr !in activeDatesSet) {
+                    missedScheduledDayBeforeToday = true
                     break
                 }
+                checkCal.add(Calendar.DAY_OF_YEAR, 1)
+            }
+
+            if (!missedScheduledDayBeforeToday) {
+                currentStreak = tempStreak
+            } else {
+                currentStreak = 0
             }
         }
 
@@ -152,6 +198,11 @@ object ProgressAnalyticsEngine {
             lastActiveDate = lastActiveDate
         )
     }
+
+    fun computeStreaks(
+        sessions: List<WorkoutSessionEntity>,
+        referenceCalendar: Calendar
+    ): StreakStats = computeStreaks(sessions, emptySet(), referenceCalendar)
 
     private fun resolveExercise(exerciseId: String): Exercise? {
         ExerciseCatalog.getById(exerciseId)?.let { return it }
@@ -273,11 +324,12 @@ object ProgressAnalyticsEngine {
 
     fun buildDashboardData(
         sessions: List<WorkoutSessionEntity>,
-        progressions: List<ExerciseProgressionEntity>
+        progressions: List<ExerciseProgressionEntity>,
+        scheduledDaysOfWeek: Set<String> = emptySet()
     ): ProgressDashboardData {
         return ProgressDashboardData(
             lifetime = computeLifetimeStats(sessions),
-            streaks = computeStreaks(sessions),
+            streaks = computeStreaks(sessions, scheduledDaysOfWeek),
             milestones = computeMilestones(progressions, sessions),
             muscleDistribution = computeMuscleDistribution(sessions)
         )
