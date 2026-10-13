@@ -151,14 +151,17 @@ interface ScheduledWorkoutDao {
     @Upsert
     suspend fun upsertWorkout(workout: com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity)
 
-    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    @Query("SELECT * FROM scheduled_workouts GROUP BY dateString ORDER BY dateString ASC")
     suspend fun getWeeklySchedule(): List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>
 
-    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    @Query("SELECT * FROM scheduled_workouts GROUP BY dateString ORDER BY dateString ASC")
     suspend fun getAllScheduledWorkouts(): List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>
 
-    @Query("SELECT * FROM scheduled_workouts ORDER BY dayIndex ASC")
+    @Query("SELECT * FROM scheduled_workouts GROUP BY dateString ORDER BY dateString ASC")
     fun getWeeklyScheduleFlow(): Flow<List<com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity>>
+
+    @Query("DELETE FROM scheduled_workouts WHERE id NOT IN (SELECT MIN(id) FROM scheduled_workouts GROUP BY dateString)")
+    suspend fun pruneDuplicateDates()
 
     @Query("SELECT * FROM scheduled_workouts WHERE dateString = :dateString LIMIT 1")
     suspend fun getWorkoutForDate(dateString: String): com.setons.trackrep.data.local.entity.ScheduledWorkoutEntity?

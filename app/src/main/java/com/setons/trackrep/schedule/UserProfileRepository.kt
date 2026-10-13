@@ -58,7 +58,9 @@ class UserProfileRepository(context: Context) {
     }
 
     suspend fun getWeeklySchedule(): List<ScheduledWorkoutEntity> = withContext(Dispatchers.IO) {
-        val schedule = scheduleDao.getWeeklySchedule()
+        scheduleDao.pruneDuplicateDates()
+        val rawSchedule = scheduleDao.getWeeklySchedule()
+        val schedule = rawSchedule.distinctBy { it.dateString }.sortedBy { it.dateString }
         val currentMondayCal = Calendar.getInstance().apply {
             firstDayOfWeek = Calendar.MONDAY
             while (get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
@@ -66,7 +68,7 @@ class UserProfileRepository(context: Context) {
             }
         }
         val mondayStr = dateFormat.format(currentMondayCal.time)
-        val isCurrentWeek = schedule.isNotEmpty() && schedule.firstOrNull()?.dateString == mondayStr
+        val isCurrentWeek = schedule.size == 7 && schedule.firstOrNull()?.dateString == mondayStr
 
         if (!isCurrentWeek) {
             val profile = getProfile()
@@ -75,13 +77,18 @@ class UserProfileRepository(context: Context) {
             scheduleDao.insertSchedule(generated)
             generated
         } else {
+            if (rawSchedule.size != 7) {
+                scheduleDao.clearSchedule()
+                scheduleDao.insertSchedule(schedule)
+            }
             schedule
         }
     }
 
     suspend fun saveWeeklySchedule(schedule: List<ScheduledWorkoutEntity>) = withContext(Dispatchers.IO) {
+        val distinct = schedule.distinctBy { it.dateString }.sortedBy { it.dateString }
         scheduleDao.clearSchedule()
-        scheduleDao.insertSchedule(schedule)
+        scheduleDao.insertSchedule(distinct)
     }
 
     suspend fun getTodayWorkout(): ScheduledWorkoutEntity? = withContext(Dispatchers.IO) {

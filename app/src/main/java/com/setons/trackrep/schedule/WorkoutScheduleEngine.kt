@@ -87,6 +87,7 @@ object WorkoutScheduleEngine {
 
                 schedule.add(
                     ScheduledWorkoutEntity(
+                        id = "schedule_${dateStr}",
                         dayOfWeek = dayName,
                         dayIndex = i + 1,
                         dateString = dateStr,
@@ -102,6 +103,7 @@ object WorkoutScheduleEngine {
             } else {
                 schedule.add(
                     ScheduledWorkoutEntity(
+                        id = "schedule_${dateStr}",
                         dayOfWeek = dayName,
                         dayIndex = i + 1,
                         dateString = dateStr,
@@ -222,7 +224,8 @@ object WorkoutScheduleEngine {
         currentSchedule: List<ScheduledWorkoutEntity>,
         todayDateString: String
     ): List<ScheduledWorkoutEntity> {
-        val updated = currentSchedule.toMutableList()
+        val deduplicated = currentSchedule.distinctBy { it.dateString }.sortedBy { it.dateString }
+        val updated = deduplicated.toMutableList()
         val missedIndex = updated.indexOfFirst { it.id == missed.id || it.dateString == missed.dateString }
 
         when (strategy) {

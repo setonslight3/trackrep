@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.2.16 - Weekly Schedule Duplication Fix, Clean 7-Day Symmetrical Grid & Auto-Pruning Engine](#v1216---2026-10-13)
 - [v1.2.15 - Instant Routine Editor Routing in Track AI, Quick Swapper in Coach & Home Screen Controls](#v1215---2026-10-04)
 - [v1.2.14 - Enhanced APK Signature Compatibility & Schedule Customization](#v1214---2026-10-03)
 - [v1.2.13 - Beginner Difficulty Filtering, Customizable Weekly Schedule & Track AI Assistant](#v1213---2026-10-02)
@@ -39,6 +40,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+---
+
+## [v1.2.16] - 2026-10-13
+
+### Fixed
+- **Weekly Schedule Repeating Day Duplication**:
+  - Resolved root cause where non-deterministic UUID primary keys in `ScheduledWorkoutEntity` caused multiple sets of weekly schedules to accumulate in SQLite across app launches and schedule updates.
+  - Replaced random UUID generation with deterministic date-bound primary keys (`schedule_${dateString}`) ensuring strict idempotency and `OnConflictStrategy.REPLACE` replacement.
+  - Added Room DAO deduplication query `pruneDuplicateDates()` that automatically cleans existing legacy databases of duplicate calendar entries on startup.
+  - Enforced `GROUP BY dateString ORDER BY dateString ASC` on all Room queries for weekly schedules and flows.
+- **Weekly Schedule Strip Layout & Overflow**:
+  - Replaced fixed width day pills (`42.dp`) with adaptive symmetrical weight distribution (`Modifier.weight(1f).height(64.dp)` with `Arrangement.spacedBy(4.dp)`).
+  - Guarantees exactly 7 distinct days (Monday through Sunday) fit cleanly across any screen size without horizontal overflow or hidden days.
+- **Missed Session Banner Recovery**:
+  - Resolved issue where missed workout warnings remained stuck after actioning because stale duplicate entries remained in `SCHEDULED` status.
+  - Deduplicated missed session detection and resolution routines so resolving updates the exact calendar date cleanly.
 
 ---
 

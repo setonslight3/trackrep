@@ -122,7 +122,7 @@ fun HomeScreen(
     fun refreshSchedule() {
         scope.launch {
             try {
-                val week = userProfileRepo.getWeeklySchedule()
+                val week = userProfileRepo.getWeeklySchedule().distinctBy { it.dateString }.sortedBy { it.dateString }
                 weeklySchedule = week
                 val todayItem = week.firstOrNull { it.dateString == todayDateStr }
                 if (selectedScheduleDay == null) {
@@ -208,9 +208,13 @@ fun HomeScreen(
             .toSet()
     }
 
+    val displaySchedule = remember(weeklySchedule) {
+        weeklySchedule.distinctBy { it.dateString }.sortedBy { it.dateString }
+    }
+
     // Scheduled routine explicitly assigned for today
-    val todayScheduledRoutine = remember(weeklySchedule, todayDateStr) {
-        weeklySchedule.firstOrNull { it.dateString == todayDateStr }?.routineId?.let {
+    val todayScheduledRoutine = remember(displaySchedule, todayDateStr) {
+        displaySchedule.firstOrNull { it.dateString == todayDateStr }?.routineId?.let {
             WorkoutEngine.getRoutineById(it)
         }
     }
@@ -222,7 +226,7 @@ fun HomeScreen(
         ?: WorkoutEngine.getDefaultTodayRoutine()
 
     val routineExercises = remember(todayRoutine) { WorkoutEngine.getExercisesForRoutine(todayRoutine) }
-    val todayIsRestDay = (weeklySchedule.firstOrNull { it.dateString == todayDateStr }?.isRestDay == true) && CoachModeHolder.activeRoutine == null
+    val todayIsRestDay = (displaySchedule.firstOrNull { it.dateString == todayDateStr }?.isRestDay == true) && CoachModeHolder.activeRoutine == null
 
     Column(
         modifier = modifier
@@ -431,7 +435,7 @@ fun HomeScreen(
         }
 
         // Weekly Schedule Strip Card (Phase 9)
-        if (weeklySchedule.isNotEmpty()) {
+        if (displaySchedule.isNotEmpty()) {
             ElevatedCard(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -456,7 +460,7 @@ fun HomeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             TextButton(
                                 onClick = {
-                                    val target = selectedScheduleDay ?: weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
+                                    val target = selectedScheduleDay ?: displaySchedule.firstOrNull { it.dateString == todayDateStr } ?: displaySchedule.firstOrNull()
                                     if (target != null) {
                                         editingScheduleDay = target
                                     }
@@ -492,11 +496,11 @@ fun HomeScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        weeklySchedule.forEach { item ->
+                        displaySchedule.forEach { item ->
                             val isToday = item.dateString == todayDateStr
-                            val isSelected = selectedScheduleDay?.id == item.id
+                            val isSelected = (selectedScheduleDay?.id == item.id) || (selectedScheduleDay?.dateString == item.dateString)
                             val isCompleted = item.status == "COMPLETED" || completedDates.contains(item.dateString)
                             val isMissed = item.status == "MISSED" || (item in missedSessions)
 
@@ -516,11 +520,14 @@ fun HomeScreen(
                                         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                                     }
                                 ),
-                                modifier = Modifier.width(42.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(64.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(vertical = 8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
                                 ) {
                                     Text(
                                         text = item.dayOfWeek.take(1),
@@ -1491,7 +1498,7 @@ fun HomeScreen(
                     }
                 }
 
-                weeklySchedule.forEach { item ->
+                displaySchedule.forEach { item ->
                     val isToday = item.dateString == todayDateStr
                     val itemRoutine = if (!item.isRestDay) WorkoutEngine.getRoutineById(item.routineId) else null
                     val itemExercises = itemRoutine?.let { WorkoutEngine.getExercisesForRoutine(it) } ?: emptyList()
