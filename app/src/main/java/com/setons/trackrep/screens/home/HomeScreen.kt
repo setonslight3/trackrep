@@ -19,6 +19,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -118,6 +122,7 @@ fun HomeScreen(
     var missedSessions by remember { mutableStateOf<List<ScheduledWorkoutEntity>>(emptyList()) }
     var showWeekPreviewSheet by remember { mutableStateOf(false) }
     var editingScheduleDay by remember { mutableStateOf<ScheduledWorkoutEntity?>(null) }
+    var isScheduleDetailExpanded by remember { mutableStateOf(false) }
 
     fun refreshSchedule() {
         scope.launch {
@@ -457,38 +462,23 @@ fun HomeScreen(
                                 letterSpacing = 1.2.sp
                             )
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            TextButton(
-                                onClick = {
-                                    val target = selectedScheduleDay ?: displaySchedule.firstOrNull { it.dateString == todayDateStr } ?: displaySchedule.firstOrNull()
-                                    if (target != null) {
-                                        editingScheduleDay = target
-                                    }
-                                },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Edit Routine",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            TextButton(
-                                onClick = { showWeekPreviewSheet = true },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Preview Week",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                        TextButton(
+                            onClick = {
+                                val target = selectedScheduleDay ?: displaySchedule.firstOrNull { it.dateString == todayDateStr } ?: displaySchedule.firstOrNull()
+                                if (target != null) {
+                                    editingScheduleDay = target
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Edit Routine",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
 
@@ -505,7 +495,12 @@ fun HomeScreen(
                             val isMissed = item.status == "MISSED" || (item in missedSessions)
 
                             Surface(
-                                onClick = { selectedScheduleDay = item },
+                                onClick = {
+                                    if (selectedScheduleDay?.dateString != item.dateString) {
+                                        isScheduleDetailExpanded = false
+                                    }
+                                    selectedScheduleDay = item
+                                },
                                 shape = RoundedCornerShape(12.dp),
                                 color = when {
                                     isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
@@ -564,9 +559,15 @@ fun HomeScreen(
                         val selExercises = remember(selRoutine) {
                             selRoutine?.let { WorkoutEngine.getExercisesForRoutine(it) } ?: emptyList()
                         }
+                        val hasExercises = !sel.isRestDay && selRoutine != null && selExercises.isNotEmpty()
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Surface(
+                            onClick = {
+                                if (hasExercises) {
+                                    isScheduleDetailExpanded = !isScheduleDetailExpanded
+                                }
+                            },
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
@@ -583,14 +584,30 @@ fun HomeScreen(
                                             text = "${sel.dayOfWeek} • ${if (sel.isRestDay) "Rest & Recovery" else sel.routineName}",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (sel.isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface
+                                            color = if (sel.isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+                                        val focusSubtitle = if (sel.isRestDay) {
+                                            "Active recovery & tissue rebuilding"
+                                        } else {
+                                            val muscles = sel.targetMusclesCsv.split(",")
+                                                .map { it.trim().lowercase().replaceFirstChar { c -> c.uppercase() } }
+                                                .filter { it.isNotEmpty() }
+                                                .joinToString(", ")
+                                            "Focus: $muscles • ${selExercises.size} moves (~${selRoutine?.estimatedMinutes ?: 15}m)"
+                                        }
                                         Text(
-                                            text = if (sel.isRestDay) "Active recovery & tissue rebuilding" else "Focus: ${sel.targetMusclesCsv.replace(",", ", ")}",
+                                            text = focusSubtitle,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -629,124 +646,142 @@ fun HomeScreen(
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                         }
+
+                                        if (hasExercises) {
+                                            Icon(
+                                                imageVector = if (isScheduleDetailExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                contentDescription = if (isScheduleDetailExpanded) "Collapse" else "Expand",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                     }
                                 }
 
-                                if (!sel.isRestDay && selRoutine != null && selExercises.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(10.dp))
+                                AnimatedVisibility(visible = hasExercises && isScheduleDetailExpanded) {
+                                    Column {
+                                        Spacer(modifier = Modifier.height(12.dp))
 
-                                    // Movement breakdown preview header
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "PLANNED MOVEMENTS (${selExercises.size})",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            letterSpacing = 0.8.sp
-                                        )
-                                        Text(
-                                            text = "~${selRoutine.estimatedMinutes} mins • ${selRoutine.difficulty.displayName}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                        )
-                                    }
+                                        // Movement breakdown preview header
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "PLANNED MOVEMENTS (${selExercises.size})",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                letterSpacing = 0.8.sp
+                                            )
+                                            Text(
+                                                text = "~${selRoutine?.estimatedMinutes} mins • ${selRoutine?.difficulty?.displayName}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            )
+                                        }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
 
-                                    // Exercise list for selected upcoming day
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        selExercises.forEachIndexed { idx, (item, ex) ->
-                                            Surface(
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = MaterialTheme.colorScheme.surface,
-                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        // Exercise list for selected upcoming day
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            selExercises.forEachIndexed { idx, (item, ex) ->
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                                                    modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                     Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 10.dp, vertical = 8.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                                        modifier = Modifier.weight(1f)
+                                                        horizontalArrangement = Arrangement.SpaceBetween
                                                     ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(22.dp)
-                                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
-                                                            contentAlignment = Alignment.Center
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(22.dp)
+                                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Text(
+                                                                    text = "${idx + 1}",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                    fontSize = 11.sp
+                                                                )
+                                                            }
+                                                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                                                                Text(
+                                                                    text = ex.name,
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                                Text(
+                                                                    text = "${item.targetSets} sets • " +
+                                                                            if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
+                                                                            else "${item.targetReps} reps",
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                                                    fontSize = 12.sp,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                        }
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Surface(
+                                                            shape = RoundedCornerShape(4.dp),
+                                                            color = MaterialTheme.colorScheme.surfaceVariant
                                                         ) {
                                                             Text(
-                                                                text = "${idx + 1}",
+                                                                text = ex.targetMuscle.displayName,
                                                                 style = MaterialTheme.typography.labelSmall,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = MaterialTheme.colorScheme.primary,
-                                                                fontSize = 11.sp
+                                                                fontSize = 10.sp,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                maxLines = 1
                                                             )
                                                         }
-                                                        Column {
-                                                            Text(
-                                                                text = ex.name,
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                fontWeight = FontWeight.SemiBold,
-                                                                color = MaterialTheme.colorScheme.onSurface
-                                                            )
-                                                            Text(
-                                                                text = "${item.targetSets} sets • " +
-                                                                        if (item.targetHoldSeconds > 0) "${item.targetHoldSeconds}s hold"
-                                                                        else "${item.targetReps} reps",
-                                                                style = MaterialTheme.typography.bodySmall,
-                                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                                                                fontSize = 12.sp
-                                                            )
-                                                        }
-                                                    }
-                                                    Surface(
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        color = MaterialTheme.colorScheme.surfaceVariant
-                                                    ) {
-                                                        Text(
-                                                            text = ex.targetMuscle.displayName,
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            fontSize = 10.sp,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                        )
                                                     }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    Spacer(modifier = Modifier.height(10.dp))
+                                        Spacer(modifier = Modifier.height(10.dp))
 
-                                    Button(
-                                        onClick = {
-                                            CoachModeHolder.setScheduledRoutine(selRoutine, 0)
-                                            onNavigateToCoach()
-                                        },
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = if (sel.dateString == todayDateStr) "Start Today's Workout" else "Start ${sel.dayOfWeek}'s Workout",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        )
+                                        Button(
+                                            onClick = {
+                                                if (selRoutine != null) {
+                                                    CoachModeHolder.setScheduledRoutine(selRoutine, 0)
+                                                    onNavigateToCoach()
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = if (sel.dateString == todayDateStr) "Start Today's Workout" else "Start ${sel.dayOfWeek}'s Workout",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            )
                                     }
                                 }
                             }
@@ -755,6 +790,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
 
         // Rest Day Mode vs Today's Workout Card
         if (todayIsRestDay) {
@@ -871,37 +907,17 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         ) {
-                            OutlinedButton(
-                                onClick = {
-                                    val target = weeklySchedule.firstOrNull { it.dateString == todayDateStr } ?: weeklySchedule.firstOrNull()
-                                    if (target != null) {
-                                        editingScheduleDay = target
-                                    }
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                            ) {
-                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Edit Routine", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            ) {
-                                Text(
-                                    text = "${todayRoutine.estimatedMinutes} MIN • LEVEL ${todayRoutine.difficulty.rank}",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            Text(
+                                text = "${todayRoutine.estimatedMinutes} MIN • LEVEL ${todayRoutine.difficulty.rank}",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
 
@@ -945,25 +961,13 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Exercise preview checklist with camera icons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "TODAY'S EXERCISE LIST (${routineExercises.size} MOVEMENTS)",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            letterSpacing = 1.sp
-                        )
-                        Text(
-                            text = "Tap to train with AI Vision",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
+                    Text(
+                        text = "EXERCISES (${routineExercises.size})",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 1.sp
+                    )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -1039,12 +1043,14 @@ fun HomeScreen(
                                             }
                                         }
 
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f, fill = false)) {
                                             Text(
                                                 text = exercise.name,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             Text(
                                                 text = if (isExerciseDone) "Completed • ${item.targetSets} sets logged"
@@ -1053,7 +1059,9 @@ fun HomeScreen(
                                                             else "${item.targetReps} reps",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = if (isExerciseDone) SuccessGreen.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                                                fontSize = 11.sp
+                                                fontSize = 11.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
@@ -1115,7 +1123,8 @@ fun HomeScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
                             onClick = {
@@ -1140,8 +1149,9 @@ fun HomeScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             modifier = Modifier
-                                .weight(1.3f)
+                                .weight(1.8f)
                                 .height(48.dp)
                         ) {
                             Row(
@@ -1149,7 +1159,7 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("Start Routine", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Start Routine", fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
                             }
                         }
 
@@ -1162,6 +1172,7 @@ fun HomeScreen(
                             },
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp)
@@ -1171,16 +1182,19 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                Text("Swap", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                                Text("Swap", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, maxLines = 1)
                             }
                         }
 
                         FilledTonalButton(
                             onClick = onNavigateToLibrary,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.height(48.dp)
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .width(48.dp)
+                                .height(48.dp)
                         ) {
-                            Icon(Icons.Default.MenuBook, contentDescription = "Library")
+                            Icon(Icons.Default.MenuBook, contentDescription = "Library", modifier = Modifier.size(20.dp))
                         }
                     }
                 }

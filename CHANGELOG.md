@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.2.18 - Compact Schedule Day Bars, Non-Repeating Home UI & Text Overlap Resolution](#v1218---2026-10-14)
 - [v1.2.17 - Package Installer Compatibility Fix, Manifest Schema Repair & Tri-Scheme Signing](#v1217---2026-10-13)
 - [v1.2.16 - Weekly Schedule Duplication Fix, Clean 7-Day Symmetrical Grid & Auto-Pruning Engine](#v1216---2026-10-13)
 - [v1.2.15 - Instant Routine Editor Routing in Track AI, Quick Swapper in Coach & Home Screen Controls](#v1215---2026-10-04)
@@ -41,6 +42,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+## [v1.2.18] - 2026-10-14
+
+### Fixed & Redesigned
+- **Compact Expandable Schedule Day Bars (Eliminated Home Screen Repeating Routine)**:
+  - Tapping workout days (such as Wednesday) in the Weekly Schedule card now renders as a sleek, compact summary bar matching rest days (e.g. Tuesday) with title, formatted muscle focus, exercise count, duration, TRAIN/REST badge, and an expand toggle.
+  - Tapping the day bar smoothly expands/collapses the planned movements list inline, preventing duplicate exercise lists from stacking right above the Today's Workout card.
+- **Removed Cramped "Preview Week" Button**:
+  - Removed the vertically wrapping "Preview Week" text button from the Weekly Schedule card header that broke across 5 lines on standard phone widths. The header now cleanly pairs `WEEKLY SCHEDULE` with `Edit Routine`.
+- **Eliminated Vertical Text Stacking ("Tap to train with AI Vision")**:
+  - Removed the cramped 4-line text stack next to the exercise checklist header. Streamlined the header to a clean, non-wrapping `EXERCISES (4)`.
+- **Fixed Button Truncation & Stacking ("Start Routine", "Swap")**:
+  - Resolved Material 3 button padding squeeze where "Swap" wrapped awkwardly into `S` and `wa` and "Start Routine" clipped.
+  - Configured optimized button weights (`weight(1.8f)` for primary action, `weight(1f)` for Swap, and fixed 48x48dp for Library) with `contentPadding = PaddingValues(horizontal = 8.dp)` and `maxLines = 1` preventing word-splitting or wrapping.
+- **Header Crowding Cleaned**:
+  - Removed redundant `Edit Routine` button in the Today's Workout card header, allowing the title and the `15 MIN • LEVEL 1` badge to breathe with zero clipping.
 
 ---
 
