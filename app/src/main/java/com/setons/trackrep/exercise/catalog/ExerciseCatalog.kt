@@ -713,7 +713,7 @@ object ExerciseCatalog {
             secondaryMuscles = listOf(MuscleGroup.CORE, MuscleGroup.GLUTES),
             difficulty = DifficultyLevel.BEGINNER,
             equipment = EquipmentType.BODYWEIGHT,
-            framingMode = ExerciseFramingMode.PLANK,
+            framingMode = ExerciseFramingMode.PUSH_UP,
             defaultSets = 3,
             defaultReps = 10,
             restSeconds = 45,

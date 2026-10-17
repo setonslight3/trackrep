@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.2.19 - Precision Beginner Vision Tracking, Adaptive ROM Depth Cues & App-Wide UI Revamp](#v1219---2026-10-17)
 - [v1.2.18 - Compact Schedule Day Bars, Non-Repeating Home UI & Text Overlap Resolution](#v1218---2026-10-14)
 - [v1.2.17 - Package Installer Compatibility Fix, Manifest Schema Repair & Tri-Scheme Signing](#v1217---2026-10-13)
 - [v1.2.16 - Weekly Schedule Duplication Fix, Clean 7-Day Symmetrical Grid & Auto-Pruning Engine](#v1216---2026-10-13)
@@ -42,6 +43,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+## [v1.2.19] - 2026-10-17
+
+### Added & Enhanced
+- **Adaptive Range-of-Motion (ROM) Depth Calibration for Beginners**:
+  - `PushUpAnalyzer` now adapts depth and lockout thresholds specifically per exercise variant:
+    - **Wall Push-up (`push_up_wall`)**: Calibrated full-depth lockout at 106° (115° acceptance threshold) so complete beginners learning wall push-ups are immediately credited with valid reps rather than blocked by floor-pushup 92° angles.
+    - **Incline & Knee Push-ups (`push_up_incline`, `knee_push_up`)**: Calibrated 98° full-depth target with 106° threshold, perfectly matching elevated surface mechanics.
+    - **Standard Floor Push-ups**: Calibrated 92° target with beginner-friendly 98° completion threshold.
+  - Dual-arm profile sensing using `min(leftElbowAngle, rightElbowAngle)` ensuring camera angle foreshortening never fails to register chest descent.
+  - Contextual real-time voice and text guidance tailored for beginner exercises (e.g., "Lean closer to wall" vs. "Push lower • Incomplete depth").
+- **Chair Squat & Incline Squat Detection Support (`SquatAnalyzer`)**:
+  - Added exercise-aware depth calibration for chair and assisted squats (`112°` target) allowing beginners practicing chair squats to achieve verified reps without bottoming out past parallel.
+  - Dual-knee `min(leftKneeAngle, rightKneeAngle)` tracking prevents false depth drops caused by camera profile occlusion.
+- **Dynamic Rep Counting for Prone Movements (`bird_dog`)**:
+  - Converted `bird_dog` from isometric hold mode to dynamic rep counting mode (`ExerciseFramingMode.PUSH_UP`) with live bilateral extension tracking.
+- **Knee Landmark Fallback for Out-of-Frame Ankles (`PoseDetectorProcessor`, `PlankAnalyzer`)**:
+  - Implemented automatic Shoulder-Hip-Knee fallback when user's feet/ankles are cropped by the camera frame, or during knee push-ups and knee planks. Prevents sudden tracking dropouts and false "hip sag" errors.
+- **Eliminated False-Positive Standing Squat Detection (`ExerciseClassifier`)**:
+  - Removed aggressive blanket fallback that classified standing idle in front of the camera as squats.
+  - Added standing Wall Push-up classification (`push_up_wall`) based on arm height and elbow flexion.
+  - Guarded active workout routines against unexpected auto-switching while users are training scheduled sets.
+
+### UI Revamp & Polish
+- **Missed-Session Emergency Banner Revamp**:
+  - Redesigned missed training day banner into a high-contrast amber alert surface with rounded iconography, clear typography hierarchy, and proportional action buttons (`Catch Up Today`, `To Rest Day`, `Skip`).
+- **Live Motion Coach HUD Alignment & Feedback Cleanliness**:
+  - Seamlessly synced active exercise IDs between camera processor, pose analyzers, and on-screen HUD telemetry overlays.
+
+---
 
 ## [v1.2.18] - 2026-10-14
 

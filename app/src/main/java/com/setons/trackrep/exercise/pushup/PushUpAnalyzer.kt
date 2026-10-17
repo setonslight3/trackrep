@@ -12,13 +12,60 @@ import kotlin.math.min
  */
 class PushUpAnalyzer {
 
-    companion object {
-        const val TOP_LOCKOUT_ANGLE = 150.0       // Arms extended at plank/lockout
-        const val DESCENT_TRIGGER_ANGLE = 142.0   // Movement down initiated
-        const val FULL_DEPTH_ANGLE = 92.0         // Desired chest depth (~90 deg elbow)
-        const val FULL_DEPTH_THRESHOLD = 95.0     // Max elbow angle allowed to validate full range of motion
-        const val MIN_HIP_ANGLE = 150.0           // Lower indicates sagging hips / lumbar strain
-        const val MIN_REP_DURATION_MS = 600L      // Prevents frame bounce and glitch double-counts
+    data class PushUpThresholds(
+        val topLockoutAngle: Double,
+        val descentTriggerAngle: Double,
+        val fullDepthAngle: Double,
+        val fullDepthThreshold: Double,
+        val minHipAngle: Double,
+        val minRepDurationMs: Long = 500L
+    )
+
+    var activeExerciseId: String = "push_up_standard"
+
+    fun getThresholds(): PushUpThresholds {
+        return when (activeExerciseId) {
+            "push_up_wall" -> PushUpThresholds(
+                topLockoutAngle = 142.0,
+                descentTriggerAngle = 135.0,
+                fullDepthAngle = 106.0,
+                fullDepthThreshold = 115.0,
+                minHipAngle = 130.0,
+                minRepDurationMs = 450L
+            )
+            "push_up_incline" -> PushUpThresholds(
+                topLockoutAngle = 145.0,
+                descentTriggerAngle = 138.0,
+                fullDepthAngle = 98.0,
+                fullDepthThreshold = 106.0,
+                minHipAngle = 140.0,
+                minRepDurationMs = 500L
+            )
+            "knee_push_up", "push_up_knee" -> PushUpThresholds(
+                topLockoutAngle = 145.0,
+                descentTriggerAngle = 138.0,
+                fullDepthAngle = 96.0,
+                fullDepthThreshold = 104.0,
+                minHipAngle = 135.0,
+                minRepDurationMs = 500L
+            )
+            "bird_dog" -> PushUpThresholds(
+                topLockoutAngle = 145.0,
+                descentTriggerAngle = 135.0,
+                fullDepthAngle = 95.0,
+                fullDepthThreshold = 112.0,
+                minHipAngle = 130.0,
+                minRepDurationMs = 550L
+            )
+            else -> PushUpThresholds(
+                topLockoutAngle = 148.0,
+                descentTriggerAngle = 140.0,
+                fullDepthAngle = 92.0,
+                fullDepthThreshold = 98.0,
+                minHipAngle = 146.0,
+                minRepDurationMs = 550L
+            )
+        }
     }
 
     private var currentPhase = PushUpPhase.UNKNOWN
@@ -54,35 +101,42 @@ class PushUpAnalyzer {
             return liveTelemetry
         }
 
-        val elbowAngle = pose.leftElbowAngle ?: pose.rightElbowAngle
+        // Depth tracking: when descending, minOf captured arms reflects deepest point
+        val elbowAngle = when {
+            pose.leftElbowAngle != null && pose.rightElbowAngle != null -> {
+                min(pose.leftElbowAngle, pose.rightElbowAngle)
+            }
+            else -> pose.leftElbowAngle ?: pose.rightElbowAngle
+        }
         val hipAngle = pose.hipAlignmentAngle ?: 180.0
 
         if (elbowAngle == null) {
             return liveTelemetry
         }
 
+        val thresholds = getThresholds()
         var warningMessage: String? = null
 
         // 1. Calculate depth progress (0.0 to 1.0)
-        val depthProgress = ((TOP_LOCKOUT_ANGLE - elbowAngle) / (TOP_LOCKOUT_ANGLE - FULL_DEPTH_ANGLE))
+        val depthProgress = ((thresholds.topLockoutAngle - elbowAngle) / (thresholds.topLockoutAngle - thresholds.fullDepthAngle))
             .coerceIn(0.0, 1.0)
             .toFloat()
 
         // 2. Real-time form checks
-        if (hipAngle < MIN_HIP_ANGLE) {
+        if (hipAngle < thresholds.minHipAngle) {
             warningMessage = "Keep core braced • Hips sagging"
         }
 
         // 3. State Machine Transitions
         when (currentPhase) {
             PushUpPhase.UNKNOWN -> {
-                if (elbowAngle >= TOP_LOCKOUT_ANGLE && hipAngle >= MIN_HIP_ANGLE) {
+                if (elbowAngle >= thresholds.topLockoutAngle && hipAngle >= thresholds.minHipAngle - 10.0) {
                     currentPhase = PushUpPhase.PLANK_READY
                 }
             }
 
             PushUpPhase.PLANK_READY -> {
-                if (elbowAngle <= DESCENT_TRIGGER_ANGLE) {
+                if (elbowAngle <= thresholds.descentTriggerAngle) {
                     currentPhase = PushUpPhase.DESCENDING
                     repStartTimeMs = timestampMs
                     minElbowAngleInRep = elbowAngle
@@ -96,14 +150,14 @@ class PushUpAnalyzer {
                 maxElbowAngleInRep = max(maxElbowAngleInRep, elbowAngle)
                 minHipAngleInRep = min(minHipAngleInRep, hipAngle)
 
-                if (elbowAngle <= FULL_DEPTH_ANGLE) {
+                if (elbowAngle <= thresholds.fullDepthAngle) {
                     currentPhase = PushUpPhase.BOTTOM_DEPTH
                     bottomTimestampMs = timestampMs
-                } else if (elbowAngle > minElbowAngleInRep + 12.0 && elbowAngle > FULL_DEPTH_ANGLE) {
+                } else if (elbowAngle > minElbowAngleInRep + 10.0 && elbowAngle > thresholds.fullDepthAngle) {
                     // Ascending before reaching full depth -> Partial rep inflection!
                     currentPhase = PushUpPhase.ASCENDING
                     bottomTimestampMs = timestampMs
-                    warningMessage = "Push lower • Incomplete depth"
+                    warningMessage = if (activeExerciseId == "push_up_wall") "Lean closer to wall" else "Push lower • Incomplete depth"
                 }
             }
 
@@ -112,7 +166,7 @@ class PushUpAnalyzer {
                 minHipAngleInRep = min(minHipAngleInRep, hipAngle)
 
                 // User begins pressing up out of the hole
-                if (elbowAngle >= FULL_DEPTH_ANGLE + 8.0) {
+                if (elbowAngle >= thresholds.fullDepthAngle + 8.0) {
                     currentPhase = PushUpPhase.ASCENDING
                 }
             }
@@ -122,11 +176,11 @@ class PushUpAnalyzer {
                 minHipAngleInRep = min(minHipAngleInRep, hipAngle)
 
                 // Completed rep when returning to top lockout
-                if (elbowAngle >= TOP_LOCKOUT_ANGLE) {
+                if (elbowAngle >= thresholds.topLockoutAngle) {
                     val repDuration = timestampMs - repStartTimeMs
-                    if (repDuration >= MIN_REP_DURATION_MS) {
-                        val isFullDepth = minElbowAngleInRep <= FULL_DEPTH_THRESHOLD
-                        val isTorsoAligned = minHipAngleInRep >= MIN_HIP_ANGLE - 5.0
+                    if (repDuration >= thresholds.minRepDurationMs) {
+                        val isFullDepth = minElbowAngleInRep <= thresholds.fullDepthThreshold
+                        val isTorsoAligned = minHipAngleInRep >= thresholds.minHipAngle - 6.0
                         val isValid = isFullDepth && isTorsoAligned
 
                         val flawReason = when {
@@ -151,10 +205,13 @@ class PushUpAnalyzer {
 
                         // If rep was flawed, register a FormFlaw bookmark for playback
                         if (!isValid && flawReason != null) {
-                            val correctionTip = if (!isFullDepth) {
-                                "Lower your body until chest is ~2 inches from ground (elbows at 90°) before pushing up."
-                            } else {
-                                "Squeeze glutes and brace your abs like a plank to keep spine in a straight continuous line."
+                            val correctionTip = when {
+                                !isFullDepth && activeExerciseId == "push_up_wall" ->
+                                    "Bend your elbows smoothly until your chest gently nears the wall before pressing away."
+                                !isFullDepth ->
+                                    "Lower your body until chest is ~2 inches from ground (elbows at 90°) before pushing up."
+                                else ->
+                                    "Squeeze glutes and brace your abs like a plank to keep spine in a straight continuous line."
                             }
 
                             recordedFlawsList.add(

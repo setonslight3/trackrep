@@ -373,30 +373,51 @@ fun HomeScreen(
 
         // Missed-Session Banner (Phase 9 Rescheduling)
         missedSessions.firstOrNull()?.let { missed ->
-            OutlinedCard(
+            Surface(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, Color(0xFFFFA000)),
+                color = Color(0xFFFFA000).copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color(0xFFFFA000).copy(alpha = 0.6f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFFA000))
-                        Text(
-                            text = "Missed Training Day: ${missed.routineName}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFA000)
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(Color(0xFFFFA000).copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFFA000), modifier = Modifier.size(16.dp))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "MISSED TRAINING DAY",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFA000),
+                                letterSpacing = 0.8.sp
+                            )
+                            Text(
+                                text = missed.routineName,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Scheduled on ${missed.dayOfWeek}. Choose how Track should adapt your schedule:",
+                        text = "Scheduled on ${missed.dayOfWeek}. Choose how TrackRep should adapt your calendar:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
                                 scope.launch {
@@ -404,11 +425,14 @@ fun HomeScreen(
                                     refreshSchedule()
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .height(38.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA000), contentColor = Color.Black),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Text("Catch Up", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Catch Up Today", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                         OutlinedButton(
                             onClick = {
@@ -417,10 +441,14 @@ fun HomeScreen(
                                     refreshSchedule()
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                            modifier = Modifier
+                                .weight(1.1f)
+                                .height(38.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFFA000).copy(alpha = 0.6f)),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Text("To Rest Day", fontSize = 11.sp)
+                            Text("To Rest Day", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
                         OutlinedButton(
                             onClick = {
@@ -429,10 +457,14 @@ fun HomeScreen(
                                     refreshSchedule()
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                            modifier = Modifier
+                                .weight(0.8f)
+                                .height(38.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Text("Skip", fontSize = 11.sp)
+                            Text("Skip", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         }
                     }
                 }

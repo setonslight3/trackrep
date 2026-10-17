@@ -365,6 +365,12 @@ fun CoachScreen(
         }
     }
 
+    LaunchedEffect(activeExercise.id) {
+        pushUpAnalyzer.activeExerciseId = activeExercise.id
+        squatAnalyzer.activeExerciseId = activeExercise.id
+        plankAnalyzer.activeExerciseId = activeExercise.id
+    }
+
     // Master Set & Rest Ticker
     LaunchedEffect(Unit) {
         while (true) {
@@ -749,13 +755,16 @@ fun CoachScreen(
                         if (state is TrackingState.Recovering) {
                             voiceManager.speakCountdown(state.countdownSeconds)
                         }
-                    } else if (isAutoDetectEnabled) {
+                    } else if (isAutoDetectEnabled && currentRoutine == null) {
                         val detected = exerciseClassifier.processPose(pose)
                         if (detected != null && detected.exerciseId != activeExercise.id) {
                             val newEx = ExerciseCatalog.getById(detected.exerciseId)
                             if (newEx != null) {
                                 activeExercise = newEx
                                 selectedExercise = detected.framingMode
+                                pushUpAnalyzer.activeExerciseId = detected.exerciseId
+                                squatAnalyzer.activeExerciseId = detected.exerciseId
+                                plankAnalyzer.activeExerciseId = detected.exerciseId
                                 framingStatus = FramingStatus.CALIBRATING
                                 autoDetectedExerciseName = detected.displayName
                                 showAutoDetectBanner = true
@@ -1522,13 +1531,16 @@ fun CoachScreen(
                                     if (state is TrackingState.Recovering) {
                                         voiceManager.speakCountdown(state.countdownSeconds)
                                     }
-                                } else if (isAutoDetectEnabled) {
+                                } else if (isAutoDetectEnabled && currentRoutine == null) {
                                     val detected = exerciseClassifier.processPose(pose)
                                     if (detected != null && detected.exerciseId != activeExercise.id) {
                                         val newEx = ExerciseCatalog.getById(detected.exerciseId)
                                         if (newEx != null) {
                                             activeExercise = newEx
                                             selectedExercise = detected.framingMode
+                                            pushUpAnalyzer.activeExerciseId = detected.exerciseId
+                                            squatAnalyzer.activeExerciseId = detected.exerciseId
+                                            plankAnalyzer.activeExerciseId = detected.exerciseId
                                             framingStatus = FramingStatus.CALIBRATING
                                             autoDetectedExerciseName = detected.displayName
                                             showAutoDetectBanner = true

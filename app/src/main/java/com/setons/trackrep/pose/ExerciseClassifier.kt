@@ -169,13 +169,20 @@ class ExerciseClassifier {
                 }
             }
 
+            // Check wall push-up: hands placed around shoulder level and elbows flexing while standing straight
+            val wristsNearShoulders = (leftWrist != null && abs(leftWrist.y - shoulderY) < 0.22f) ||
+                    (rightWrist != null && abs(rightWrist.y - shoulderY) < 0.22f)
+            if (wristsNearShoulders && minElbow < 140.0 && minKnee >= 145.0) {
+                return "push_up_wall"
+            }
+
             // Check arms extended wide for scapular circles
             if (leftWrist != null && rightWrist != null && abs(leftWrist.x - rightWrist.x) > 0.65f) {
                 return "arm_circles_scapular"
             }
 
-            // Standing default
-            return "squat_bodyweight"
+            // Idle standing: do NOT falsely classify as squat; keep active exercise intact
+            return null
         }
 
         return null

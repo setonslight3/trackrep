@@ -77,6 +77,14 @@ class PoseDetectorProcessor(
                     landmarksMap[PoseLandmark.RIGHT_SHOULDER],
                     landmarksMap[PoseLandmark.RIGHT_HIP],
                     landmarksMap[PoseLandmark.RIGHT_ANKLE]
+                ) ?: PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.LEFT_SHOULDER],
+                    landmarksMap[PoseLandmark.LEFT_HIP],
+                    landmarksMap[PoseLandmark.LEFT_KNEE]
+                ) ?: PoseAngleCalculator.calculateAngle(
+                    landmarksMap[PoseLandmark.RIGHT_SHOULDER],
+                    landmarksMap[PoseLandmark.RIGHT_HIP],
+                    landmarksMap[PoseLandmark.RIGHT_KNEE]
                 )
 
                 val leftKneeAngle = PoseAngleCalculator.calculateAngle(

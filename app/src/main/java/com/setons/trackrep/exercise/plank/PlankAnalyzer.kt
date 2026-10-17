@@ -62,6 +62,8 @@ class PlankAnalyzer {
         liveTelemetry = PlankLiveTelemetry()
     }
 
+    var activeExerciseId: String = "plank_standard"
+
     fun processPose(pose: TrackedPose, timestampMs: Long): PlankLiveTelemetry {
         if (!pose.isTrackingValid) {
             return liveTelemetry
@@ -74,18 +76,24 @@ class PlankAnalyzer {
 
         val leftShoulder = pose.landmarks[PoseLandmark.LEFT_SHOULDER] ?: pose.landmarks[PoseLandmark.RIGHT_SHOULDER]
         val leftHip = pose.landmarks[PoseLandmark.LEFT_HIP] ?: pose.landmarks[PoseLandmark.RIGHT_HIP]
-        val leftAnkle = pose.landmarks[PoseLandmark.LEFT_ANKLE] ?: pose.landmarks[PoseLandmark.RIGHT_ANKLE]
+        val legBase = pose.landmarks[PoseLandmark.LEFT_ANKLE]
+            ?: pose.landmarks[PoseLandmark.RIGHT_ANKLE]
+            ?: pose.landmarks[PoseLandmark.LEFT_KNEE]
+            ?: pose.landmarks[PoseLandmark.RIGHT_KNEE]
 
         // Differentiate Sag vs Pike using vertical Y positioning
-        val isHipBelowLine = if (leftShoulder != null && leftHip != null && leftAnkle != null) {
-            val expectedMidY = (leftShoulder.y + leftAnkle.y) / 2f
+        val isHipBelowLine = if (leftShoulder != null && leftHip != null && legBase != null) {
+            val expectedMidY = (leftShoulder.y + legBase.y) / 2f
             leftHip.y > expectedMidY // Y increases downwards toward floor in camera frame
         } else true
 
+        val faultThreshold = if (activeExerciseId.contains("knee")) 148.0 else FAULT_ANGLE_THRESHOLD
+        val idealMin = if (activeExerciseId.contains("knee")) 156.0 else IDEAL_ALIGNMENT_MIN
+
         val status = when {
-            hipAngle >= IDEAL_ALIGNMENT_MIN -> PlankStatus.SOLID_PLANK
-            hipAngle < FAULT_ANGLE_THRESHOLD && isHipBelowLine -> PlankStatus.HIP_SAG
-            hipAngle < FAULT_ANGLE_THRESHOLD && !isHipBelowLine -> PlankStatus.HIP_PIKE
+            hipAngle >= idealMin -> PlankStatus.SOLID_PLANK
+            hipAngle < faultThreshold && isHipBelowLine -> PlankStatus.HIP_SAG
+            hipAngle < faultThreshold && !isHipBelowLine -> PlankStatus.HIP_PIKE
             else -> PlankStatus.SOLID_PLANK
         }
 

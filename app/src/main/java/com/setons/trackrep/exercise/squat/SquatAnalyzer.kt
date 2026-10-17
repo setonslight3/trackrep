@@ -50,12 +50,37 @@ data class SquatLiveTelemetry(
 class SquatAnalyzer {
 
     companion object {
-        const val STANDING_LOCKOUT_ANGLE = 160.0    // Full standing lockout
-        const val DESCENT_TRIGGER_ANGLE = 152.0     // Knee flexion initiates
-        const val PARALLEL_DEPTH_THRESHOLD = 95.0   // Parallel depth limit (thigh parallel to ground)
-        const val DEEP_SQUAT_TARGET = 85.0          // Below parallel
-        const val MIN_TORSO_ANGLE = 65.0            // Severe forward torso lean threshold
-        const val MIN_REP_DURATION_MS = 700L        // Glitch rejection window
+        const val PARALLEL_DEPTH_THRESHOLD = 98.0
+        const val STANDING_LOCKOUT_ANGLE = 158.0
+    }
+
+    data class SquatThresholds(
+        val standingLockoutAngle: Double,
+        val descentTriggerAngle: Double,
+        val parallelDepthThreshold: Double,
+        val minTorsoAngle: Double,
+        val minRepDurationMs: Long = 650L
+    )
+
+    var activeExerciseId: String = "squat_bodyweight"
+
+    fun getThresholds(): SquatThresholds {
+        return when (activeExerciseId) {
+            "squat_chair", "squat_assisted" -> SquatThresholds(
+                standingLockoutAngle = 155.0,
+                descentTriggerAngle = 146.0,
+                parallelDepthThreshold = 112.0,
+                minTorsoAngle = 55.0,
+                minRepDurationMs = 600L
+            )
+            else -> SquatThresholds(
+                standingLockoutAngle = 158.0,
+                descentTriggerAngle = 150.0,
+                parallelDepthThreshold = 98.0,
+                minTorsoAngle = 60.0,
+                minRepDurationMs = 650L
+            )
+        }
     }
 
     private var currentPhase = SquatPhase.UNKNOWN
@@ -88,35 +113,41 @@ class SquatAnalyzer {
             return liveTelemetry
         }
 
-        val kneeAngle = pose.leftKneeAngle ?: pose.rightKneeAngle
+        val kneeAngle = when {
+            pose.leftKneeAngle != null && pose.rightKneeAngle != null -> {
+                min(pose.leftKneeAngle, pose.rightKneeAngle)
+            }
+            else -> pose.leftKneeAngle ?: pose.rightKneeAngle
+        }
         val torsoAngle = pose.torsoLeanAngle ?: 90.0
 
         if (kneeAngle == null) {
             return liveTelemetry
         }
 
+        val thresholds = getThresholds()
         var warningMessage: String? = null
 
         // 1. Torso uprightness check: prevent excessive forward lean
-        if (torsoAngle < MIN_TORSO_ANGLE) {
+        if (torsoAngle < thresholds.minTorsoAngle) {
             warningMessage = "Keep chest up • Excessive forward lean"
         }
 
-        // 2. Depth Progress (0.0 standing at 160° -> 1.0 parallel at 90°)
-        val depthProgress = ((STANDING_LOCKOUT_ANGLE - kneeAngle) / (STANDING_LOCKOUT_ANGLE - 90.0))
+        // 2. Depth Progress (0.0 standing -> 1.0 parallel)
+        val depthProgress = ((thresholds.standingLockoutAngle - kneeAngle) / (thresholds.standingLockoutAngle - thresholds.parallelDepthThreshold + 5.0))
             .coerceIn(0.0, 1.2)
             .toFloat()
 
         // 3. Squat Finite State Machine (FSM)
         when (currentPhase) {
             SquatPhase.UNKNOWN -> {
-                if (kneeAngle >= STANDING_LOCKOUT_ANGLE - 5.0) {
+                if (kneeAngle >= thresholds.standingLockoutAngle - 5.0) {
                     currentPhase = SquatPhase.STANDING_LOCKOUT
                 }
             }
 
             SquatPhase.STANDING_LOCKOUT -> {
-                if (kneeAngle < DESCENT_TRIGGER_ANGLE) {
+                if (kneeAngle < thresholds.descentTriggerAngle) {
                     currentPhase = SquatPhase.DESCENDING
                     repStartTimeMs = timestampMs
                     minKneeAngleInRep = kneeAngle
@@ -130,7 +161,7 @@ class SquatAnalyzer {
                 maxKneeAngleInRep = max(maxKneeAngleInRep, kneeAngle)
                 minTorsoAngleInRep = min(minTorsoAngleInRep, torsoAngle)
 
-                if (kneeAngle <= PARALLEL_DEPTH_THRESHOLD) {
+                if (kneeAngle <= thresholds.parallelDepthThreshold) {
                     currentPhase = SquatPhase.BOTTOM_DEPTH
                     bottomTimestampMs = timestampMs
                 } else if (kneeAngle > minKneeAngleInRep + 8.0) {
@@ -155,12 +186,12 @@ class SquatAnalyzer {
                 minTorsoAngleInRep = min(minTorsoAngleInRep, torsoAngle)
 
                 // Returned to standing lockout
-                if (kneeAngle >= STANDING_LOCKOUT_ANGLE - 6.0) {
+                if (kneeAngle >= thresholds.standingLockoutAngle - 6.0) {
                     val repDuration = timestampMs - repStartTimeMs
 
-                    if (repDuration >= MIN_REP_DURATION_MS) {
-                        val isParallel = minKneeAngleInRep <= PARALLEL_DEPTH_THRESHOLD
-                        val isUpright = minTorsoAngleInRep >= MIN_TORSO_ANGLE
+                    if (repDuration >= thresholds.minRepDurationMs) {
+                        val isParallel = minKneeAngleInRep <= thresholds.parallelDepthThreshold
+                        val isUpright = minTorsoAngleInRep >= thresholds.minTorsoAngle
                         val isValid = isParallel && isUpright
 
                         val flawReason = when {
