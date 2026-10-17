@@ -827,6 +827,30 @@ fun ProfileScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Button(
+                    onClick = {
+                        isWakeWordEnabled = true
+                        TrackVoicePreferences.setWakeWordEnabled(context, true)
+                        saveStatusMessage = "Voice listening reactivated! Say \"${activeWakeWord.replaceFirstChar { it.uppercase() }}\" or tap the mic in the top bar anytime."
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Turn On & Test Voice Listening 🎙️",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 

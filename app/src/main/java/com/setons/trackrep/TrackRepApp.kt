@@ -22,6 +22,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import com.setons.trackrep.theme.SuccessGreen
+import com.setons.trackrep.ui.components.VoiceAssistantPhase
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -182,6 +195,59 @@ fun TrackRepApp() {
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                            },
+                            actions = {
+                                Surface(
+                                    onClick = {
+                                        voiceController.turnVoiceListeningOnAndListen()
+                                    },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        } else {
+                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                        }
+                                    ),
+                                    modifier = Modifier.padding(end = 12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(
+                                                    if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                                        SuccessGreen
+                                                    } else {
+                                                        Color(0xFFFFA000)
+                                                    },
+                                                    CircleShape
+                                                )
+                                        )
+                                        Text(
+                                            text = if (voiceController.isStandbyListeningActive) "Track: Active" else "Wake Track",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = "Voice Assistant",
+                                            tint = if (voiceController.isStandbyListeningActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = MaterialTheme.colorScheme.surface,
@@ -365,7 +431,8 @@ fun TrackRepApp() {
             speechText = voiceController.currentSpeechText,
             primaryColor = MaterialTheme.colorScheme.primary,
             onDismiss = { voiceController.dismiss() },
-            onTapMic = { voiceController.triggerManualListen() }
+            onTapMic = { voiceController.triggerManualListen() },
+            onExecuteAction = { voiceController.executeDirectCommand(it) }
         )
     }
 }

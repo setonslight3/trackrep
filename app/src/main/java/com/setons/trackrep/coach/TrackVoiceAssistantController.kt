@@ -18,9 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.setons.trackrep.ai.service.TrackAiService
+import com.setons.trackrep.camera.ExerciseFramingMode
 import com.setons.trackrep.data.local.CoachPreferences
 import com.setons.trackrep.data.local.TrackVoicePreferences
-import com.setons.trackrep.camera.ExerciseFramingMode
 import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.ui.components.VoiceAssistantPhase
 import kotlinx.coroutines.CoroutineScope
@@ -32,8 +32,8 @@ import java.util.Locale
 
 /**
  * Controller for Track Voice Assistant.
- * Manages "Track" wake word detection, Google Gemini-style edge glow & bottom capsule states,
- * speech recognition, action dispatching, and spoken replies.
+ * Manages "Track" wake word detection, Google Gemini-style UI,
+ * continuous standby listening resilience, and immediate user wake reactivation.
  */
 class TrackVoiceAssistantController(
     private val context: Context,
@@ -57,11 +57,17 @@ class TrackVoiceAssistantController(
     var currentSpeechText by mutableStateOf("")
         private set
 
+    // Observable indicator showing whether wake word standby listening is actively running
+    var isStandbyListeningActive by mutableStateOf(false)
+        private set
+
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var isListeningLoopRunning = false
     private var autoDismissJob: Job? = null
     private var toneGenerator: ToneGenerator? = null
+
+    // Health-check / watchdog to ensure standby listening restarts if Android drops it
+    private var isUserEnabledStandby = true
 
     init {
         try {
@@ -72,9 +78,9 @@ class TrackVoiceAssistantController(
     }
 
     /**
-     * Start continuous wake-word listening loop if enabled and permission granted.
+     * Start or restart continuous wake-word listening loop.
      */
-    fun startListeningIfEnabled() {
+    fun startListeningIfEnabled(forceRecreate: Boolean = false) {
         if (!TrackVoicePreferences.isWakeWordEnabled(context)) {
             stopListening()
             return
@@ -82,37 +88,49 @@ class TrackVoiceAssistantController(
 
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "RECORD_AUDIO permission not granted; standby wake-word listening disabled.")
+            isStandbyListeningActive = false
             return
         }
 
-        if (isListeningLoopRunning) return
-        isListeningLoopRunning = true
+        isUserEnabledStandby = true
 
         mainHandler.post {
-            initAndStartStandbyRecognizer()
+            initAndStartStandbyRecognizer(forceRecreate)
         }
+    }
+
+    /**
+     * Explicitly turn voice listening back on and trigger a listening session immediately.
+     * This provides the user with a guaranteed 1-tap way to reactivate Track.
+     */
+    fun turnVoiceListeningOnAndListen() {
+        TrackVoicePreferences.setWakeWordEnabled(context, true)
+        isUserEnabledStandby = true
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            currentSpeechText = "Microphone permission required. Please enable in Settings."
+            statusHeadline = "Permission Needed"
+            isUiVisible = true
+            phase = VoiceAssistantPhase.LISTENING
+            return
+        }
+
+        triggerManualListen()
     }
 
     /**
      * Stop speech recognizer and background loop.
      */
     fun stopListening() {
-        isListeningLoopRunning = false
+        isUserEnabledStandby = false
+        isStandbyListeningActive = false
         mainHandler.post {
-            try {
-                speechRecognizer?.stopListening()
-                speechRecognizer?.cancel()
-                speechRecognizer?.destroy()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error stopping recognizer", e)
-            } finally {
-                speechRecognizer = null
-            }
+            destroyRecognizerSafely()
         }
     }
 
     /**
-     * Manual trigger (e.g. tapping the capsule mic button).
+     * Manual trigger (e.g. tapping the capsule mic button or top-bar mic chip).
      */
     fun triggerManualListen() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -128,7 +146,7 @@ class TrackVoiceAssistantController(
         isUiVisible = true
         phase = VoiceAssistantPhase.LISTENING
         statusHeadline = "Listening..."
-        currentSpeechText = "Listening for your command..."
+        currentSpeechText = ""
 
         mainHandler.post {
             startCommandListening()
@@ -141,12 +159,20 @@ class TrackVoiceAssistantController(
         phase = VoiceAssistantPhase.IDLE
         currentSpeechText = ""
         statusHeadline = "Say \"Track\" anytime"
-        // Resume standby wake word listening if enabled
+
+        // Always resurrect standby wake-word listening with fresh listener
         if (TrackVoicePreferences.isWakeWordEnabled(context)) {
             mainHandler.postDelayed({
-                startListeningIfEnabled()
-            }, 600L)
+                startListeningIfEnabled(forceRecreate = true)
+            }, 450L)
         }
+    }
+
+    fun executeDirectCommand(command: String) {
+        autoDismissJob?.cancel()
+        isUiVisible = true
+        currentSpeechText = "\"$command\""
+        executeVoiceCommand(command)
     }
 
     private fun playWakeTone() {
@@ -155,14 +181,30 @@ class TrackVoiceAssistantController(
         } catch (_: Exception) {}
     }
 
-    private fun initAndStartStandbyRecognizer() {
-        if (!isListeningLoopRunning) return
+    private fun destroyRecognizerSafely() {
         try {
-            if (speechRecognizer == null) {
+            speechRecognizer?.stopListening()
+            speechRecognizer?.cancel()
+            speechRecognizer?.destroy()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error destroying recognizer", e)
+        } finally {
+            speechRecognizer = null
+            isStandbyListeningActive = false
+        }
+    }
+
+    private fun initAndStartStandbyRecognizer(forceRecreate: Boolean = false) {
+        if (!isUserEnabledStandby || phase != VoiceAssistantPhase.IDLE) return
+
+        try {
+            if (forceRecreate || speechRecognizer == null) {
+                destroyRecognizerSafely()
                 if (SpeechRecognizer.isRecognitionAvailable(context)) {
                     speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
                 } else {
                     Log.w(TAG, "SpeechRecognizer not available on this device")
+                    isStandbyListeningActive = false
                     return
                 }
             }
@@ -175,26 +217,36 @@ class TrackVoiceAssistantController(
             }
 
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onReadyForSpeech(params: Bundle?) {
+                    isStandbyListeningActive = true
+                }
+
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
 
                 override fun onError(error: Int) {
-                    // Normal timeouts or pauses in standby mode: quietly restart listening
-                    if (isListeningLoopRunning && phase == VoiceAssistantPhase.IDLE) {
+                    isStandbyListeningActive = false
+                    // Standby timeout or pause: quietly restart listening with fresh session
+                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
+                        val delay = when (error) {
+                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_CLIENT -> 650L
+                            else -> 400L
+                        }
                         mainHandler.postDelayed({
-                            restartStandbyQuietly()
-                        }, 500L)
+                            initAndStartStandbyRecognizer(forceRecreate = error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT)
+                        }, delay)
                     }
                 }
 
                 override fun onResults(results: Bundle?) {
+                    isStandbyListeningActive = false
                     handleSpeechCandidates(results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION))
-                    if (isListeningLoopRunning && phase == VoiceAssistantPhase.IDLE) {
+                    // Loop standby listening if still IDLE
+                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
                         mainHandler.postDelayed({
-                            restartStandbyQuietly()
+                            initAndStartStandbyRecognizer(forceRecreate = false)
                         }, 300L)
                     }
                 }
@@ -207,24 +259,15 @@ class TrackVoiceAssistantController(
             })
 
             speechRecognizer?.startListening(intent)
+            isStandbyListeningActive = true
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to start speech recognizer", e)
-        }
-    }
-
-    private fun restartStandbyQuietly() {
-        if (!isListeningLoopRunning || phase != VoiceAssistantPhase.IDLE) return
-        try {
-            speechRecognizer?.cancel()
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            }
-            speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
-            Log.w(TAG, "Restart standby error", e)
+            Log.w(TAG, "Failed to start standby speech recognizer", e)
+            isStandbyListeningActive = false
+            mainHandler.postDelayed({
+                if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
+                    initAndStartStandbyRecognizer(forceRecreate = true)
+                }
+            }, 1000L)
         }
     }
 
@@ -236,17 +279,14 @@ class TrackVoiceAssistantController(
         for (rawCandidate in candidates) {
             val text = rawCandidate.trim().lowercase()
 
-            // If we are currently in IDLE state, check if wake word is uttered
             if (phase == VoiceAssistantPhase.IDLE) {
-                val wakeWordIndex = text.indexOf(configuredWakeWord)
-                val matchesWakeWord = wakeWordIndex >= 0 || text.contains("track") || text.contains("hey track")
+                val matchesWakeWord = text.contains(configuredWakeWord) || text.contains("track") || text.contains("hey track")
 
                 if (matchesWakeWord) {
                     onWakeWordDetected(text, configuredWakeWord)
                     return
                 }
             } else if (phase == VoiceAssistantPhase.LISTENING) {
-                // We are actively listening for a command
                 currentSpeechText = rawCandidate
             }
         }
@@ -257,8 +297,7 @@ class TrackVoiceAssistantController(
         isUiVisible = true
         autoDismissJob?.cancel()
 
-        // Extract any command spoken immediately after the wake word in the same sentence
-        // e.g. "Track start workout" -> "start workout"
+        // Extract command if spoken in same sentence (e.g. "Track start workout")
         val extractedCommand = fullText
             .replace(wakeWord, "")
             .replace("hey", "")
@@ -266,14 +305,12 @@ class TrackVoiceAssistantController(
             .trim()
 
         if (extractedCommand.length >= 3) {
-            // User gave command in one go!
             currentSpeechText = "\"$extractedCommand\""
             executeVoiceCommand(extractedCommand)
         } else {
-            // Wake word alone: prompt user and listen
             phase = VoiceAssistantPhase.LISTENING
             statusHeadline = "Listening..."
-            currentSpeechText = "I'm listening, say a command..."
+            currentSpeechText = ""
             mainHandler.post {
                 startCommandListening()
             }
@@ -282,7 +319,13 @@ class TrackVoiceAssistantController(
 
     private fun startCommandListening() {
         try {
-            speechRecognizer?.cancel()
+            destroyRecognizerSafely()
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            } else {
+                return
+            }
+
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
@@ -300,7 +343,7 @@ class TrackVoiceAssistantController(
                 override fun onError(error: Int) {
                     if (phase == VoiceAssistantPhase.LISTENING) {
                         currentSpeechText = "Didn't catch that. Say \"Track\" anytime."
-                        scheduleAutoDismiss(3000L)
+                        scheduleAutoDismiss(3200L)
                     }
                 }
 
@@ -327,6 +370,7 @@ class TrackVoiceAssistantController(
             speechRecognizer?.startListening(intent)
         } catch (e: Exception) {
             Log.w(TAG, "Start command listening failed", e)
+            scheduleAutoDismiss(2500L)
         }
     }
 
@@ -337,14 +381,14 @@ class TrackVoiceAssistantController(
         scope.launch {
             val q = command.trim().lowercase()
 
-            // 1. Fast local workout controls & coach switches
+            // 1. Direct workout action matches
             val directResponse = handleDirectWorkoutActions(q)
             if (directResponse != null) {
                 speakAndComplete(directResponse)
                 return@launch
             }
 
-            // 2. Direct fast app navigation
+            // 2. Direct app navigation matches
             val navResponse = handleDirectNavigation(q)
             if (navResponse != null) {
                 speakAndComplete(navResponse)
@@ -496,12 +540,10 @@ class TrackVoiceAssistantController(
         currentSpeechText = reply
 
         if (TrackVoicePreferences.isVoiceResponsesEnabled(context)) {
-            // Speak reply crisply
             voiceManager.speakStatus(reply, isUrgent = true)
         }
 
-        // Schedule graceful auto-dismiss
-        val delayMillis = (reply.length * 65L).coerceIn(3500L, 8000L)
+        val delayMillis = (reply.length * 65L).coerceIn(3800L, 8500L)
         scheduleAutoDismiss(delayMillis)
     }
 

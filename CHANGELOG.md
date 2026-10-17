@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.2 - Authentic Gemini Bottom Capsule Pill, Inward Delicate Rim Glow & Voice Reactivation Controls](#v132---2026-10-17)
 - [v1.3.1 - 'Track' Wake Word Voice Assistant, Google Gemini Edge Glow & Floating Bottom Capsule](#v131---2026-10-17)
 - [v1.3.0 - Hands-Free Countdown Auto-Start, AR Ghost Shadow Form Overlay & Tempo Cadence Metronome](#v130---2026-10-17)
 - [v1.2.19 - Precision Beginner Vision Tracking, Adaptive ROM Depth Cues & App-Wide UI Revamp](#v1219---2026-10-17)
@@ -47,6 +48,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.2] - 2026-10-17
+
+### Added & Refined (Authentic Google Gemini UI & Voice Assistant Resiliency)
+- **Authentic Google Gemini Bottom Capsule Pill (`GeminiVoiceCapsule`)**:
+  - Re-anchored to float cleanly at the bottom center of the display above the navigation bar (eliminating top-bar occlusion).
+  - Modeled directly after native Google Gemini on Pixel/Android:
+    - **Quick Actions Button (`+`)**: Expandable shortcut bar with instant workout actions (*"Start Workout"*, *"Torch"*, *"3-1-1 Tempo"*).
+    - **Status & Prompt Title**: Clear *"Ask Track"* headline displaying live transcription and active assistant states.
+    - **Circular Filled Mic Button**: Vibrant green/gold circular button with black mic glyph for instant voice input.
+    - **Animated Soundwave Bars**: Triple audio cadence bars that dance dynamically to speech.
+  - **Floating Elevated Response Card**: Crisp elevated speech bubble floating directly above the bottom capsule (matching Gemini's YouTube Music / assistant cards).
+- **Soft All-Around Screen Rim Glow with Inward Fade (`GeminiEdgeGlow`)**:
+  - Replaced thick solid outer borders with a delicate, atmospheric ambient rim glow that hugs all four borders (top, bottom, left, right) and softly fades inward toward transparent.
+  - Features an ultra-thin 1.8dp flowing gold light line following phone bezel curves without obstructing on-screen workout telemetry.
+- **Voice Assistant Reactivation Controls & Auto-Resurrect Loop (`TrackVoiceAssistantController`)**:
+  - Resolved `SpeechRecognizer` timeout where standby listening stopped after the first user query. Implemented automatic recreate-and-restart watchdog loops that keep standby listening active indefinitely.
+  - Added dedicated **TopAppBar Voice Status Pill**:
+    - Displays live status: green active dot (`Track: Active`) when listening for wake word, amber dot (`Wake Track`) when paused.
+    - Tapping at any time immediately reactivates voice listening and triggers the Gemini assistant.
+  - Added **"Turn On & Test Voice Listening 🎙️"** button in **Profile & Settings** to reactivate voice listening with 1 tap.
+
+---
 
 ## [v1.3.1] - 2026-10-17
 
