@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.1 - 'Track' Wake Word Voice Assistant, Google Gemini Edge Glow & Floating Bottom Capsule](#v131---2026-10-17)
 - [v1.3.0 - Hands-Free Countdown Auto-Start, AR Ghost Shadow Form Overlay & Tempo Cadence Metronome](#v130---2026-10-17)
 - [v1.2.19 - Precision Beginner Vision Tracking, Adaptive ROM Depth Cues & App-Wide UI Revamp](#v1219---2026-10-17)
 - [v1.2.18 - Compact Schedule Day Bars, Non-Repeating Home UI & Text Overlap Resolution](#v1218---2026-10-14)
@@ -46,6 +47,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.1] - 2026-10-17
+
+### Added
+- **"Track" Wake Word Voice Assistant Engine (`TrackVoiceAssistantController`)**:
+  - Continuous hands-free wake word listening powered by native `android.speech.SpeechRecognizer`.
+  - Saying `"Track"` immediately activates the assistant, sounds a soft tone, and listens for voice commands.
+  - Supports continuous compound voice queries (e.g., *"Track, start my workout"*, *"Track, switch to squats"*, *"Track, turn on flashlight"*, *"Track, ghost shadow on"*, *"Track, set tempo to 3-1-1"*, *"Track, show my records"*).
+  - Seamlessly executes workout state transitions, camera controls, routine navigation, and AI fitness reasoning with crisp spoken audio replies.
+- **Google Gemini-Style Screen Perimeter Edge Glow (`GeminiEdgeGlow`)**:
+  - Atmospheric luminous edge glow wrapping around all four screen borders (top, bottom, left, right).
+  - Rendered in radiant gold (`DarkPrimaryGold`, champagne, amber highlights) for the default luxury dark theme, dynamically matching the active theme accent.
+  - Multi-layer visual design: outer ambient bloom, continuous rotating chromatic sweep, and sharp core luminous light ribbon.
+  - Distinct rhythmic states: gentle breathing glow while `LISTENING`, swift circulating shimmer while `THINKING`, and warm cadence modulation while `SPEAKING`.
+- **Google Gemini-Style Floating Bottom Capsule (`GeminiVoiceCapsule`)**:
+  - Glassmorphic stadium pill centered at the bottom of the screen with glowing gold border and drop shadow.
+  - 4 animated dancing soundwave bars / dots dynamically animated to the user's voice cadence.
+  - Live status indicator dot (`LISTENING` / `THINKING` / `SPEAKING`) with real-time transcribed user command text and assistant replies.
+  - Integrated one-tap mic button for manual trigger and quick close dismissal.
+- **Configurable Wake Words in Profile & Settings (`ProfileScreen`, `TrackVoicePreferences`)**:
+  - Dedicated **Track Voice Assistant & Wake Word** card in Settings.
+  - Wake word toggle switch (`isWakeWordEnabled`) with runtime microphone permission handling.
+  - Selectable wake word chips (`"Track"`, `"Hey Track"`, `"Coach"`, `"TrackRep"`).
+  - Custom wake word modal dialog allowing athletes to set any preferred activation phrase (e.g., *"Jarvis"*, *"Trainer"*, *"Computer"*).
+  - Spoken voice replies toggle (`isVoiceResponsesEnabled`) and quick voice command cheat sheet.
+
+---
 
 ## [v1.3.0] - 2026-10-17
 

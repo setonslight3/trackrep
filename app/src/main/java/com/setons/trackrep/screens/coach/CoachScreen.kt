@@ -177,6 +177,10 @@ object CoachModeHolder {
     var isImmersiveFullscreen by mutableStateOf(false)
     var updateEventId by mutableLongStateOf(0L)
     var workoutCompletedCount by mutableLongStateOf(0L)
+    var triggerToggleRecording by mutableLongStateOf(0L)
+    var triggerStartRecording by mutableLongStateOf(0L)
+    var triggerStopRecording by mutableLongStateOf(0L)
+    var triggerToggleTorch by mutableLongStateOf(0L)
 
     fun setPending(
         exerciseId: String,
@@ -572,6 +576,23 @@ fun CoachScreen(
             }
 
             isRecording = true
+        }
+    }
+
+    // Voice Assistant Triggers (CoachModeHolder)
+    LaunchedEffect(CoachModeHolder.triggerStartRecording) {
+        if (CoachModeHolder.triggerStartRecording > 0L && !isRecording) {
+            toggleRecording()
+        }
+    }
+    LaunchedEffect(CoachModeHolder.triggerStopRecording) {
+        if (CoachModeHolder.triggerStopRecording > 0L && isRecording) {
+            toggleRecording()
+        }
+    }
+    LaunchedEffect(CoachModeHolder.triggerToggleTorch) {
+        if (CoachModeHolder.triggerToggleTorch > 0L) {
+            isTorchEnabled = !isTorchEnabled
         }
     }
 

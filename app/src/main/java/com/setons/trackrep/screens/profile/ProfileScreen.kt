@@ -39,10 +39,17 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Dialog
+import com.setons.trackrep.data.local.TrackVoicePreferences
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -579,9 +586,306 @@ fun ProfileScreen(
                         onCheckedChange = { checked ->
                             isAutoDetect = checked
                             CoachPreferences.setAutoDetectEnabled(context, checked)
-                            saveStatusMessage = if (checked) "AI Auto-detect enabled" else "AI Auto-detect disabled (locked)"
+                        saveStatusMessage = if (checked) "AI Auto-detect enabled" else "AI Auto-detect disabled (locked)"
                         }
                     )
+                }
+            }
+        }
+
+        // Track Voice Assistant & Wake Word Card
+        var isWakeWordEnabled by remember {
+            mutableStateOf(TrackVoicePreferences.isWakeWordEnabled(context))
+        }
+        var activeWakeWord by remember {
+            mutableStateOf(TrackVoicePreferences.getWakeWord(context))
+        }
+        var isVoiceResponsesEnabled by remember {
+            mutableStateOf(TrackVoicePreferences.isVoiceResponsesEnabled(context))
+        }
+        var showCustomWakeWordDialog by remember { mutableStateOf(false) }
+        var customWakeWordInput by remember { mutableStateOf(activeWakeWord) }
+
+        ElevatedCard(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = "Track Voice Assistant & Wake Word",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Hands-free voice control with Google Gemini screen glow",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Wake word enable toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Wake Word Detection",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (isWakeWordEnabled)
+                                "Active • Say \"${activeWakeWord.replaceFirstChar { it.uppercase() }}\" to trigger Gemini edge glow & capsule"
+                            else
+                                "Disabled • Voice assistant will not listen for wake word",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                    }
+                    TrackRepSwitch(
+                        checked = isWakeWordEnabled,
+                        onCheckedChange = { checked ->
+                            isWakeWordEnabled = checked
+                            TrackVoicePreferences.setWakeWordEnabled(context, checked)
+                            saveStatusMessage = if (checked) "Wake word \"$activeWakeWord\" active" else "Wake word detection disabled"
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 2. Wake word selection chips
+                Text(
+                    text = "Wake Word / Activation Phrase",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val presetWords = listOf("track", "hey track", "coach", "trackrep")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    presetWords.forEach { word ->
+                        val isSelected = activeWakeWord == word
+                        Surface(
+                            onClick = {
+                                activeWakeWord = word
+                                TrackVoicePreferences.setWakeWord(context, word)
+                                saveStatusMessage = "Wake word set to \"$word\""
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Text(
+                                text = word.replaceFirstChar { it.uppercase() },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Custom wake word chip
+                    val isCustom = !presetWords.contains(activeWakeWord)
+                    Surface(
+                        onClick = {
+                            customWakeWordInput = activeWakeWord
+                            showCustomWakeWordDialog = true
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isCustom) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isCustom) "\"$activeWakeWord\"" else "Custom...",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isCustom) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3. Spoken voice response toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Spoken Voice Replies",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (isVoiceResponsesEnabled)
+                                "Enabled • Track speaks confirmations and answers out loud"
+                            else
+                                "Silent • Responses will only be displayed in the capsule",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                    }
+                    TrackRepSwitch(
+                        checked = isVoiceResponsesEnabled,
+                        onCheckedChange = { checked ->
+                            isVoiceResponsesEnabled = checked
+                            TrackVoicePreferences.setVoiceResponsesEnabled(context, checked)
+                            saveStatusMessage = if (checked) "Spoken voice replies enabled" else "Spoken replies muted"
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 4. Voice commands guide pill
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GraphicEq,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Voice Commands You Can Say:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "• \"Track, start workout\" or \"Track, start set\"\n" +
+                                    "• \"Track, switch to squats\" (or push-ups, dips, plank)\n" +
+                                    "• \"Track, turn on flashlight\" (toggles torch)\n" +
+                                    "• \"Track, ghost shadow on\" (AR form guide)\n" +
+                                    "• \"Track, set tempo to 3-1-1\" (or 2-1-2, off)\n" +
+                                    "• \"Track, show my records\" (opens History)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            fontSize = 11.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Custom wake word dialog
+        if (showCustomWakeWordDialog) {
+            Dialog(onDismissRequest = { showCustomWakeWordDialog = false }) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = "Set Custom Wake Word",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Enter a single word or short phrase that Track will listen for:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        OutlinedTextField(
+                            value = customWakeWordInput,
+                            onValueChange = { customWakeWordInput = it },
+                            placeholder = { Text("e.g. Jarvis, Trainer, Computer") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showCustomWakeWordDialog = false }) {
+                                Text("Cancel")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val cleaned = customWakeWordInput.trim().lowercase()
+                                    if (cleaned.isNotBlank()) {
+                                        activeWakeWord = cleaned
+                                        TrackVoicePreferences.setWakeWord(context, cleaned)
+                                        saveStatusMessage = "Wake word set to \"$cleaned\""
+                                    }
+                                    showCustomWakeWordDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Text("Save Wake Word")
+                            }
+                        }
+                    }
                 }
             }
         }

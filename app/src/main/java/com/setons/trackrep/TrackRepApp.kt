@@ -1,6 +1,11 @@
 package com.setons.trackrep
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -22,16 +27,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.setons.trackrep.coach.CoachVoiceManager
+import com.setons.trackrep.coach.TrackVoiceAssistantController
+import com.setons.trackrep.data.local.TrackVoicePreferences
+import com.setons.trackrep.ui.components.GeminiEdgeGlow
+import com.setons.trackrep.ui.components.GeminiVoiceCapsule
+
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -75,6 +89,72 @@ fun TrackRepApp() {
         val currentDestination = backStack.lastOrNull() ?: HomeNavKey
         val isFullscreenDestination = currentDestination is SessionReviewNavKey || currentDestination is OnboardingNavKey || CoachModeHolder.isImmersiveFullscreen
 
+        val coroutineScope = rememberCoroutineScope()
+        val voiceManager = remember { CoachVoiceManager(context) }
+        val voiceController = remember {
+            TrackVoiceAssistantController(
+                context = context,
+                scope = coroutineScope,
+                voiceManager = voiceManager,
+                onNavigateToDestination = { dest ->
+                    when (dest) {
+                        "COACH" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                            backStack.add(CoachNavKey)
+                        }
+                        "HOME" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                        }
+                        "HISTORY" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                            backStack.add(HistoryNavKey)
+                        }
+                        "TRACK_AI" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                            backStack.add(TrackAiNavKey)
+                        }
+                        "EXERCISE_LIBRARY" -> {
+                            backStack.add(ExerciseLibraryNavKey)
+                        }
+                        "PROFILE" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                            backStack.add(ProfileNavKey)
+                        }
+                        "EDIT_ROUTINE" -> {
+                            while (backStack.size > 1) backStack.removeLastOrNull()
+                        }
+                    }
+                }
+            )
+        }
+
+        // Microphone permission requester for wake word detection
+        val audioPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                voiceController.startListeningIfEnabled()
+            }
+        }
+
+        // Start listening when enabled
+        LaunchedEffect(Unit) {
+            if (TrackVoicePreferences.isWakeWordEnabled(context)) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    voiceController.startListeningIfEnabled()
+                } else {
+                    audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                voiceController.stopListening()
+                voiceManager.shutdown()
+            }
+        }
+
         // If first launch, show onboarding and initialize catalog
         LaunchedEffect(Unit) {
             try {
@@ -88,8 +168,9 @@ fun TrackRepApp() {
             }
         }
 
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
             topBar = {
                 if (!isFullscreenDestination) {
                     Column {
@@ -268,5 +349,24 @@ fun TrackRepApp() {
                 }
             )
         }
+
+        // Google Gemini Screen Perimeter Edge Glow
+        GeminiEdgeGlow(
+            isActive = voiceController.isUiVisible,
+            phase = voiceController.phase,
+            primaryColor = MaterialTheme.colorScheme.primary
+        )
+
+        // Google Gemini Floating Bottom Capsule
+        GeminiVoiceCapsule(
+            isVisible = voiceController.isUiVisible,
+            phase = voiceController.phase,
+            statusText = voiceController.statusHeadline,
+            speechText = voiceController.currentSpeechText,
+            primaryColor = MaterialTheme.colorScheme.primary,
+            onDismiss = { voiceController.dismiss() },
+            onTapMic = { voiceController.triggerManualListen() }
+        )
     }
+}
 }
