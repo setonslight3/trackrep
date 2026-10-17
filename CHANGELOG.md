@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.0 - Hands-Free Countdown Auto-Start, AR Ghost Shadow Form Overlay & Tempo Cadence Metronome](#v130---2026-10-17)
 - [v1.2.19 - Precision Beginner Vision Tracking, Adaptive ROM Depth Cues & App-Wide UI Revamp](#v1219---2026-10-17)
 - [v1.2.18 - Compact Schedule Day Bars, Non-Repeating Home UI & Text Overlap Resolution](#v1218---2026-10-14)
 - [v1.2.17 - Package Installer Compatibility Fix, Manifest Schema Repair & Tri-Scheme Signing](#v1217---2026-10-13)
@@ -43,6 +44,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.3.0 - Skeletal Pose Estimation, Set Recording & Privacy Playback](#v030---2026-09-19)
 - [v0.2.0 - CameraX Foundation & Luxury Gold Theme](#v020---2026-09-13)
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
+
+> **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.0] - 2026-10-17
+
+### Added (Major Pro Coaching Feature Update)
+- **Hands-Free "Countdown to Start" (`HandsFreeStartController`)**:
+  - Automatically detects when the user steps 5–7 paces back into the camera view and holds a stable starting pose for ~1.2 seconds.
+  - Launches an animated holographic `"3... 2... 1... GO!"` countdown ring with spoken voice countdown cues and starts recording the set completely hands-free—no need to walk back and forth to tap the screen.
+  - Includes a smart 3.5-second post-set cooldown after finishing a set so users can rest or stand up without accidentally triggering a new countdown.
+- **Beginner "Ghost Shadow" AR Form Overlay (`GhostShadowOverlay`)**:
+  - Renders a translucent cyan-and-emerald holographic stickman silhouette directly over the live camera feed for all 35+ exercises (`drawStickmanDemonstration`).
+  - Allows complete beginners to visually mirror ideal joint angles, depth, and posture in real time right on top of their live camera view.
+  - Automatically synchronizes its movement cycle with the active Tempo Metronome preset when enabled.
+- **Tempo & Eccentric Cadence Metronome (`rememberTempoMetronomeState`, `TempoMetronomeHudBar`)**:
+  - Built-in audio-visual Time-Under-Tension (TUT) pacing engine with 5 selectable presets:
+    - `OFF` (Free Pace)
+    - `2-1-2` (Beginner Control — 2s Down, 1s Hold, 2s Up)
+    - `3-1-1` (Hypertrophy TUT — 3s Eccentric, 1s Pause, 1s Explosive Drive)
+    - `2-0-1` (Athletic Power — 2s Down, 0s Hold, 1s Drive)
+    - `4-2-1` (Slow Burn — 4s Eccentric, 2s Isometric Hold, 1s Up)
+  - Displays a live phase banner (`LOWER SLOWLY`, `HOLD DEPTH`, `DRIVE UP!`), phase progress bar, countdown timer, and spoken cadence cues (`"Down"`, `"Hold"`, `"Push"`).
+- **Pro Coaching Quick-Toggle Strip & Controls Drawer Integration**:
+  - Added a 3-chip quick-toggle strip (`Auto-Start`, `Ghost Form`, `Tempo`) directly beneath the live camera viewport plus full configuration cards inside the Camera & Coach Controls bottom sheet (`showControlsDrawer`) with persistent state in `CoachPreferences`.
+
+---
 
 ## [v1.2.19] - 2026-10-17
 

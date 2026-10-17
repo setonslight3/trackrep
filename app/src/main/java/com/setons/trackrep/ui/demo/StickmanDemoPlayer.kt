@@ -347,28 +347,35 @@ fun StickmanDemoPlayer(
 /**
  * Mathematical Keyframe Interpolation & Vector Drawing.
  */
-private fun DrawScope.drawStickmanDemonstration(
+fun DrawScope.drawStickmanDemonstration(
     archetype: StickmanArchetype,
     t: Float,
     width: Float,
-    height: Float
+    height: Float,
+    primaryColor: Color = DarkPrimaryGold,
+    secondaryColor: Color = DarkSecondaryGold,
+    jointColor: Color = Color.White,
+    customRepCycle: Float? = null,
+    showFloorLine: Boolean = true
 ) {
-    val gold = DarkPrimaryGold
-    val lightGold = DarkSecondaryGold
-    val jointWhite = Color.White
+    val gold = primaryColor
+    val lightGold = secondaryColor
+    val jointWhite = jointColor
     val groundY = height * 0.84f
 
     // Draw Ground / Floor reference
-    drawLine(
-        color = gold.copy(alpha = 0.35f),
-        start = Offset(0f, groundY),
-        end = Offset(width, groundY),
-        strokeWidth = 2.dp.toPx(),
-        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
-    )
+    if (showFloorLine) {
+        drawLine(
+            color = gold.copy(alpha = 0.35f),
+            start = Offset(0f, groundY),
+            end = Offset(width, groundY),
+            strokeWidth = 2.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+        )
+    }
 
-    // Symmetric cycle sine wave: 0.0 -> 1.0 -> 0.0 (smooth eccentric/concentric curve)
-    val repCycle = sin(t * PI.toFloat()).coerceIn(0f, 1f)
+    // Symmetric cycle sine wave: 0.0 -> 1.0 -> 0.0 (or custom tempo-synchronized rep curve)
+    val repCycle = (customRepCycle ?: sin(t * PI.toFloat())).coerceIn(0f, 1f)
 
     when (archetype) {
         // Squat Family

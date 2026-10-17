@@ -109,11 +109,18 @@ import com.setons.trackrep.coach.AdaptiveSetRating
 import com.setons.trackrep.coach.CoachStatusOverlay
 import com.setons.trackrep.coach.CoachVoiceManager
 import com.setons.trackrep.coach.CompletedSetSummary
+import com.setons.trackrep.coach.GhostShadowOverlay
+import com.setons.trackrep.coach.HandsFreeStartController
 import com.setons.trackrep.coach.SetLifecycleState
 import com.setons.trackrep.coach.SetSummaryDialog
+import com.setons.trackrep.coach.TempoMetronomeHudBar
+import com.setons.trackrep.coach.TempoPreset
 import com.setons.trackrep.coach.TrackingRecoveryManager
 import com.setons.trackrep.coach.TrackingState
 import com.setons.trackrep.coach.WorkoutSetManager
+import com.setons.trackrep.coach.rememberTempoMetronomeState
+import androidx.compose.material.icons.filled.PanTool
+import androidx.compose.material.icons.filled.Speed
 import com.setons.trackrep.exercise.pushup.FatigueDetector
 import com.setons.trackrep.exercise.pushup.FatigueLevel
 import com.setons.trackrep.camera.CameraLens
@@ -324,9 +331,22 @@ fun CoachScreen(
     var showSummaryDialog by remember { mutableStateOf(false) }
     var activeSetSummary by remember { mutableStateOf<CompletedSetSummary?>(null) }
 
+    // v1.3.0 Pro Features: Hands-Free Auto-Start, Beginner Ghost Shadow AR Overlay & Tempo Metronome
+    var isHandsFreeStartEnabled by remember { mutableStateOf(CoachPreferences.isHandsFreeStartEnabled(context)) }
+    var isGhostShadowEnabled by remember { mutableStateOf(CoachPreferences.isGhostShadowEnabled(context)) }
+    var tempoPresetId by remember { mutableStateOf(CoachPreferences.getTempoPreset(context)) }
+    val liveTempoTick = rememberTempoMetronomeState(
+        presetId = tempoPresetId,
+        isActiveWorkout = isRecording,
+        voiceManager = voiceManager
+    )
+
     // React immediately whenever an exercise is selected (from Home, Library, or Drawer)
     LaunchedEffect(CoachModeHolder.updateEventId) {
         isAutoDetectEnabled = CoachPreferences.isAutoDetectEnabled(context)
+        isHandsFreeStartEnabled = CoachPreferences.isHandsFreeStartEnabled(context)
+        isGhostShadowEnabled = CoachPreferences.isGhostShadowEnabled(context)
+        tempoPresetId = CoachPreferences.getTempoPreset(context)
         isCameraEnabled = CoachModeHolder.pendingCameraEnabled
         targetReps = CoachModeHolder.pendingTargetReps
         targetHoldSeconds = CoachModeHolder.pendingTargetHoldSeconds
@@ -855,6 +875,34 @@ fun CoachScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
+            // v1.3.0 Beginner Ghost Shadow AR Form Overlay
+            GhostShadowOverlay(
+                exerciseId = activeExercise.id,
+                isEnabled = isGhostShadowEnabled,
+                tempoTick = liveTempoTick,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // v1.3.0 Hands-Free Pose Stabilization Countdown to Start
+            HandsFreeStartController(
+                isHandsFreeEnabled = isHandsFreeStartEnabled,
+                isCameraEnabled = isCameraEnabled,
+                isRecording = isRecording,
+                setLifecycleState = setManager.state,
+                isPoseTrackingValid = currentPose?.isTrackingValid == true,
+                voiceManager = voiceManager,
+                onStartSetTriggered = {
+                    if (!isRecording) {
+                        toggleRecording()
+                    }
+                },
+                onDisableHandsFree = {
+                    isHandsFreeStartEnabled = false
+                    CoachPreferences.setHandsFreeStartEnabled(context, false)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
             // Real-Time Exercise HUD Overlay (Offset safely below top controls)
             when (selectedExercise) {
                 ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
@@ -1055,6 +1103,17 @@ fun CoachScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // v1.3.0 Tempo & Eccentric Cadence Metronome HUD Bar
+                TempoMetronomeHudBar(
+                    presetId = tempoPresetId,
+                    tempoTick = liveTempoTick,
+                    onCyclePreset = {
+                        val next = TempoPreset.nextPreset(tempoPresetId)
+                        tempoPresetId = next.id
+                        CoachPreferences.setTempoPreset(context, next.id)
+                    }
+                )
+
                 // Record / Stop Button
                 Button(
                     onClick = { toggleRecording() },
@@ -1585,6 +1644,34 @@ fun CoachScreen(
                             modifier = Modifier.fillMaxSize()
                         )
 
+                        // v1.3.0 Beginner Ghost Shadow AR Form Overlay
+                        GhostShadowOverlay(
+                            exerciseId = activeExercise.id,
+                            isEnabled = isGhostShadowEnabled,
+                            tempoTick = liveTempoTick,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // v1.3.0 Hands-Free Pose Stabilization Countdown to Start
+                        HandsFreeStartController(
+                            isHandsFreeEnabled = isHandsFreeStartEnabled,
+                            isCameraEnabled = isCameraEnabled,
+                            isRecording = isRecording,
+                            setLifecycleState = setManager.state,
+                            isPoseTrackingValid = currentPose?.isTrackingValid == true,
+                            voiceManager = voiceManager,
+                            onStartSetTriggered = {
+                                if (!isRecording) {
+                                    toggleRecording()
+                                }
+                            },
+                            onDisableHandsFree = {
+                                isHandsFreeStartEnabled = false
+                                CoachPreferences.setHandsFreeStartEnabled(context, false)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+
                         // Real-Time Exercise Live Overlay
                         when (selectedExercise) {
                             ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
@@ -1614,6 +1701,20 @@ fun CoachScreen(
                                 )
                             }
                         }
+
+                        // v1.3.0 Tempo & Eccentric Cadence Metronome HUD Bar
+                        TempoMetronomeHudBar(
+                            presetId = tempoPresetId,
+                            tempoTick = liveTempoTick,
+                            onCyclePreset = {
+                                val next = TempoPreset.nextPreset(tempoPresetId)
+                                tempoPresetId = next.id
+                                CoachPreferences.setTempoPreset(context, next.id)
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 10.dp)
+                        )
 
                         // Phase 4: Coach Status Overlay in Non-Fullscreen
                         CoachStatusOverlay(
@@ -1700,6 +1801,137 @@ fun CoachScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
+                        }
+                    }
+                }
+
+                // v1.3.0 Pro Coaching Quick-Toggle Strip (Hands-Free Start, Ghost Form Overlay, Tempo Metronome)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 1. Hands-Free Auto-Start Chip
+                    Surface(
+                        onClick = {
+                            val next = !isHandsFreeStartEnabled
+                            isHandsFreeStartEnabled = next
+                            CoachPreferences.setHandsFreeStartEnabled(context, next)
+                            voiceManager.speakStatus(if (next) "Hands-free auto start enabled" else "Hands-free start off", isUrgent = true)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isHandsFreeStartEnabled) SuccessGreen.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isHandsFreeStartEnabled) SuccessGreen.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PanTool,
+                                contentDescription = null,
+                                tint = if (isHandsFreeStartEnabled) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isHandsFreeStartEnabled) "Auto-Start: ON" else "Auto-Start",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = if (isHandsFreeStartEnabled) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // 2. Ghost Shadow AR Form Overlay Chip
+                    Surface(
+                        onClick = {
+                            val next = !isGhostShadowEnabled
+                            isGhostShadowEnabled = next
+                            CoachPreferences.setGhostShadowEnabled(context, next)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isGhostShadowEnabled) Color(0xFF00E676).copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isGhostShadowEnabled) Color(0xFF00E676).copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccessibilityNew,
+                                contentDescription = null,
+                                tint = if (isGhostShadowEnabled) Color(0xFF00E676) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isGhostShadowEnabled) "Ghost: ON" else "Ghost Form",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = if (isGhostShadowEnabled) Color(0xFF00E676) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // 3. Tempo Metronome Cycle Chip
+                    val activePreset = TempoPreset.fromId(tempoPresetId)
+                    val isTempoActive = activePreset != TempoPreset.OFF
+                    Surface(
+                        onClick = {
+                            val next = TempoPreset.nextPreset(tempoPresetId)
+                            tempoPresetId = next.id
+                            CoachPreferences.setTempoPreset(context, next.id)
+                            voiceManager.speakStatus(
+                                if (next == TempoPreset.OFF) "Tempo metronome off" else "Tempo ${next.title}",
+                                isUrgent = true
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isTempoActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isTempoActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = if (isTempoActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = activePreset.shortBadge,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = if (isTempoActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -2636,7 +2868,201 @@ fun CoachScreen(
                     }
                 }
 
-                // 4. Immersive Fullscreen Mode
+                // 4b. Hands-Free Auto-Start (Countdown to Start)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, if (isHandsFreeStartEnabled) SuccessGreen.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(SuccessGreen.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timer,
+                                    contentDescription = null,
+                                    tint = SuccessGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Hands-Free Auto-Start",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Step into frame & hold ready pose for 3-2-1-Go!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = isHandsFreeStartEnabled,
+                            onCheckedChange = {
+                                isHandsFreeStartEnabled = it
+                                CoachPreferences.setHandsFreeStartEnabled(context, it)
+                            }
+                        )
+                    }
+                }
+
+                // 4c. Beginner Ghost Shadow AR Form Overlay
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, if (isGhostShadowEnabled) Color(0xFF00E5FF).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(Color(0xFF00E5FF).copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccessibilityNew,
+                                    contentDescription = null,
+                                    tint = Color(0xFF00E5FF),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Ghost Shadow Form Guide",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Holographic AR form silhouette over camera feed",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        TrackRepSwitch(
+                            checked = isGhostShadowEnabled,
+                            onCheckedChange = {
+                                isGhostShadowEnabled = it
+                                CoachPreferences.setGhostShadowEnabled(context, it)
+                            }
+                        )
+                    }
+                }
+
+                // 4d. Tempo & Eccentric Cadence Metronome
+                val activeTempoPreset = TempoPreset.fromId(tempoPresetId)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    border = BorderStroke(1.dp, if (activeTempoPreset != TempoPreset.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Speed,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Tempo & Cadence Metronome",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${activeTempoPreset.title} • ${activeTempoPreset.description}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            TempoPreset.entries.forEach { preset ->
+                                val isSelected = activeTempoPreset == preset
+                                Surface(
+                                    onClick = {
+                                        tempoPresetId = preset.id
+                                        CoachPreferences.setTempoPreset(context, preset.id)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = preset.id,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 5. Immersive Fullscreen Mode
                 Card(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
