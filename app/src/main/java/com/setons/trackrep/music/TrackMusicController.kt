@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.setons.trackrep.data.local.TrackMusicPreferences
 import java.net.URLEncoder
 
 /**
@@ -182,6 +183,9 @@ object TrackMusicController {
 
         // Case 1: Generic "play some music" / "play music" without naming a song
         if (query.isNullOrBlank()) {
+            val defaultTarget = TrackMusicPreferences.getDefaultMusicQuery(context)
+            val defaultIsPlaylist = TrackMusicPreferences.isDefaultPlaylist(context)
+
             if (am.isMusicActive) {
                 isMusicPlaybackActive = true
                 lastPlayTriggerTimeMs = System.currentTimeMillis()
@@ -193,11 +197,11 @@ object TrackMusicController {
             isMusicPlaybackActive = true
             lastPlayTriggerTimeMs = System.currentTimeMillis()
 
-            // If YouTube Music is installed, also ensure a workout station is queued if idle
+            // If YouTube Music is installed, launch configured default music/playlist
             return if (isYouTubeMusicInstalled(context)) {
                 try {
-                    launchYouTubeMusicSearch(context, "Workout Music", isPlaylist = true)
-                    "Starting workout music on YouTube Music."
+                    launchYouTubeMusicSearch(context, defaultTarget, isPlaylist = defaultIsPlaylist)
+                    "Starting $defaultTarget on YouTube Music."
                 } catch (_: Exception) {
                     "Resuming music playback."
                 }

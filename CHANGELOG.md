@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.7 - Gemini Capsule Quick Music Button & Configurable Default Workout Music in Settings](#v137---2026-10-18)
 - [v1.3.6 - Track AI & Voice Unification, Chat Speech-to-Text Button & Live Music Controls](#v136---2026-10-18)
 - [v1.3.5 - Standby Voice Listening Suspension During Active Music Playback & 1-Tap Trigger](#v135---2026-10-18)
 - [v1.3.4 - YouTube Music Voice Control, Headless Media Keys & Audio Focus Ducking](#v134---2026-10-18)
@@ -52,6 +53,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.7] - 2026-10-18
+
+### Added & Enhanced (Gemini Capsule Quick Music Button & Configurable Default Workout Music in Settings)
+- **Gemini Voice Capsule Quick Music Button**:
+  - Replaced the `3-1-1 Tempo` shortcut button in the Gemini Voice Capsule's expandable `+` quick action menu with a dedicated **Music** button (`Icons.Default.MusicNote`).
+  - The menu now cleanly presents core instant actions: `[Start Workout] [Torch] [Music / Pause] [Skip]`.
+  - Intelligently reflects live playback state: switches to `Pause` with primary gold accent highlighting when music is playing, or `Music` when stopped/paused.
+  - Added smooth horizontal scrolling (`horizontalScroll(rememberScrollState())`) to the quick actions row so shortcut chips adapt perfectly to all screen widths without clipping.
+- **Configurable Default Workout Music in Settings**:
+  - Added a dedicated **YouTube Music & Default Workout Track** settings card in `ProfileScreen` (`Settings`).
+  - Users can configure their preferred default music or playlist that plays whenever they tap the Music button or say *"Track, play some music"*.
+  - **Quick Presets**: Instant 1-tap presets for popular workout stations and tracks:
+    - `Workout Music` (default high-energy station)
+    - `Worry` (fan-favorite workout track)
+    - `Gym Phonk`
+    - `Beast Mode Playlist`
+  - **Custom Music Input Dialog**: Easily enter any song title, artist name, station, or custom YouTube Music playlist title with real-time saving and validation.
+  - **Test Playback Button**: Instantly test default music playback in YouTube Music directly from Settings.
+- **Voice & Chat Default Music Management**:
+  - Extended phonetic voice parsing and Track AI fast-path intent execution with `VoiceIntent.SetDefaultMusic`:
+    - *"Track, set default music to Worry"*
+    - *"Track, change default music to Gym Phonk"*
+    - Track immediately updates preferences and confirms: *"Default music set to '[query]' for YouTube Music."*
+  - Automatically persisted across app sessions via [`TrackMusicPreferences`](file:///C:/Users/Setons/.gemini/antigravity/scratch/trackrep/app/src/main/java/com/setons/trackrep/data/local/TrackMusicPreferences.kt).
 
 ## [v1.3.6] - 2026-10-18
 

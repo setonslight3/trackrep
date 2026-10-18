@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -37,12 +39,16 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.LocalContext
+import com.setons.trackrep.data.local.TrackMusicPreferences
+import com.setons.trackrep.music.TrackMusicController
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,6 +88,8 @@ fun GeminiVoiceCapsule(
     onExecuteAction: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val isMusicActive = TrackMusicController.isMusicActive(context)
     var showActionMenu by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "GeminiCapsuleWaves")
@@ -194,10 +202,12 @@ fun GeminiVoiceCapsule(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // 1. Start Workout
                             Surface(
                                 onClick = {
                                     showActionMenu = false
@@ -216,6 +226,8 @@ fun GeminiVoiceCapsule(
                                     Text("Start Workout", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
+
+                            // 2. Torch
                             Surface(
                                 onClick = {
                                     showActionMenu = false
@@ -233,40 +245,42 @@ fun GeminiVoiceCapsule(
                                     Text("Torch", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
+
+                            // 3. Music (Replaced tempo button with direct default music playback)
                             Surface(
                                 onClick = {
                                     showActionMenu = false
-                                    onExecuteAction("tempo 3 1 1")
+                                    if (isMusicActive) {
+                                        onExecuteAction("pause music")
+                                    } else {
+                                        onExecuteAction("play some music")
+                                    }
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF2C2C32)
+                                color = if (isMusicActive) primaryColor.copy(alpha = 0.22f) else Color(0xFF2C2C32),
+                                border = if (isMusicActive) BorderStroke(1.dp, primaryColor.copy(alpha = 0.6f)) else null
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Icon(Icons.Default.Speed, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                                    Text("3-1-1 Tempo", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    Icon(
+                                        imageVector = if (isMusicActive) Icons.Default.Pause else Icons.Default.MusicNote,
+                                        contentDescription = null,
+                                        tint = if (isMusicActive) primaryColor else Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = if (isMusicActive) "Pause" else "Music",
+                                        color = if (isMusicActive) primaryColor else Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
-                            Surface(
-                                onClick = {
-                                    showActionMenu = false
-                                    onExecuteAction("play some music")
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF2C2C32)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                                    Text("Music", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                }
-                            }
+
+                            // 4. Skip Song
                             Surface(
                                 onClick = {
                                     showActionMenu = false

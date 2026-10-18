@@ -15,6 +15,7 @@ import com.setons.trackrep.ai.action.TrackAiResponse
 import com.setons.trackrep.ai.action.UpdateScheduleDayAction
 import com.setons.trackrep.ai.action.WorkoutControlAction
 import com.setons.trackrep.coach.VoiceCommandParser
+import com.setons.trackrep.data.local.TrackMusicPreferences
 import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.music.TrackMusicController
@@ -126,6 +127,10 @@ object TrackAiService {
                     val action = MusicAction(if (intent.isUp) "VOLUME_UP" else "VOLUME_DOWN", explanation = feedback)
                     TrackActionExecutor.execute(context, action, userMessage)
                     return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.SetDefaultMusic -> {
+                    TrackMusicPreferences.setDefaultMusic(context, intent.query, intent.isPlaylist)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech)
                 }
                 is VoiceCommandParser.VoiceIntent.StartWorkout -> {
                     val action = WorkoutControlAction("START_WORKOUT", intent.targetExerciseId, explanation = parsedDirect.feedbackSpeech)

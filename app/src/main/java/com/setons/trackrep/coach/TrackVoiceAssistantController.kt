@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.setons.trackrep.ai.service.TrackAiService
 import com.setons.trackrep.camera.ExerciseFramingMode
 import com.setons.trackrep.data.local.CoachPreferences
+import com.setons.trackrep.data.local.TrackMusicPreferences
 import com.setons.trackrep.data.local.TrackVoicePreferences
 import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.ui.components.VoiceAssistantPhase
@@ -523,6 +524,11 @@ class TrackVoiceAssistantController(
                     com.setons.trackrep.music.TrackMusicController.volumeDown(context)
                 }
                 speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.SetDefaultMusic -> {
+                TrackMusicPreferences.setDefaultMusic(context, intent.query, intent.isPlaylist)
+                speakAndComplete(parsed.feedbackSpeech)
             }
 
             is VoiceCommandParser.VoiceIntent.AskAi -> {

@@ -54,6 +54,8 @@ object VoiceCommandParser {
 
         data class AdjustVolume(val isUp: Boolean) : VoiceIntent()
 
+        data class SetDefaultMusic(val query: String, val isPlaylist: Boolean = false) : VoiceIntent()
+
         data class AskAi(val cleanQuery: String) : VoiceIntent()
     }
 
@@ -352,7 +354,18 @@ object VoiceCommandParser {
             )
         }
 
-        // 14. YouTube Music Playback (Specific song, playlist, or generic workout music)
+        // 14. Set Default Music ("set default music to [song]", "change default music to [song]")
+        val defaultMusicMatch = resolveSetDefaultMusic(clean)
+        if (defaultMusicMatch != null) {
+            return ParsedCommand(
+                intent = defaultMusicMatch.first,
+                originalText = rawText,
+                confidenceScore = 0.95f,
+                feedbackSpeech = defaultMusicMatch.second
+            )
+        }
+
+        // 15. YouTube Music Playback (Specific song, playlist, or generic workout music)
         val playMusicMatch = resolvePlayMusic(clean)
         if (playMusicMatch != null) {
             return ParsedCommand(
@@ -640,6 +653,31 @@ object VoiceCommandParser {
             "resume the music", "resume music", "resume playback", "unpause music",
             "unpause the music", "unpause song", "continue music", "continue the music"
         )
+    }
+
+    private fun resolveSetDefaultMusic(text: String): Pair<VoiceIntent, String>? {
+        val prefixes = listOf(
+            "set default music to ",
+            "change default music to ",
+            "make default music ",
+            "set my default music to ",
+            "default music to ",
+            "set default song to ",
+            "change default song to "
+        )
+        for (prefix in prefixes) {
+            if (text.startsWith(prefix)) {
+                val query = text.removePrefix(prefix).trim()
+                if (query.isNotBlank()) {
+                    val isPlaylist = query.contains("playlist") || query.contains("station")
+                    return Pair(
+                        VoiceIntent.SetDefaultMusic(query, isPlaylist),
+                        "Default music set to '$query' for YouTube Music."
+                    )
+                }
+            }
+        }
+        return null
     }
 
     private fun resolvePlayMusic(text: String): Pair<VoiceIntent, String>? {
