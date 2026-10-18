@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.6 - Track AI & Voice Unification, Chat Speech-to-Text Button & Live Music Controls](#v136---2026-10-18)
 - [v1.3.5 - Standby Voice Listening Suspension During Active Music Playback & 1-Tap Trigger](#v135---2026-10-18)
 - [v1.3.4 - YouTube Music Voice Control, Headless Media Keys & Audio Focus Ducking](#v134---2026-10-18)
 - [v1.3.3 - High-Accuracy Multi-Hypothesis Speech Recognition & Phonetic Voice Command Parser](#v133---2026-10-18)
@@ -51,6 +52,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.6] - 2026-10-18
+
+### Added & Unified (Track AI & Voice Assistant Parity, Chat Speech-to-Text & Music Controls)
+- **Unified Track AI Capabilities ("They Are One")**:
+  - Eliminated all functional and capability discrepancies between the voice-driven Track assistant and conversational Track AI (`TrackAiScreen`).
+  - Added full YouTube Music control (`MusicAction`) and live workout execution (`WorkoutControlAction`) support to Track AI:
+    - Track AI can now start/stop workouts, swap exercises, toggle flashlight, toggle ghost shadow, and set tempo cadence.
+    - Track AI can now search and play tracks on YouTube Music (*"Track, play Worry on YouTube Music"*), resume music, pause/turn off music, skip tracks, and adjust playback volume directly from chat.
+    - Added instant capability recognition for music inquiries (*"Can you play music?"*, *"Do you play songs?"*) confirming YouTube Music integration with prompt suggestions instead of incorrect denials.
+    - Implemented high-performance zero-latency fast-path parsing (`VoiceCommandParser.parseSingle`) inside `TrackAiService.processMessage` so music and workout commands execute instantly without external API latency.
+    - Updated Gemini 2.5 Flash system prompt schema and offline rule-based reasoning engine to maintain identical parity online or offline.
+- **Dedicated Speech-to-Text Microphone Button in Track AI Chat**:
+  - Added a dedicated Speech-to-Text microphone button (`Icons.Default.Mic`) directly inside the chat input bar next to the Send button.
+  - Supports one-tap speech input with Android `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` and free-form language model.
+  - Automatically requests `RECORD_AUDIO` permission if not already granted and fills user voice input directly into the prompt bar.
+- **Live 1-Tap Music Control Bar in Track AI Screen**:
+  - Added a prominent, reactive **YouTube Music Control Bar** directly on `TrackAiScreen`.
+  - Shows real-time music playback status (`YouTube Music • Playing` vs. `YouTube Music • Off`).
+  - Offers instant 1-tap **Turn On**, **Turn Off**, and **Skip** buttons so users can toggle and control music without speaking or typing commands.
+  - Added quick suggestion chips: *"🎵 Turn On Music"*, *"⏸️ Turn Off Music"*, and *"Can you play music?"*.
+- **Interactive Action Cards for Music & Workout Controls**:
+  - Chat responses containing music or workout actions now render interactive confirmation cards with instant inline Resume/Pause and Skip buttons, and 1-tap navigation directly into the Camera Workout Coach.
 
 ## [v1.3.5] - 2026-10-18
 

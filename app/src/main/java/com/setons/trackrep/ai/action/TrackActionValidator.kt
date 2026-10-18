@@ -18,6 +18,8 @@ object TrackActionValidator {
             is ExplainWorkoutAdjustmentAction -> ActionValidationResult(isValid = true, action = action)
             is NavigateAppAction -> ActionValidationResult(isValid = true, action = action)
             is UpdateScheduleDayAction -> validateUpdateScheduleDay(action)
+            is MusicAction -> ActionValidationResult(isValid = true, action = action)
+            is WorkoutControlAction -> ActionValidationResult(isValid = true, action = action)
         }
     }
 

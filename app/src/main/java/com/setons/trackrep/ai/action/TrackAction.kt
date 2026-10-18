@@ -117,6 +117,38 @@ data class UpdateScheduleDayAction(
 }
 
 /**
+ * Controls music playback on YouTube Music (PLAY, PAUSE, RESUME, SKIP, STOP, VOLUME_UP, VOLUME_DOWN).
+ */
+data class MusicAction(
+    val command: String, // "PLAY", "PAUSE", "RESUME", "SKIP", "STOP", "VOLUME_UP", "VOLUME_DOWN"
+    val query: String? = null,
+    val isPlaylist: Boolean = false,
+    val explanation: String
+) : TrackAction {
+    override val actionType: String = "MUSIC_CONTROL"
+    override val summary: String = buildString {
+        append("Music: $command")
+        query?.let { append(" \"$it\"") }
+        if (isPlaylist) append(" (Playlist)")
+        append(" - $explanation")
+    }
+}
+
+/**
+ * Direct control over live workout session and coach camera HUD features.
+ */
+data class WorkoutControlAction(
+    val command: String, // "START_WORKOUT", "STOP_WORKOUT", "SWITCH_EXERCISE", "TOGGLE_TORCH", "TOGGLE_GHOST_SHADOW", "TOGGLE_HANDS_FREE", "SET_TEMPO"
+    val exerciseId: String? = null,
+    val targetReps: Int? = null,
+    val tempoPreset: String? = null,
+    val explanation: String
+) : TrackAction {
+    override val actionType: String = "WORKOUT_CONTROL"
+    override val summary: String = "Workout: $command ${exerciseId ?: ""} ($explanation)"
+}
+
+/**
  * Envelope holding Track's conversational reply message and validated action list.
  */
 data class TrackAiResponse(

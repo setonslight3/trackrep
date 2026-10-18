@@ -1,11 +1,15 @@
 package com.setons.trackrep.ai.action
 
 import android.content.Context
+import com.setons.trackrep.camera.ExerciseFramingMode
+import com.setons.trackrep.data.local.CoachPreferences
 import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.data.local.entity.AIActionLogEntity
 import com.setons.trackrep.data.local.entity.ExerciseProgressionEntity
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
 import com.setons.trackrep.exercise.model.WorkoutItem
+import com.setons.trackrep.music.TrackMusicController
+import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.workout.WorkoutEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,6 +51,8 @@ object TrackActionExecutor {
                 feedbackMessage = "Navigated to ${action.destination}"
             )
             is UpdateScheduleDayAction -> executeUpdateScheduleDay(context, action)
+            is MusicAction -> executeMusicAction(context, action)
+            is WorkoutControlAction -> executeWorkoutControlAction(context, action)
         }
 
         logAction(context, requestPrompt, action.actionType, action.summary, result.feedbackMessage, result.isSuccess)
@@ -244,6 +250,100 @@ object TrackActionExecutor {
                 isSuccess = false,
                 feedbackMessage = "Failed to update schedule: ${e.message}"
             )
+        }
+    }
+
+    private fun executeMusicAction(
+        context: Context?,
+        action: MusicAction
+    ): ActionExecutionResult {
+        if (context == null) {
+            return ActionExecutionResult(action, false, "Context unavailable for music control.")
+        }
+        val feedback = when (action.command.uppercase()) {
+            "PLAY" -> TrackMusicController.play(context, action.query, action.isPlaylist)
+            "PAUSE" -> TrackMusicController.pauseMusic(context)
+            "RESUME" -> TrackMusicController.resumeMusic(context)
+            "SKIP", "NEXT" -> TrackMusicController.skipMusic(context)
+            "STOP" -> TrackMusicController.stopMusic(context)
+            "VOLUME_UP" -> TrackMusicController.volumeUp(context)
+            "VOLUME_DOWN" -> TrackMusicController.volumeDown(context)
+            else -> "Unsupported music command: ${action.command}"
+        }
+        return ActionExecutionResult(
+            action = action,
+            isSuccess = true,
+            feedbackMessage = feedback
+        )
+    }
+
+    private fun executeWorkoutControlAction(
+        context: Context?,
+        action: WorkoutControlAction
+    ): ActionExecutionResult {
+        return when (action.command.uppercase()) {
+            "START_WORKOUT" -> {
+                action.exerciseId?.let { id ->
+                    val ex = ExerciseCatalog.getById(id)
+                    if (ex != null) {
+                        CoachModeHolder.setPending(
+                            exerciseId = ex.id,
+                            framingMode = ex.framingMode ?: ExerciseFramingMode.PUSH_UP,
+                            targetReps = action.targetReps ?: ex.defaultReps
+                        )
+                    }
+                }
+                CoachModeHolder.triggerStartRecording++
+                ActionExecutionResult(action, true, "Workout recording started.")
+            }
+            "STOP_WORKOUT" -> {
+                CoachModeHolder.triggerStopRecording++
+                ActionExecutionResult(action, true, "Workout stopped.")
+            }
+            "SWITCH_EXERCISE" -> {
+                action.exerciseId?.let { id ->
+                    val ex = ExerciseCatalog.getById(id)
+                    if (ex != null) {
+                        CoachModeHolder.setPending(
+                            exerciseId = ex.id,
+                            framingMode = ex.framingMode ?: ExerciseFramingMode.PUSH_UP,
+                            targetReps = action.targetReps ?: ex.defaultReps
+                        )
+                    }
+                }
+                ActionExecutionResult(action, true, "Switched exercise to ${action.exerciseId}.")
+            }
+            "TOGGLE_TORCH" -> {
+                CoachModeHolder.triggerToggleTorch++
+                ActionExecutionResult(action, true, "Camera flashlight toggled.")
+            }
+            "TOGGLE_GHOST_SHADOW" -> {
+                if (context != null) {
+                    val current = CoachPreferences.isGhostShadowEnabled(context)
+                    CoachPreferences.setGhostShadowEnabled(context, !current)
+                    ActionExecutionResult(action, true, if (!current) "Ghost shadow AR form guide enabled." else "Ghost shadow turned off.")
+                } else {
+                    ActionExecutionResult(action, false, "Context unavailable.")
+                }
+            }
+            "TOGGLE_HANDS_FREE" -> {
+                if (context != null) {
+                    val current = CoachPreferences.isHandsFreeStartEnabled(context)
+                    CoachPreferences.setHandsFreeStartEnabled(context, !current)
+                    ActionExecutionResult(action, true, if (!current) "Hands-free countdown auto-start enabled." else "Hands-free auto-start disabled.")
+                } else {
+                    ActionExecutionResult(action, false, "Context unavailable.")
+                }
+            }
+            "SET_TEMPO" -> {
+                if (context != null && action.tempoPreset != null) {
+                    CoachPreferences.setTempoPreset(context, action.tempoPreset)
+                    ActionExecutionResult(action, true, "Tempo cadence set to ${action.tempoPreset}.")
+                } else {
+                    ActionExecutionResult(action, false, "Context or preset unavailable.")
+                }
+            }
+            else -> ActionExecutionResult(action, false, "Unknown workout control command.")
         }
     }
 

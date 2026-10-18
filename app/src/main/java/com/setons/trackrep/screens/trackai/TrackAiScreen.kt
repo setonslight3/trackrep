@@ -22,20 +22,37 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
+import com.setons.trackrep.ai.action.MusicAction
 import com.setons.trackrep.ai.action.NavigateAppAction
 import com.setons.trackrep.ai.action.UpdateScheduleDayAction
+import com.setons.trackrep.ai.action.WorkoutControlAction
+import com.setons.trackrep.music.TrackMusicController
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -102,6 +119,15 @@ fun TrackAiScreen(
     var userPrompt by remember { mutableStateOf("") }
     var isThinking by remember { mutableStateOf(false) }
     var showApiKeyDialog by remember { mutableStateOf(false) }
+    var isMusicActiveState by remember { mutableStateOf(TrackMusicController.isMusicActive(context)) }
+
+    // Periodically update music active state
+    LaunchedEffect(Unit) {
+        while (true) {
+            isMusicActiveState = TrackMusicController.isMusicActive(context)
+            kotlinx.coroutines.delay(2000L)
+        }
+    }
 
     val messages = remember {
         mutableStateListOf(
@@ -116,6 +142,45 @@ fun TrackAiScreen(
     LaunchedEffect(messages.size, isThinking) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    // Speech-to-Text launcher
+    val speechRecognitionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                userPrompt = spokenText
+            }
+        }
+    }
+
+    fun launchSpeechRecognition() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to Track...")
+        }
+        try {
+            speechRecognitionLauncher.launch(intent)
+        } catch (_: Exception) {
+        }
+    }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchSpeechRecognition()
+        }
+    }
+
+    fun startSpeechToText() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            launchSpeechRecognition()
+        } else {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
@@ -207,6 +272,124 @@ fun TrackAiScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
+        // Live Music Control Card
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+            border = BorderStroke(
+                1.dp,
+                if (isMusicActiveState) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                if (isMusicActiveState) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (isMusicActiveState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = if (isMusicActiveState) "YouTube Music • Playing" else "YouTube Music • Off",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isMusicActiveState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isMusicActiveState) "Audio active • 1-tap playback control" else "Turn on or speak music commands",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (isMusicActiveState) {
+                        IconButton(
+                            onClick = {
+                                TrackMusicController.skipMusic(context)
+                                isMusicActiveState = true
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = "Skip Song",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                TrackMusicController.pauseMusic(context)
+                                isMusicActiveState = false
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Turn Off", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                TrackMusicController.play(context, null)
+                                isMusicActiveState = true
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Turn On", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
         // Quick Suggestion Chips (Horizontal Scroller)
         Row(
             modifier = Modifier
@@ -214,6 +397,9 @@ fun TrackAiScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            QuickChip("🎵 Turn On Music", "Track, play some music.") { submitQuery(it) }
+            QuickChip("⏸️ Turn Off Music", "Track, pause the music.") { submitQuery(it) }
+            QuickChip("Can you play music?", "Can you play music?") { submitQuery(it) }
             QuickChip("Edit Routine", "Where do I edit or customize my workout routine? Take me there.") { submitQuery(it) }
             QuickChip("My Best Reps", "Where can I find my best reps and records? How do I get there?") { submitQuery(it) }
             QuickChip("Wrist relief", "My wrists hurt. Can we swap standard push-ups?") { submitQuery(it) }
@@ -308,6 +494,25 @@ fun TrackAiScreen(
                 )
 
                 IconButton(
+                    onClick = { startSpeechToText() },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Speak to Track",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                IconButton(
                     onClick = { submitQuery(userPrompt) },
                     enabled = userPrompt.isNotBlank() && !isThinking,
                     modifier = Modifier
@@ -318,7 +523,7 @@ fun TrackAiScreen(
                         )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
                         tint = if (userPrompt.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         modifier = Modifier.size(18.dp)
@@ -433,6 +638,7 @@ private fun ActionConfirmationCard(
     onLaunchExerciseInCoach: (String) -> Unit,
     onNavigateToDestination: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -625,6 +831,94 @@ private fun ActionConfirmationCard(
                         Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("View in Schedule", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                is MusicAction -> {
+                    Text(
+                        text = "YouTube Music Control",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = action.summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isPauseCmd = action.command.equals("PAUSE", ignoreCase = true) || action.command.equals("STOP", ignoreCase = true)
+                        Button(
+                            onClick = {
+                                if (isPauseCmd) {
+                                    TrackMusicController.resumeMusic(context)
+                                } else {
+                                    TrackMusicController.pauseMusic(context)
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isPauseCmd) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(if (isPauseCmd) "Resume" else "Pause", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { TrackMusicController.skipMusic(context) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Skip", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                is WorkoutControlAction -> {
+                    Text(
+                        text = "Workout Coach Control",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = action.summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { onNavigateToDestination("COACH") },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Default.FitnessCenter, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Open Workout Coach", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 

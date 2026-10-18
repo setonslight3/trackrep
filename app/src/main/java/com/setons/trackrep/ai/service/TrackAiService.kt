@@ -4,6 +4,7 @@ import android.content.Context
 import com.setons.trackrep.ai.action.AdjustTargetAction
 import com.setons.trackrep.ai.action.ExplainWorkoutAdjustmentAction
 import com.setons.trackrep.ai.action.ModifyRoutineAction
+import com.setons.trackrep.ai.action.MusicAction
 import com.setons.trackrep.ai.action.NavigateAppAction
 import com.setons.trackrep.ai.action.ReplaceExerciseAction
 import com.setons.trackrep.ai.action.RescheduleWorkoutAction
@@ -12,8 +13,12 @@ import com.setons.trackrep.ai.action.TrackActionExecutor
 import com.setons.trackrep.ai.action.TrackActionValidator
 import com.setons.trackrep.ai.action.TrackAiResponse
 import com.setons.trackrep.ai.action.UpdateScheduleDayAction
+import com.setons.trackrep.ai.action.WorkoutControlAction
+import com.setons.trackrep.coach.VoiceCommandParser
 import com.setons.trackrep.data.local.TrackRepDatabase
 import com.setons.trackrep.exercise.catalog.ExerciseCatalog
+import com.setons.trackrep.music.TrackMusicController
+import com.setons.trackrep.screens.coach.CoachModeHolder
 import com.setons.trackrep.workout.WorkoutEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -69,6 +74,102 @@ object TrackAiService {
         context: Context,
         userMessage: String
     ): TrackAiResponse = withContext(Dispatchers.IO) {
+        val norm = userMessage.lowercase(Locale.ROOT).trim()
+
+        // Fast-path capability check: "can you play music", "can you play songs", "do you play music"
+        if (norm.contains("can you play music") || norm.contains("can you play songs") ||
+            norm.contains("do you play music") || norm.contains("are you able to play music") ||
+            norm.contains("can you play a song") || norm.contains("can u play music") ||
+            norm == "play music?" || norm == "music?" || norm.contains("can you play yt music") ||
+            norm.contains("can you control music")
+        ) {
+            val reply = "Yes! As Track, I have full hands-free control over YouTube Music on your device. I can search and stream any song, artist, or workout playlist (e.g. 'Play Worry on YouTube Music'), pause, resume, skip tracks, and adjust volume. You can also turn music off or on anytime using the controls right above!"
+            return@withContext TrackAiResponse(replyMessage = reply, actions = emptyList())
+        }
+
+        // Fast-path direct intent execution (unifies Voice Assistant and Track AI chat)
+        val parsedDirect = VoiceCommandParser.parseSingle(userMessage)
+        if (parsedDirect.confidenceScore >= 0.90f) {
+            when (val intent = parsedDirect.intent) {
+                is VoiceCommandParser.VoiceIntent.PlayMusic -> {
+                    val feedback = TrackMusicController.play(context, intent.query, intent.isPlaylist)
+                    val action = MusicAction("PLAY", intent.query, intent.isPlaylist, feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.PauseMusic -> {
+                    val feedback = TrackMusicController.pauseMusic(context)
+                    val action = MusicAction("PAUSE", explanation = feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.ResumeMusic -> {
+                    val feedback = TrackMusicController.resumeMusic(context)
+                    val action = MusicAction("RESUME", explanation = feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.SkipMusic -> {
+                    val feedback = TrackMusicController.skipMusic(context)
+                    val action = MusicAction("SKIP", explanation = feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.StopMusic -> {
+                    val feedback = TrackMusicController.stopMusic(context)
+                    val action = MusicAction("STOP", explanation = feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.AdjustVolume -> {
+                    val feedback = if (intent.isUp) TrackMusicController.volumeUp(context) else TrackMusicController.volumeDown(context)
+                    val action = MusicAction(if (intent.isUp) "VOLUME_UP" else "VOLUME_DOWN", explanation = feedback)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(feedback, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.StartWorkout -> {
+                    val action = WorkoutControlAction("START_WORKOUT", intent.targetExerciseId, explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.StopWorkout -> {
+                    val action = WorkoutControlAction("STOP_WORKOUT", explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.SwitchExercise -> {
+                    val action = WorkoutControlAction("SWITCH_EXERCISE", intent.exerciseId, explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.ToggleTorch -> {
+                    val action = WorkoutControlAction("TOGGLE_TORCH", explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.ToggleGhostShadow -> {
+                    val action = WorkoutControlAction("TOGGLE_GHOST_SHADOW", explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.ToggleHandsFree -> {
+                    val action = WorkoutControlAction("TOGGLE_HANDS_FREE", explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.SetTempo -> {
+                    val action = WorkoutControlAction("SET_TEMPO", tempoPreset = intent.preset, explanation = parsedDirect.feedbackSpeech)
+                    TrackActionExecutor.execute(context, action, userMessage)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                is VoiceCommandParser.VoiceIntent.Navigate -> {
+                    val action = NavigateAppAction(intent.destination, "Take Me to ${intent.destination.lowercase().replaceFirstChar { it.uppercase() }}", parsedDirect.feedbackSpeech)
+                    return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
+                }
+                else -> { /* Fall through to Gemini or On-Device reasoning */ }
+            }
+        }
+
         val apiKey = getApiKey(context)
 
         // 1. If API key is configured, ALWAYS query Gemini directly (never fallback to local NLP)
@@ -166,9 +267,46 @@ You cannot directly alter user data. You must output a JSON object conforming to
       "routineName": "Beginner Legs & Glute Strength",
       "isRestDay": false,
       "reason": "Athlete requested leg day"
+    },
+    {
+      "type": "MUSIC_CONTROL",
+      "command": "PLAY",
+      "query": "Worry",
+      "isPlaylist": false,
+      "explanation": "Playing requested song on YouTube Music"
+    },
+    {
+      "type": "WORKOUT_CONTROL",
+      "command": "START_WORKOUT",
+      "exerciseId": "push_up_standard",
+      "explanation": "Starting push-up set in Coach"
     }
   ]
 }
+
+MUSIC PLAYBACK & AUDIO CONTROL RULES:
+You have direct, hands-free control over YouTube Music on this device! Both the voice assistant and you (Track AI) share identical, equal music control powers.
+- When the athlete asks if you can play music, songs, or playlists (e.g. 'can you play music', 'do you play music', 'can you play songs', 'what can you play'):
+  Confirm enthusiastically: "Yes! As Track, I have full hands-free control over YouTube Music on your device. I can stream any song, artist, or workout playlist (e.g. 'Play Worry on YouTube Music'), pause, resume, skip tracks, and adjust the volume. You can tell me what to play or tap the music controls on screen!"
+- When the athlete asks to play music (e.g. 'play worry on yt music', 'play some music', 'turn on music', 'play workout playlist'):
+  Generate a MUSIC_CONTROL action with command "PLAY" (with query and isPlaylist if specified).
+- When the athlete asks to pause or turn off music (e.g. 'turn off music', 'pause music', 'stop music'):
+  Generate a MUSIC_CONTROL action with command "PAUSE" or "STOP".
+- When the athlete asks to resume or turn on music (e.g. 'turn on music', 'resume music', 'unpause'):
+  Generate a MUSIC_CONTROL action with command "RESUME".
+- When the athlete asks to skip a song (e.g. 'skip song', 'next track'):
+  Generate a MUSIC_CONTROL action with command "SKIP".
+- When the athlete asks to adjust volume (e.g. 'volume up', 'turn volume down'):
+  Generate a MUSIC_CONTROL action with command "VOLUME_UP" or "VOLUME_DOWN".
+
+LIVE WORKOUT & COACHING RULES:
+You can directly control live workout tracking:
+- When the athlete asks to start a workout (e.g. 'start workout', 'start pushups'):
+  Generate a WORKOUT_CONTROL action with command "START_WORKOUT" and the target exerciseId.
+- When the athlete asks to stop tracking:
+  Generate a WORKOUT_CONTROL action with command "STOP_WORKOUT".
+- When the athlete asks to turn on or toggle flashlight/torch:
+  Generate a WORKOUT_CONTROL action with command "TOGGLE_TORCH".
 
 ROUTINE EDITING & CUSTOMIZATION NAVIGATION RULE:
 When the athlete asks how to edit, change, swap, customize, or find their routines, or where to edit their routine/schedule (e.g. 'How do I edit my routine?', 'I want to change my routine', 'Where do I edit routine?', 'Can I customize my routine?', 'Where do I find routine to edit?'):
@@ -377,6 +515,27 @@ $structuredContext
                                 )
                             )
                         }
+                        "MUSIC_CONTROL" -> {
+                            actions.add(
+                                MusicAction(
+                                    command = item.optString("command", "PLAY").uppercase(),
+                                    query = if (item.has("query")) item.getString("query") else null,
+                                    isPlaylist = item.optBoolean("isPlaylist", false),
+                                    explanation = item.optString("explanation", "Music control requested")
+                                )
+                            )
+                        }
+                        "WORKOUT_CONTROL" -> {
+                            actions.add(
+                                WorkoutControlAction(
+                                    command = item.optString("command", "START_WORKOUT").uppercase(),
+                                    exerciseId = if (item.has("exerciseId")) item.getString("exerciseId") else null,
+                                    targetReps = if (item.has("targetReps")) item.getInt("targetReps") else null,
+                                    tempoPreset = if (item.has("tempoPreset")) item.getString("tempoPreset") else null,
+                                    explanation = item.optString("explanation", "Workout control requested")
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -400,6 +559,33 @@ $structuredContext
         val reply: String
 
         when {
+            // 0. Music playback & capability queries
+            q.contains("can you play music") || q.contains("play music?") || q.contains("can you play songs") ||
+            q.contains("do you play music") || q.contains("are you able to play music") -> {
+                reply = "Yes! As Track, I have full hands-free control over YouTube Music on your device. I can search and stream songs or workout playlists (e.g. 'Play Worry on YouTube Music'), pause, resume, skip tracks, and adjust volume. You can also turn music on or off using the controls right above!"
+            }
+
+            q.contains("turn off music") || q.contains("pause music") || q.contains("stop music") || q == "pause" || q == "stop" -> {
+                actions.add(MusicAction("PAUSE", explanation = "Paused music playback."))
+                reply = "Music paused."
+            }
+
+            q.contains("turn on music") || q.contains("resume music") || q.contains("unpause") || q == "play" -> {
+                actions.add(MusicAction("RESUME", explanation = "Resumed music playback."))
+                reply = "Resuming music."
+            }
+
+            q.contains("skip") || q.contains("next song") || q.contains("next track") -> {
+                actions.add(MusicAction("SKIP", explanation = "Skipped to next song."))
+                reply = "Skipping to next song."
+            }
+
+            q.startsWith("play ") -> {
+                val song = q.removePrefix("play ").removeSuffix("on youtube music").removeSuffix("on yt music").trim()
+                actions.add(MusicAction("PLAY", query = song, explanation = "Playing $song on YouTube Music."))
+                reply = "Playing $song on YouTube Music."
+            }
+
             // 1. Pain / Joint Discomfort: Wrist Relief
             q.contains("wrist") -> {
                 val newExId = "push_up_incline"
