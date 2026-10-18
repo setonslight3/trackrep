@@ -84,6 +84,7 @@ import com.setons.trackrep.ui.demo.StickmanDemoPlayer
 import com.setons.trackrep.ui.components.TrackRepSwitch
 import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Videocam
@@ -181,6 +182,7 @@ object CoachModeHolder {
     var triggerStartRecording by mutableLongStateOf(0L)
     var triggerStopRecording by mutableLongStateOf(0L)
     var triggerToggleTorch by mutableLongStateOf(0L)
+    var triggerManualVoiceListen by mutableLongStateOf(0L)
 
     fun setPending(
         exerciseId: String,
@@ -1053,11 +1055,33 @@ fun CoachScreen(
                     }
                 }
 
-                // 3. Right: Flashlight, Quick Flip & More Controls
+                // 3. Right: Voice Assistant, Flashlight, Quick Flip & More Controls
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(
+                        onClick = { CoachModeHolder.triggerManualVoiceListen++ },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(
+                                if (com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) DarkPrimaryGold.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.65f),
+                                CircleShape
+                            )
+                            .border(
+                                1.dp,
+                                if (com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) DarkPrimaryGold else Color.White.copy(alpha = 0.2f),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Voice Assistant",
+                            tint = if (com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) DarkPrimaryGold else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = { isTorchEnabled = !isTorchEnabled },
                         modifier = Modifier

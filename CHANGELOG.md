@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.5 - Standby Voice Listening Suspension During Active Music Playback & 1-Tap Trigger](#v135---2026-10-18)
 - [v1.3.4 - YouTube Music Voice Control, Headless Media Keys & Audio Focus Ducking](#v134---2026-10-18)
 - [v1.3.3 - High-Accuracy Multi-Hypothesis Speech Recognition & Phonetic Voice Command Parser](#v133---2026-10-18)
 - [v1.3.2 - Authentic Gemini Bottom Capsule Pill, Inward Delicate Rim Glow & Voice Reactivation Controls](#v132---2026-10-17)
@@ -50,6 +51,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.5] - 2026-10-18
+
+### Fixed & Enhanced (Standby Listening Suspension During Active Music Playback)
+- **Eliminated Audio Stutter & Repeated Pausing During Music Playback**:
+  - Resolved an issue where Android's native `SpeechRecognizer` in continuous standby wake-word mode repeatedly initiated microphone recording sessions every 3–4 seconds (on ambient silence timeouts), triggering the Android system audio policy manager to pause, stutter, or duck external media players like YouTube Music.
+  - Continuous standby wake-word listening is now **automatically suspended** whenever music is actively playing (`am.isMusicActive || isMusicPlaybackActive`).
+  - Standby recognizer instances are cleanly torn down and kept closed while music is playing, guaranteeing uninterrupted, continuous music playback.
+- **Dedicated 1-Tap Voice Wake Triggers During Music**:
+  - **Top-Bar Dynamic Status Pill**: Automatically updates to display `🎵 Music • Tap to Speak` with primary gold accent highlighting whenever music is playing, giving users a simple, one-touch way to give commands to Track without continuous listening running.
+  - **Coach Workout Header Mic Button**: Added a dedicated Voice Assistant mic button directly alongside Flashlight and Camera Flip in the camera HUD so users can tap to speak mid-set without needing wake-word listening.
+  - **Transient Ducking On-Demand**: When tapped, Track gracefully ducks YouTube Music down to 20%, captures the voice command with extended endpointing, executes the action, restores full music volume, and dismisses without restarting standby listening.
+  - **Automatic Standby Resumption**: When music is paused or stopped (either via voice command *"Track, pause the music"* or externally), standby wake-word listening automatically resumes.
 
 ## [v1.3.4] - 2026-10-18
 

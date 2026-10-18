@@ -106,6 +106,12 @@ class TrackVoiceAssistantController(
             return
         }
 
+        if (com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
+            Log.d(TAG, "Music is actively playing; standby wake-word listening suspended to preserve audio playback.")
+            isStandbyListeningActive = false
+            return
+        }
+
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "RECORD_AUDIO permission not granted; standby wake-word listening disabled.")
             isStandbyListeningActive = false
@@ -183,8 +189,8 @@ class TrackVoiceAssistantController(
         lastRecognizedPartial = null
         statusHeadline = "Say \"Track\" anytime"
 
-        // Always resurrect standby wake-word listening with fresh listener
-        if (TrackVoicePreferences.isWakeWordEnabled(context)) {
+        // Only resurrect standby wake-word listening if music is not active
+        if (TrackVoicePreferences.isWakeWordEnabled(context) && !com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
             mainHandler.postDelayed({
                 startListeningIfEnabled(forceRecreate = true)
             }, 450L)
@@ -220,6 +226,12 @@ class TrackVoiceAssistantController(
     private fun initAndStartStandbyRecognizer(forceRecreate: Boolean = false) {
         if (!isUserEnabledStandby || phase != VoiceAssistantPhase.IDLE) return
 
+        if (com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
+            Log.d(TAG, "Music active during standby recognizer init; keeping recognizer closed.")
+            destroyRecognizerSafely()
+            return
+        }
+
         try {
             if (forceRecreate || speechRecognizer == null) {
                 destroyRecognizerSafely()
@@ -254,8 +266,8 @@ class TrackVoiceAssistantController(
 
                 override fun onError(error: Int) {
                     isStandbyListeningActive = false
-                    // Standby timeout or pause: quietly restart listening with fresh session
-                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
+                    // Standby timeout or pause: quietly restart listening with fresh session if music is not active
+                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE && !com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
                         val delay = when (error) {
                             SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_CLIENT -> 650L
                             else -> 400L
@@ -271,8 +283,8 @@ class TrackVoiceAssistantController(
                     val candidates = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     handleStandbySpeechCandidates(candidates)
 
-                    // Loop standby listening if still IDLE
-                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
+                    // Loop standby listening if still IDLE and music is not active
+                    if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE && !com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
                         mainHandler.postDelayed({
                             initAndStartStandbyRecognizer(forceRecreate = false)
                         }, 300L)
@@ -293,7 +305,7 @@ class TrackVoiceAssistantController(
             Log.w(TAG, "Failed to start standby speech recognizer", e)
             isStandbyListeningActive = false
             mainHandler.postDelayed({
-                if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
+                if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE && !com.setons.trackrep.music.TrackMusicController.isMusicActive(context)) {
                     initAndStartStandbyRecognizer(forceRecreate = true)
                 }
             }, 1000L)

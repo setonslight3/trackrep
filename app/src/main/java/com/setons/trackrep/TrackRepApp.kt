@@ -56,6 +56,7 @@ import androidx.core.content.ContextCompat
 import com.setons.trackrep.coach.CoachVoiceManager
 import com.setons.trackrep.coach.TrackVoiceAssistantController
 import com.setons.trackrep.data.local.TrackVoicePreferences
+import com.setons.trackrep.music.TrackMusicController
 import com.setons.trackrep.ui.components.GeminiEdgeGlow
 import com.setons.trackrep.ui.components.GeminiVoiceCapsule
 
@@ -181,6 +182,13 @@ fun TrackRepApp() {
             }
         }
 
+        // CoachScreen manual voice trigger listener
+        LaunchedEffect(CoachModeHolder.triggerManualVoiceListen) {
+            if (CoachModeHolder.triggerManualVoiceListen > 0L) {
+                voiceController.turnVoiceListeningOnAndListen()
+            }
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
@@ -197,19 +205,24 @@ fun TrackRepApp() {
                                 )
                             },
                             actions = {
+                                val isMusicPlaying = TrackMusicController.isMusicActive(context)
                                 Surface(
                                     onClick = {
                                         voiceController.turnVoiceListeningOnAndListen()
                                     },
                                     shape = RoundedCornerShape(20.dp),
-                                    color = if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                    color = if (isMusicPlaying) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    } else if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
                                         MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     } else {
                                         MaterialTheme.colorScheme.surfaceVariant
                                     },
                                     border = BorderStroke(
                                         1.dp,
-                                        if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                        if (isMusicPlaying) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
                                             MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                         } else {
                                             MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
@@ -226,7 +239,9 @@ fun TrackRepApp() {
                                             modifier = Modifier
                                                 .size(8.dp)
                                                 .background(
-                                                    if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
+                                                    if (isMusicPlaying) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else if (voiceController.isStandbyListeningActive || voiceController.phase == VoiceAssistantPhase.LISTENING) {
                                                         SuccessGreen
                                                     } else {
                                                         Color(0xFFFFA000)
@@ -235,7 +250,7 @@ fun TrackRepApp() {
                                                 )
                                         )
                                         Text(
-                                            text = if (voiceController.isStandbyListeningActive) "Track: Active" else "Wake Track",
+                                            text = if (isMusicPlaying) "🎵 Music • Tap to Speak" else if (voiceController.isStandbyListeningActive) "Track: Active" else "Wake Track",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -243,7 +258,7 @@ fun TrackRepApp() {
                                         Icon(
                                             imageVector = Icons.Default.Mic,
                                             contentDescription = "Voice Assistant",
-                                            tint = if (voiceController.isStandbyListeningActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            tint = if (isMusicPlaying || voiceController.isStandbyListeningActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                             modifier = Modifier.size(15.dp)
                                         )
                                     }

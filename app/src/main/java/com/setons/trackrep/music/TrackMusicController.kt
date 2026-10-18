@@ -12,6 +12,9 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import java.net.URLEncoder
 
 /**
@@ -24,6 +27,8 @@ import java.net.URLEncoder
  * 3. Media Stream Volume Adjustment (isolated from CoachVoiceManager TTS).
  * 4. Automatic Audio Focus Ducking: temporarily lowers background music volume to 20%
  *    while the voice assistant is listening or speaking.
+ * 5. Standby Voice Listening Suspension: prevents voice recognizer from polling or looping
+ *    while music is active, avoiding repeated pausing/resuming stutter.
  */
 object TrackMusicController {
 
@@ -31,6 +36,31 @@ object TrackMusicController {
     private const val YOUTUBE_MUSIC_PACKAGE = "com.google.android.apps.youtube.music"
 
     private var audioFocusRequest: AudioFocusRequest? = null
+
+    var isMusicPlaybackActive by mutableStateOf(false)
+        private set
+
+    @Volatile
+    private var lastPlayTriggerTimeMs: Long = 0L
+
+    /**
+     * Check if music is actively playing on the device (either in YouTube Music
+     * or any active media stream) or actively tracked by TrackMusicController.
+     */
+    fun isMusicActive(context: Context): Boolean {
+        return try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val isAudioActive = am.isMusicActive
+            if (isAudioActive) {
+                isMusicPlaybackActive = true
+            } else if (isMusicPlaybackActive && (System.currentTimeMillis() - lastPlayTriggerTimeMs >= 5000L)) {
+                isMusicPlaybackActive = false
+            }
+            isAudioActive || isMusicPlaybackActive
+        } catch (_: Exception) {
+            isMusicPlaybackActive
+        }
+    }
 
     /**
      * Check if YouTube Music is installed on the device.
@@ -59,6 +89,8 @@ object TrackMusicController {
         return try {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             sendMediaKeyEvent(am, KeyEvent.KEYCODE_MEDIA_PAUSE)
+            isMusicPlaybackActive = false
+            lastPlayTriggerTimeMs = 0L
             "Music paused."
         } catch (e: Exception) {
             Log.w(TAG, "Failed to pause music", e)
@@ -73,6 +105,8 @@ object TrackMusicController {
         return try {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             sendMediaKeyEvent(am, KeyEvent.KEYCODE_MEDIA_PLAY)
+            isMusicPlaybackActive = true
+            lastPlayTriggerTimeMs = System.currentTimeMillis()
             "Resuming music."
         } catch (e: Exception) {
             Log.w(TAG, "Failed to resume music", e)
@@ -87,6 +121,8 @@ object TrackMusicController {
         return try {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             sendMediaKeyEvent(am, KeyEvent.KEYCODE_MEDIA_NEXT)
+            isMusicPlaybackActive = true
+            lastPlayTriggerTimeMs = System.currentTimeMillis()
             "Skipping to next song."
         } catch (e: Exception) {
             Log.w(TAG, "Failed to skip song", e)
@@ -101,6 +137,8 @@ object TrackMusicController {
         return try {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             sendMediaKeyEvent(am, KeyEvent.KEYCODE_MEDIA_STOP)
+            isMusicPlaybackActive = false
+            lastPlayTriggerTimeMs = 0L
             "Music stopped."
         } catch (e: Exception) {
             Log.w(TAG, "Failed to stop music", e)
@@ -145,11 +183,15 @@ object TrackMusicController {
         // Case 1: Generic "play some music" / "play music" without naming a song
         if (query.isNullOrBlank()) {
             if (am.isMusicActive) {
+                isMusicPlaybackActive = true
+                lastPlayTriggerTimeMs = System.currentTimeMillis()
                 return "Music is already playing. Say 'skip' or 'pause' to control it."
             }
 
             // Attempt to resume previous session headless
             sendMediaKeyEvent(am, KeyEvent.KEYCODE_MEDIA_PLAY)
+            isMusicPlaybackActive = true
+            lastPlayTriggerTimeMs = System.currentTimeMillis()
 
             // If YouTube Music is installed, also ensure a workout station is queued if idle
             return if (isYouTubeMusicInstalled(context)) {
@@ -168,6 +210,9 @@ object TrackMusicController {
         if (!isYouTubeMusicInstalled(context)) {
             return "YouTube Music is not installed on this device. Install it from the Play Store to stream music."
         }
+
+        isMusicPlaybackActive = true
+        lastPlayTriggerTimeMs = System.currentTimeMillis()
 
         return try {
             launchYouTubeMusicSearch(context, query, isPlaylist)
@@ -189,6 +234,8 @@ object TrackMusicController {
                 "Searching $query on YouTube Music."
             } catch (fallbackEx: Exception) {
                 Log.e(TAG, "Fallback search failed", fallbackEx)
+                isMusicPlaybackActive = false
+                lastPlayTriggerTimeMs = 0L
                 "Could not launch YouTube Music for $query."
             }
         }
