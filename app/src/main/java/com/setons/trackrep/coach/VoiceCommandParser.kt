@@ -171,15 +171,91 @@ object VoiceCommandParser {
             )
         }
 
+        // ==========================================
+        // 1. MUSIC CONTROLS (Top Priority)
+        // Explicitly handles music pause/stop/volume/skip/resume/play before workout commands
+        // so commands like "stop music" or "turn off music" never hijack workout lifecycle.
+        // ==========================================
+
+        // 1a. Music Volume Controls
+        val volumeMatch = resolveMusicVolume(clean)
+        if (volumeMatch != null) {
+            val speech = if (volumeMatch) "Volume increased." else "Volume decreased."
+            return ParsedCommand(
+                intent = VoiceIntent.AdjustVolume(volumeMatch),
+                originalText = rawText,
+                confidenceScore = 0.96f,
+                feedbackSpeech = speech
+            )
+        }
+
+        // 1b. Music Pause / Stop Controls ("stop music", "pause music", "turn off music", etc.)
+        val musicPauseOrStop = resolveMusicPauseOrStop(clean)
+        if (musicPauseOrStop != null) {
+            return ParsedCommand(
+                intent = musicPauseOrStop.first,
+                originalText = rawText,
+                confidenceScore = 0.97f,
+                feedbackSpeech = musicPauseOrStop.second
+            )
+        }
+
+        // 1c. Music Skip Track
+        if (matchesMusicSkip(clean)) {
+            return ParsedCommand(
+                intent = VoiceIntent.SkipMusic,
+                originalText = rawText,
+                confidenceScore = 0.96f,
+                feedbackSpeech = "Skipping to next song."
+            )
+        }
+
+        // 1d. Music Resume / Turn On Music ("resume music", "turn on music", "unpause")
+        if (matchesMusicResume(clean)) {
+            return ParsedCommand(
+                intent = VoiceIntent.ResumeMusic,
+                originalText = rawText,
+                confidenceScore = 0.96f,
+                feedbackSpeech = "Resuming music."
+            )
+        }
+
+        // 1e. Set Default Music ("set default music to [song]", "change default music to [song]")
+        val defaultMusicMatch = resolveSetDefaultMusic(clean)
+        if (defaultMusicMatch != null) {
+            return ParsedCommand(
+                intent = defaultMusicMatch.first,
+                originalText = rawText,
+                confidenceScore = 0.96f,
+                feedbackSpeech = defaultMusicMatch.second
+            )
+        }
+
+        // 1f. YouTube Music Playback (Specific song, playlist, or generic workout music)
+        val playMusicMatch = resolvePlayMusic(clean)
+        if (playMusicMatch != null) {
+            return ParsedCommand(
+                intent = playMusicMatch.first,
+                originalText = rawText,
+                confidenceScore = 0.96f,
+                feedbackSpeech = playMusicMatch.second
+            )
+        }
+
+        // ==========================================
+        // 2. WORKOUT & EXERCISE CONTROLS
+        // ==========================================
+
         // Check for Exercise Mentions
         val exerciseMatch = resolveExercise(clean)
 
         // Check for Workout Lifecycle Actions (Start / Stop)
         val isStartAction = matchesStartWorkout(clean)
         val isStopAction = matchesStopWorkout(clean)
+        val isStartVerbAction = matchesStartVerb(clean)
 
-        // 1. Compound: Start + Exercise (e.g. "Start push-ups", "Let's do squats")
-        if (isStartAction && exerciseMatch != null) {
+        // 2a. Compound: Start + Exercise (e.g. "Start push-ups", "Let's do squats")
+        if (exerciseMatch != null && (isStartAction || isStartVerbAction)) {
             return ParsedCommand(
                 intent = VoiceIntent.StartWorkout(
                     targetExerciseId = exerciseMatch.id,
@@ -192,7 +268,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 2. Pure Stop Workout
+        // 2b. Pure Stop Workout (e.g. "Stop workout", "Stop set", "End set", "I'm done")
         if (isStopAction) {
             return ParsedCommand(
                 intent = VoiceIntent.StopWorkout,
@@ -202,7 +278,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 3. Pure Start Workout (General)
+        // 2c. Pure Start Workout (General)
         if (isStartAction) {
             return ParsedCommand(
                 intent = VoiceIntent.StartWorkout(),
@@ -212,7 +288,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 4. Pure Switch Exercise (e.g. "Push-ups", "Switch to squats", "Plank hold")
+        // 2d. Pure Switch Exercise (e.g. "Push-ups", "Switch to squats", "Plank hold")
         if (exerciseMatch != null) {
             return ParsedCommand(
                 intent = VoiceIntent.SwitchExercise(
@@ -226,7 +302,11 @@ object VoiceCommandParser {
             )
         }
 
-        // 5. Flashlight / Torch
+        // ==========================================
+        // 3. HARDWARE & COACHING PRO FEATURES
+        // ==========================================
+
+        // 3a. Flashlight / Torch
         val torchAction = resolveTorch(clean)
         if (torchAction != null) {
             val explicitEnable = when (torchAction) {
@@ -247,7 +327,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 6. Ghost Shadow Form Overlay
+        // 3b. Ghost Shadow Form Overlay
         val ghostAction = resolveGhostShadow(clean)
         if (ghostAction != null) {
             val explicitEnable = when (ghostAction) {
@@ -268,7 +348,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 7. Hands-Free Auto Start
+        // 3c. Hands-Free Auto Start
         val handsFreeAction = resolveHandsFree(clean)
         if (handsFreeAction != null) {
             val explicitEnable = when (handsFreeAction) {
@@ -289,7 +369,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 8. Tempo Metronome Presets
+        // 3d. Tempo Metronome Presets
         val tempoMatch = resolveTempo(clean)
         if (tempoMatch != null) {
             return ParsedCommand(
@@ -300,7 +380,7 @@ object VoiceCommandParser {
             )
         }
 
-        // 9. App Navigation
+        // 3e. App Navigation
         val navMatch = resolveNavigation(clean)
         if (navMatch != null) {
             return ParsedCommand(
@@ -311,72 +391,9 @@ object VoiceCommandParser {
             )
         }
 
-        // 10. Music Volume Controls
-        val volumeMatch = resolveMusicVolume(clean)
-        if (volumeMatch != null) {
-            val speech = if (volumeMatch) "Volume increased." else "Volume decreased."
-            return ParsedCommand(
-                intent = VoiceIntent.AdjustVolume(volumeMatch),
-                originalText = rawText,
-                confidenceScore = 0.94f,
-                feedbackSpeech = speech
-            )
-        }
-
-        // 11. Music Pause / Stop Controls
-        val musicPauseOrStop = resolveMusicPauseOrStop(clean)
-        if (musicPauseOrStop != null) {
-            return ParsedCommand(
-                intent = musicPauseOrStop.first,
-                originalText = rawText,
-                confidenceScore = 0.95f,
-                feedbackSpeech = musicPauseOrStop.second
-            )
-        }
-
-        // 12. Music Skip Track
-        if (matchesMusicSkip(clean)) {
-            return ParsedCommand(
-                intent = VoiceIntent.SkipMusic,
-                originalText = rawText,
-                confidenceScore = 0.95f,
-                feedbackSpeech = "Skipping to next song."
-            )
-        }
-
-        // 13. Music Resume / Unpause
-        if (matchesMusicResume(clean)) {
-            return ParsedCommand(
-                intent = VoiceIntent.ResumeMusic,
-                originalText = rawText,
-                confidenceScore = 0.94f,
-                feedbackSpeech = "Resuming music."
-            )
-        }
-
-        // 14. Set Default Music ("set default music to [song]", "change default music to [song]")
-        val defaultMusicMatch = resolveSetDefaultMusic(clean)
-        if (defaultMusicMatch != null) {
-            return ParsedCommand(
-                intent = defaultMusicMatch.first,
-                originalText = rawText,
-                confidenceScore = 0.95f,
-                feedbackSpeech = defaultMusicMatch.second
-            )
-        }
-
-        // 15. YouTube Music Playback (Specific song, playlist, or generic workout music)
-        val playMusicMatch = resolvePlayMusic(clean)
-        if (playMusicMatch != null) {
-            return ParsedCommand(
-                intent = playMusicMatch.first,
-                originalText = rawText,
-                confidenceScore = 0.95f,
-                feedbackSpeech = playMusicMatch.second
-            )
-        }
-
-        // 15. General AI Query
+        // ==========================================
+        // 4. GENERAL AI QUERY
+        // ==========================================
         return ParsedCommand(
             intent = VoiceIntent.AskAi(clean),
             originalText = rawText,
@@ -509,22 +526,48 @@ object VoiceCommandParser {
         return null
     }
 
-    private fun matchesStartWorkout(text: String): Boolean {
+    fun isMusicTarget(text: String): Boolean {
         val t = " $text "
         return t.containsAny(
-            "start", "begin", "go", "launch", "record", "let's go", "lets go", "commence",
+            "music", "song", "songs", "track", "tracks", "audio", "playlist", "station",
+            "yt music", "youtube music", "playback", "tunes", "volume", "louder", "quieter"
+        )
+    }
+
+    private fun matchesStartWorkout(text: String): Boolean {
+        if (isMusicTarget(text)) return false
+        val t = " $text "
+        val isExplicitStart = t.containsAny(
             "start workout", "start training", "start set", "begin set", "begin workout",
-            "start recording", "count reps", "track reps", "count my reps", "track my reps"
+            "start recording", "count reps", "track reps", "count my reps", "track my reps",
+            "start the workout", "begin the workout", "start the set", "begin the set",
+            "start exercise", "begin exercise", "start session", "begin session"
+        )
+        if (isExplicitStart) return true
+        val trimmed = text.trim()
+        return trimmed in listOf("start", "begin", "go", "launch", "record", "let's go", "lets go", "commence")
+    }
+
+    private fun matchesStartVerb(text: String): Boolean {
+        val t = " $text "
+        return t.containsAny(
+            "start", "begin", "launch", "commence", "let's do", "lets do", "let's start", "lets start", "ready for", "time for", "do some"
         )
     }
 
     private fun matchesStopWorkout(text: String): Boolean {
+        if (isMusicTarget(text)) return false
         val t = " $text "
-        return t.containsAny(
-            "stop", "end", "finish", "done", "pause", "terminate", "complete", "halt",
+        val isExplicitStop = t.containsAny(
             "stop workout", "stop set", "end set", "finish set", "stop recording",
-            "i'm done", "im done", "pause set", "cancel set"
+            "end workout", "finish workout", "cancel set", "pause set",
+            "i'm done", "im done", "i m done", "i am done", "that's it", "thats it",
+            "stop the workout", "stop the set", "end the set", "finish the set",
+            "stop session", "end session", "finish session", "terminate set", "halt set"
         )
+        if (isExplicitStop) return true
+        val trimmed = text.trim()
+        return trimmed in listOf("stop", "end", "finish", "done", "pause", "halt", "terminate", "stop it", "pause it")
     }
 
     private fun resolveTorch(text: String): ToggleAction? {
@@ -630,10 +673,28 @@ object VoiceCommandParser {
 
     private fun resolveMusicPauseOrStop(text: String): Pair<VoiceIntent, String>? {
         val t = " $text "
-        if (t.containsAny("pause the music", "pause music", "pause song", "pause audio", "pause track")) {
+        // If unpause or resume is spoken, do not treat as pause
+        if (t.containsAny("unpause", "resume", "continue", "turn on", "switch on")) return null
+
+        // Pause
+        if (t.containsAny(
+                "pause the music", "pause music", "pause song", "pause the song",
+                "pause audio", "pause track", "pause the track", "pause playback",
+                "pause yt music", "pause youtube music", "music pause"
+            )
+        ) {
             return Pair(VoiceIntent.PauseMusic, "Music paused.")
         }
-        if (t.containsAny("stop the music", "stop music", "stop playing music", "turn off the music", "turn off music", "kill the music", "kill music")) {
+        // Stop
+        if (t.containsAny(
+                "stop the music", "stop music", "stop playing music", "stop playing",
+                "stop song", "stop the song", "stop track", "stop the track",
+                "stop audio", "stop playback", "stop yt music", "stop youtube music",
+                "turn off the music", "turn off music", "turn music off",
+                "shut off the music", "shut off music", "kill the music", "kill music",
+                "music stop"
+            )
+        ) {
             return Pair(VoiceIntent.StopMusic, "Music stopped.")
         }
         return null
@@ -650,8 +711,11 @@ object VoiceCommandParser {
     private fun matchesMusicResume(text: String): Boolean {
         val t = " $text "
         return t.containsAny(
-            "resume the music", "resume music", "resume playback", "unpause music",
-            "unpause the music", "unpause song", "continue music", "continue the music"
+            "resume the music", "resume music", "resume playback", "resume song", "resume audio",
+            "unpause music", "unpause the music", "unpause song", "unpause audio", "unpause",
+            "continue music", "continue the music", "continue playback",
+            "turn on music", "turn on the music", "turn music on", "switch on music",
+            "music resume", "music play"
         )
     }
 
@@ -695,8 +759,13 @@ object VoiceCommandParser {
             return Pair(VoiceIntent.PlayMusic(playlistName, isPlaylist = true), "Loading $playlistName on YouTube Music.")
         }
 
-        // Generic "play some music" / "play music"
-        if (t.containsAny("play some music", "play music", "play some songs", "start some music", "start the music", "put on some music", "put on music", "play a song")) {
+        // Generic "play some music" / "play music" / "start music" / "turn on music"
+        if (t.containsAny(
+                "play some music", "play music", "play some songs", "play a song",
+                "start some music", "start the music", "start music", "start playing music",
+                "put on some music", "put on music", "turn on music", "turn on the music"
+            )
+        ) {
             return Pair(VoiceIntent.PlayMusic(null, isPlaylist = false), "Starting music on YouTube Music.")
         }
 

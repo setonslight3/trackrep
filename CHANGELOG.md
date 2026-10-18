@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.8 - Music Command Disambiguation & Set Interception Fix](#v138---2026-10-18)
 - [v1.3.7 - Gemini Capsule Quick Music Button & Configurable Default Workout Music in Settings](#v137---2026-10-18)
 - [v1.3.6 - Track AI & Voice Unification, Chat Speech-to-Text Button & Live Music Controls](#v136---2026-10-18)
 - [v1.3.5 - Standby Voice Listening Suspension During Active Music Playback & 1-Tap Trigger](#v135---2026-10-18)
@@ -53,6 +54,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.8] - 2026-10-18
+
+### Fixed & Enhanced (Music Command Disambiguation & Set Interception Resolution)
+- **Resolved "Stop Music" / "Pause Music" Workout Set Hijacking**:
+  - Fixed an issue where saying or typing *"stop music"*, *"stop the music"*, *"pause music"*, or *"turn off music"* was prematurely intercepted by `matchesStopWorkout` because the query contained the substring `"stop"`, triggering an unintended `STOP_WORKOUT` ("Stopping set. Great effort!") across both the Voice Assistant and Track AI chat.
+  - Reordered `VoiceCommandParser.parseSingle` to evaluate explicit Music controls (Volume, Pause/Stop, Skip, Resume/Turn On, Set Default, Play) with top priority before workout lifecycle actions.
+  - Added `isMusicTarget` guard to `matchesStopWorkout` and `matchesStartWorkout` ensuring queries referencing music, songs, tracks, audio, playlists, or volume never match workout lifecycle triggers.
+  - Refined workout stop/start matching to require explicit workout phrases (*"stop workout"*, *"stop set"*, *"end set"*, *"i'm done"*) or exact single-word matches rather than arbitrary substring matches.
+- **Context-Aware Stop / Pause Resolution**:
+  - Added live recording tracking (`CoachModeHolder.isRecordingLive`) synced in real-time with `CoachScreen`.
+  - When the user gives a generic stop or pause command while music is playing and no workout set is actively recording, Track gracefully stops/pauses music playback instead of attempting to terminate a non-existent workout.
+- **Expanded Music Phrasing & Natural Language Support**:
+  - Added natural variations for turning on and resuming music: *"turn on music"*, *"turn music on"*, *"unpause music"*, *"start music"*.
+  - Added natural variations for stopping music: *"stop the music"*, *"stop playing music"*, *"turn off music"*, *"kill the music"*, *"shut off music"*.
+  - Added guard preventing *"unpause"* from being misclassified as pause.
+- **Automated Test Coverage**:
+  - Added comprehensive unit tests in `VoiceCommandParserTest` validating that music stop, pause, resume, volume, and playback commands correctly map to their dedicated music intents without triggering workout stop actions.
 
 ## [v1.3.7] - 2026-10-18
 

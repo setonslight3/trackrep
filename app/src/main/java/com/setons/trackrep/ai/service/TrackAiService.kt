@@ -138,6 +138,12 @@ object TrackAiService {
                     return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
                 }
                 is VoiceCommandParser.VoiceIntent.StopWorkout -> {
+                    if (!CoachModeHolder.isRecordingLive && TrackMusicController.isMusicPlaybackActive) {
+                        val feedback = TrackMusicController.stopMusic(context)
+                        val action = MusicAction("STOP", explanation = feedback)
+                        TrackActionExecutor.execute(context, action, userMessage)
+                        return@withContext TrackAiResponse(feedback, listOf(action))
+                    }
                     val action = WorkoutControlAction("STOP_WORKOUT", explanation = parsedDirect.feedbackSpeech)
                     TrackActionExecutor.execute(context, action, userMessage)
                     return@withContext TrackAiResponse(parsedDirect.feedbackSpeech, listOf(action))
@@ -570,9 +576,14 @@ $structuredContext
                 reply = "Yes! As Track, I have full hands-free control over YouTube Music on your device. I can search and stream songs or workout playlists (e.g. 'Play Worry on YouTube Music'), pause, resume, skip tracks, and adjust volume. You can also turn music on or off using the controls right above!"
             }
 
-            q.contains("turn off music") || q.contains("pause music") || q.contains("stop music") || q == "pause" || q == "stop" -> {
-                actions.add(MusicAction("PAUSE", explanation = "Paused music playback."))
-                reply = "Music paused."
+            q.contains("turn off music") || q.contains("pause music") || q.contains("stop music") ||
+            q.contains("stop the music") || q.contains("turn off the music") || q.contains("kill music") ||
+            q.contains("shut off music") || q == "pause" || q == "stop" -> {
+                val isPause = q.contains("pause")
+                val cmd = if (isPause) "PAUSE" else "STOP"
+                val replyText = if (isPause) "Music paused." else "Music stopped."
+                actions.add(MusicAction(cmd, explanation = replyText))
+                reply = replyText
             }
 
             q.contains("turn on music") || q.contains("resume music") || q.contains("unpause") || q == "play" -> {

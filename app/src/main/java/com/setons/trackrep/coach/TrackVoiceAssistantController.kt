@@ -451,8 +451,13 @@ class TrackVoiceAssistantController(
             }
 
             is VoiceCommandParser.VoiceIntent.StopWorkout -> {
-                CoachModeHolder.triggerStopRecording++
-                speakAndComplete(parsed.feedbackSpeech)
+                if (!CoachModeHolder.isRecordingLive && com.setons.trackrep.music.TrackMusicController.isMusicPlaybackActive) {
+                    val feedback = com.setons.trackrep.music.TrackMusicController.stopMusic(context)
+                    speakAndComplete(feedback)
+                } else {
+                    CoachModeHolder.triggerStopRecording++
+                    speakAndComplete(parsed.feedbackSpeech)
+                }
             }
 
             is VoiceCommandParser.VoiceIntent.SwitchExercise -> {

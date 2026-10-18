@@ -183,6 +183,7 @@ object CoachModeHolder {
     var triggerStopRecording by mutableLongStateOf(0L)
     var triggerToggleTorch by mutableLongStateOf(0L)
     var triggerManualVoiceListen by mutableLongStateOf(0L)
+    var isRecordingLive by mutableStateOf(false)
 
     fun setPending(
         exerciseId: String,
@@ -258,9 +259,13 @@ fun CoachScreen(
     DisposableEffect(Unit) {
         onDispose {
             CoachModeHolder.isImmersiveFullscreen = false
+            CoachModeHolder.isRecordingLive = false
         }
     }
     var isRecording by remember { mutableStateOf(false) }
+    LaunchedEffect(isRecording) {
+        CoachModeHolder.isRecordingLive = isRecording
+    }
     var recordingDurationSec by remember { mutableIntStateOf(0) }
     var recordingStartTimeMs by remember { mutableLongStateOf(0L) }
     val recordedPoses = remember { mutableListOf<TimestampedPose>() }
