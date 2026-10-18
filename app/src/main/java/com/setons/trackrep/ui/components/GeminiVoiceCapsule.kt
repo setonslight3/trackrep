@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -246,6 +248,40 @@ fun GeminiVoiceCapsule(
                                 ) {
                                     Icon(Icons.Default.Speed, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                     Text("3-1-1 Tempo", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                            Surface(
+                                onClick = {
+                                    showActionMenu = false
+                                    onExecuteAction("play some music")
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFF2C2C32)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Text("Music", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                            Surface(
+                                onClick = {
+                                    showActionMenu = false
+                                    onExecuteAction("skip this song")
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFF2C2C32)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(Icons.Default.SkipNext, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Text("Skip", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }

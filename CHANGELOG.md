@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.4 - YouTube Music Voice Control, Headless Media Keys & Audio Focus Ducking](#v134---2026-10-18)
 - [v1.3.3 - High-Accuracy Multi-Hypothesis Speech Recognition & Phonetic Voice Command Parser](#v133---2026-10-18)
 - [v1.3.2 - Authentic Gemini Bottom Capsule Pill, Inward Delicate Rim Glow & Voice Reactivation Controls](#v132---2026-10-17)
 - [v1.3.1 - 'Track' Wake Word Voice Assistant, Google Gemini Edge Glow & Floating Bottom Capsule](#v131---2026-10-17)
@@ -49,6 +50,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.4] - 2026-10-18
+
+### Added & Enhanced (YouTube Music Voice Integration & Audio Focus Ducking)
+- **Hands-Free YouTube Music Voice Controls**:
+  - Direct voice control over YouTube Music from any screen and mid-workout without leaving the camera HUD:
+    - *"Track, play Worry on YouTube Music"* (Searches and begins track playback via `MEDIA_PLAY_FROM_SEARCH`).
+    - *"Track, play some music"* (Intelligently resumes previous queue or initiates a workout station).
+    - *"Track, play my workout playlist"* (Loads requested playlist directly in YouTube Music).
+    - *"Track, pause the music"* (Dispatches headless `KEYCODE_MEDIA_PAUSE`).
+    - *"Track, resume the music"* (Dispatches headless `KEYCODE_MEDIA_PLAY`).
+    - *"Track, skip this song"* (Dispatches headless `KEYCODE_MEDIA_NEXT`).
+    - *"Track, stop the music"* (Dispatches headless `KEYCODE_MEDIA_STOP`).
+    - *"Track, turn the volume up"* / *"Track, turn the volume down"* (Adjusts `STREAM_MUSIC` volume with system slider).
+- **Zero-Disruption Headless Background Execution (`TrackMusicController.kt`)**:
+  - Session playback commands (*pause*, *resume*, *skip*, *stop*, *volume*) execute 100% in the background via `AudioManager.dispatchMediaKeyEvent`.
+  - Workout state, CameraX pose estimation, and rep counters continue uninterrupted without screen switching.
+- **Automatic Audio Focus Ducking**:
+  - The voice assistant automatically ducks background YouTube Music volume to ~20% while listening to speech or speaking coaching responses, preventing audio bleed and speaker distortion.
+- **Coach Voice Stream Isolation (`CoachVoiceManager.kt`)**:
+  - Decoupled coach TTS from `STREAM_MUSIC` to `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`, ensuring volume adjustments to music do not mute or alter AI Coach vocal feedback.
+- **Gemini Capsule Music Quick Actions (`GeminiVoiceCapsule.kt`)**:
+  - Added dedicated *Music* and *Skip* action chips in the bottom capsule's expandable `+` shortcut bar.
 
 ## [v1.3.3] - 2026-10-18
 

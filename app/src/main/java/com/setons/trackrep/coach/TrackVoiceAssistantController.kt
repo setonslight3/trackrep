@@ -176,6 +176,7 @@ class TrackVoiceAssistantController(
 
     fun dismiss() {
         autoDismissJob?.cancel()
+        com.setons.trackrep.music.TrackMusicController.abandonDucking(context)
         isUiVisible = false
         phase = VoiceAssistantPhase.IDLE
         currentSpeechText = ""
@@ -337,6 +338,7 @@ class TrackVoiceAssistantController(
 
     private fun startCommandListening() {
         try {
+            com.setons.trackrep.music.TrackMusicController.requestDucking(context)
             destroyRecognizerSafely()
             if (SpeechRecognizer.isRecognitionAvailable(context)) {
                 speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
@@ -475,6 +477,40 @@ class TrackVoiceAssistantController(
             is VoiceCommandParser.VoiceIntent.Navigate -> {
                 onNavigateToDestination(intent.destination)
                 speakAndComplete(parsed.feedbackSpeech)
+            }
+
+            is VoiceCommandParser.VoiceIntent.PlayMusic -> {
+                val feedback = com.setons.trackrep.music.TrackMusicController.play(context, intent.query, intent.isPlaylist)
+                speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.PauseMusic -> {
+                val feedback = com.setons.trackrep.music.TrackMusicController.pauseMusic(context)
+                speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.ResumeMusic -> {
+                val feedback = com.setons.trackrep.music.TrackMusicController.resumeMusic(context)
+                speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.SkipMusic -> {
+                val feedback = com.setons.trackrep.music.TrackMusicController.skipMusic(context)
+                speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.StopMusic -> {
+                val feedback = com.setons.trackrep.music.TrackMusicController.stopMusic(context)
+                speakAndComplete(feedback)
+            }
+
+            is VoiceCommandParser.VoiceIntent.AdjustVolume -> {
+                val feedback = if (intent.isUp) {
+                    com.setons.trackrep.music.TrackMusicController.volumeUp(context)
+                } else {
+                    com.setons.trackrep.music.TrackMusicController.volumeDown(context)
+                }
+                speakAndComplete(feedback)
             }
 
             is VoiceCommandParser.VoiceIntent.AskAi -> {

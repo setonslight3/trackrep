@@ -32,6 +32,11 @@ class CoachVoiceManager(context: Context) : TextToSpeech.OnInitListener {
             tts?.let { engine ->
                 val result = engine.setLanguage(Locale.US)
                 if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                    val audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                    engine.setAudioAttributes(audioAttributes)
                     engine.setSpeechRate(1.05f) // Crisp athletic delivery
                     engine.setPitch(1.0f)
                     isInitialized = true

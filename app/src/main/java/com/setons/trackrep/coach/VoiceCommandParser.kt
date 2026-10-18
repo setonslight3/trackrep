@@ -42,6 +42,18 @@ object VoiceCommandParser {
 
         data class Navigate(val destination: String, val spokenLabel: String) : VoiceIntent()
 
+        data class PlayMusic(val query: String?, val isPlaylist: Boolean = false) : VoiceIntent()
+
+        object PauseMusic : VoiceIntent()
+
+        object ResumeMusic : VoiceIntent()
+
+        object SkipMusic : VoiceIntent()
+
+        object StopMusic : VoiceIntent()
+
+        data class AdjustVolume(val isUp: Boolean) : VoiceIntent()
+
         data class AskAi(val cleanQuery: String) : VoiceIntent()
     }
 
@@ -297,7 +309,61 @@ object VoiceCommandParser {
             )
         }
 
-        // 10. General AI Query
+        // 10. Music Volume Controls
+        val volumeMatch = resolveMusicVolume(clean)
+        if (volumeMatch != null) {
+            val speech = if (volumeMatch) "Volume increased." else "Volume decreased."
+            return ParsedCommand(
+                intent = VoiceIntent.AdjustVolume(volumeMatch),
+                originalText = rawText,
+                confidenceScore = 0.94f,
+                feedbackSpeech = speech
+            )
+        }
+
+        // 11. Music Pause / Stop Controls
+        val musicPauseOrStop = resolveMusicPauseOrStop(clean)
+        if (musicPauseOrStop != null) {
+            return ParsedCommand(
+                intent = musicPauseOrStop.first,
+                originalText = rawText,
+                confidenceScore = 0.95f,
+                feedbackSpeech = musicPauseOrStop.second
+            )
+        }
+
+        // 12. Music Skip Track
+        if (matchesMusicSkip(clean)) {
+            return ParsedCommand(
+                intent = VoiceIntent.SkipMusic,
+                originalText = rawText,
+                confidenceScore = 0.95f,
+                feedbackSpeech = "Skipping to next song."
+            )
+        }
+
+        // 13. Music Resume / Unpause
+        if (matchesMusicResume(clean)) {
+            return ParsedCommand(
+                intent = VoiceIntent.ResumeMusic,
+                originalText = rawText,
+                confidenceScore = 0.94f,
+                feedbackSpeech = "Resuming music."
+            )
+        }
+
+        // 14. YouTube Music Playback (Specific song, playlist, or generic workout music)
+        val playMusicMatch = resolvePlayMusic(clean)
+        if (playMusicMatch != null) {
+            return ParsedCommand(
+                intent = playMusicMatch.first,
+                originalText = rawText,
+                confidenceScore = 0.95f,
+                feedbackSpeech = playMusicMatch.second
+            )
+        }
+
+        // 15. General AI Query
         return ParsedCommand(
             intent = VoiceIntent.AskAi(clean),
             originalText = rawText,
@@ -530,6 +596,84 @@ object VoiceCommandParser {
         // Home
         if (t.containsAny("home", "today", "today's workout", "weekly schedule", "schedule")) {
             return Pair("HOME", "Navigating to Today's screen.")
+        }
+
+        return null
+    }
+
+    private fun resolveMusicVolume(text: String): Boolean? {
+        val t = " $text "
+        val hasVolumeWord = t.containsAny("volume", "louder", "quieter")
+        if (!hasVolumeWord) return null
+
+        if (t.containsAny("turn the volume up", "turn volume up", "volume up", "increase volume", "louder", "turn up the music", "turn up volume", "raise volume", "boost volume")) {
+            return true
+        }
+        if (t.containsAny("turn the volume down", "turn volume down", "volume down", "decrease volume", "quieter", "lower the volume", "lower volume", "turn down the music", "reduce volume")) {
+            return false
+        }
+        return null
+    }
+
+    private fun resolveMusicPauseOrStop(text: String): Pair<VoiceIntent, String>? {
+        val t = " $text "
+        if (t.containsAny("pause the music", "pause music", "pause song", "pause audio", "pause track")) {
+            return Pair(VoiceIntent.PauseMusic, "Music paused.")
+        }
+        if (t.containsAny("stop the music", "stop music", "stop playing music", "turn off the music", "turn off music", "kill the music", "kill music")) {
+            return Pair(VoiceIntent.StopMusic, "Music stopped.")
+        }
+        return null
+    }
+
+    private fun matchesMusicSkip(text: String): Boolean {
+        val t = " $text "
+        return t.containsAny(
+            "skip this song", "skip the song", "skip song", "next song", "next track",
+            "skip this track", "skip track", "skip to next song", "next music"
+        )
+    }
+
+    private fun matchesMusicResume(text: String): Boolean {
+        val t = " $text "
+        return t.containsAny(
+            "resume the music", "resume music", "resume playback", "unpause music",
+            "unpause the music", "unpause song", "continue music", "continue the music"
+        )
+    }
+
+    private fun resolvePlayMusic(text: String): Pair<VoiceIntent, String>? {
+        val t = " $text "
+
+        // Check playlist
+        if (t.containsAny("play my workout playlist", "play workout playlist", "play my playlist", "play playlist")) {
+            var playlistName = "workout playlist"
+            if (text.contains("playlist")) {
+                val candidate = text.substringAfter("playlist").trim()
+                if (candidate.isNotBlank() && candidate.length > 2) {
+                    playlistName = "$candidate playlist"
+                }
+            }
+            return Pair(VoiceIntent.PlayMusic(playlistName, isPlaylist = true), "Loading $playlistName on YouTube Music.")
+        }
+
+        // Generic "play some music" / "play music"
+        if (t.containsAny("play some music", "play music", "play some songs", "start some music", "start the music", "put on some music", "put on music", "play a song")) {
+            return Pair(VoiceIntent.PlayMusic(null, isPlaylist = false), "Starting music on YouTube Music.")
+        }
+
+        // Specific song: "play [song] on youtube music", "play [song] on yt music", "play [song]"
+        if (text.startsWith("play ") || text.startsWith("listen to ")) {
+            var song = if (text.startsWith("play ")) text.removePrefix("play ").trim() else text.removePrefix("listen to ").trim()
+            val suffixes = listOf("on youtube music", "on yt music", "on youtube", "in youtube music", "in yt music", "from youtube music")
+            for (suffix in suffixes) {
+                if (song.endsWith(suffix)) {
+                    song = song.removeSuffix(suffix).trim()
+                }
+            }
+            if (song.isNotBlank() && resolveExercise(song) == null && song.length >= 2) {
+                return Pair(VoiceIntent.PlayMusic(song, isPlaylist = false), "Playing $song on YouTube Music.")
+            }
         }
 
         return null
