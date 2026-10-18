@@ -34,6 +34,13 @@ import java.util.Locale
  * Controller for Track Voice Assistant.
  * Manages "Track" wake word detection, Google Gemini-style UI,
  * continuous standby listening resilience, and immediate user wake reactivation.
+ *
+ * Enhanced in v1.3.3:
+ * - Multi-hypothesis candidate evaluation (EXTRA_MAX_RESULTS = 5)
+ * - Accent-aware regional language tagging with Locale.getDefault()
+ * - Extended speech silence timeouts to prevent premature user cut-off
+ * - Partial transcript fallback recovery
+ * - Phonetic resilience and compound command parsing via VoiceCommandParser
  */
 class TrackVoiceAssistantController(
     private val context: Context,
@@ -69,11 +76,24 @@ class TrackVoiceAssistantController(
     // Health-check / watchdog to ensure standby listening restarts if Android drops it
     private var isUserEnabledStandby = true
 
+    // Preserves recent partial transcript so background noise or silence does not discard user input
+    private var lastRecognizedPartial: String? = null
+
     init {
         try {
             toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80)
         } catch (e: Exception) {
             Log.w(TAG, "ToneGenerator init failed", e)
+        }
+    }
+
+    private fun getSpeechLanguageTag(): String {
+        return try {
+            val def = Locale.getDefault()
+            val tag = def.toLanguageTag()
+            if (tag.isNotBlank()) tag else "en-US"
+        } catch (_: Exception) {
+            "en-US"
         }
     }
 
@@ -147,6 +167,7 @@ class TrackVoiceAssistantController(
         phase = VoiceAssistantPhase.LISTENING
         statusHeadline = "Listening..."
         currentSpeechText = ""
+        lastRecognizedPartial = null
 
         mainHandler.post {
             startCommandListening()
@@ -158,6 +179,7 @@ class TrackVoiceAssistantController(
         isUiVisible = false
         phase = VoiceAssistantPhase.IDLE
         currentSpeechText = ""
+        lastRecognizedPartial = null
         statusHeadline = "Say \"Track\" anytime"
 
         // Always resurrect standby wake-word listening with fresh listener
@@ -209,11 +231,14 @@ class TrackVoiceAssistantController(
                 }
             }
 
+            val languageTag = getSpeechLanguageTag()
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
+                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
             }
 
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
@@ -242,7 +267,9 @@ class TrackVoiceAssistantController(
 
                 override fun onResults(results: Bundle?) {
                     isStandbyListeningActive = false
-                    handleSpeechCandidates(results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION))
+                    val candidates = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    handleStandbySpeechCandidates(candidates)
+
                     // Loop standby listening if still IDLE
                     if (isUserEnabledStandby && phase == VoiceAssistantPhase.IDLE) {
                         mainHandler.postDelayed({
@@ -252,7 +279,8 @@ class TrackVoiceAssistantController(
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    handleSpeechCandidates(partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION))
+                    val candidates = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    handleStandbySpeechCandidates(candidates)
                 }
 
                 override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -271,46 +299,36 @@ class TrackVoiceAssistantController(
         }
     }
 
-    private fun handleSpeechCandidates(candidates: List<String>?) {
-        if (candidates.isNullOrEmpty()) return
+    private fun handleStandbySpeechCandidates(candidates: List<String>?) {
+        if (candidates.isNullOrEmpty() || phase != VoiceAssistantPhase.IDLE) return
 
-        val configuredWakeWord = TrackVoicePreferences.getWakeWord(context).lowercase()
+        val configuredWakeWord = TrackVoicePreferences.getWakeWord(context)
 
-        for (rawCandidate in candidates) {
-            val text = rawCandidate.trim().lowercase()
-
-            if (phase == VoiceAssistantPhase.IDLE) {
-                val matchesWakeWord = text.contains(configuredWakeWord) || text.contains("track") || text.contains("hey track")
-
-                if (matchesWakeWord) {
-                    onWakeWordDetected(text, configuredWakeWord)
-                    return
-                }
-            } else if (phase == VoiceAssistantPhase.LISTENING) {
-                currentSpeechText = rawCandidate
+        for (cand in candidates) {
+            if (VoiceCommandParser.matchesWakeWord(cand, configuredWakeWord)) {
+                onWakeWordDetected(cand, configuredWakeWord)
+                return
             }
         }
     }
 
-    private fun onWakeWordDetected(fullText: String, wakeWord: String) {
+    private fun onWakeWordDetected(fullText: String, configuredWakeWord: String) {
         playWakeTone()
         isUiVisible = true
         autoDismissJob?.cancel()
 
-        // Extract command if spoken in same sentence (e.g. "Track start workout")
-        val extractedCommand = fullText
-            .replace(wakeWord, "")
-            .replace("hey", "")
-            .replace("please", "")
-            .trim()
+        // Extract command if spoken in same utterance (e.g. "Track start pushups")
+        val extractedCommand = VoiceCommandParser.extractCommandAfterWakeWord(fullText, configuredWakeWord)
 
         if (extractedCommand.length >= 3) {
+            val parsed = VoiceCommandParser.parseCandidates(listOf(extractedCommand))
             currentSpeechText = "\"$extractedCommand\""
-            executeVoiceCommand(extractedCommand)
+            executeParsedVoiceCommand(parsed)
         } else {
             phase = VoiceAssistantPhase.LISTENING
             statusHeadline = "Listening..."
             currentSpeechText = ""
+            lastRecognizedPartial = null
             mainHandler.post {
                 startCommandListening()
             }
@@ -326,11 +344,19 @@ class TrackVoiceAssistantController(
                 return
             }
 
+            val languageTag = getSpeechLanguageTag()
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
+                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+
+                // Speech endpointing & timeout resilience
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 2500L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
             }
 
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
@@ -342,24 +368,40 @@ class TrackVoiceAssistantController(
 
                 override fun onError(error: Int) {
                     if (phase == VoiceAssistantPhase.LISTENING) {
+                        // Check if we captured a usable partial transcript before error
+                        val partial = lastRecognizedPartial
+                        if (!partial.isNullOrBlank()) {
+                            val fallbackParsed = VoiceCommandParser.parseCandidates(listOf(partial))
+                            if (fallbackParsed.confidenceScore >= 0.85f) {
+                                currentSpeechText = "\"${fallbackParsed.originalText}\""
+                                executeParsedVoiceCommand(fallbackParsed)
+                                return
+                            }
+                        }
+
                         currentSpeechText = "Didn't catch that. Say \"Track\" anytime."
                         scheduleAutoDismiss(3200L)
                     }
                 }
 
                 override fun onResults(results: Bundle?) {
-                    val match = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (!match.isNullOrBlank()) {
-                        currentSpeechText = "\"$match\""
-                        executeVoiceCommand(match)
+                    val candidates = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val parsed = VoiceCommandParser.parseCandidates(candidates, lastRecognizedPartial)
+
+                    if (parsed.originalText.isNotBlank()) {
+                        currentSpeechText = "\"${parsed.originalText}\""
+                        executeParsedVoiceCommand(parsed)
                     } else {
+                        currentSpeechText = "Didn't catch that. Say \"Track\" anytime."
                         scheduleAutoDismiss(2500L)
                     }
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    val partial = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                    val candidates = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val partial = candidates?.firstOrNull()?.trim()
                     if (!partial.isNullOrBlank()) {
+                        lastRecognizedPartial = partial
                         currentSpeechText = partial
                     }
                 }
@@ -375,162 +417,77 @@ class TrackVoiceAssistantController(
     }
 
     private fun executeVoiceCommand(command: String) {
+        val parsed = VoiceCommandParser.parseCandidates(listOf(command))
+        executeParsedVoiceCommand(parsed)
+    }
+
+    private fun executeParsedVoiceCommand(parsed: VoiceCommandParser.ParsedCommand) {
         phase = VoiceAssistantPhase.THINKING
         statusHeadline = "Thinking..."
 
-        scope.launch {
-            val q = command.trim().lowercase()
-
-            // 1. Direct workout action matches
-            val directResponse = handleDirectWorkoutActions(q)
-            if (directResponse != null) {
-                speakAndComplete(directResponse)
-                return@launch
-            }
-
-            // 2. Direct app navigation matches
-            val navResponse = handleDirectNavigation(q)
-            if (navResponse != null) {
-                speakAndComplete(navResponse)
-                return@launch
-            }
-
-            // 3. Fallback to comprehensive TrackAiService (Gemini / On-Device reasoning)
-            try {
-                val aiResponse = TrackAiService.processMessage(context, command)
-                speakAndComplete(aiResponse.replyMessage)
-            } catch (e: Exception) {
-                Log.e(TAG, "Track AI reasoning error", e)
-                speakAndComplete("I'm ready! You can tell me to start a set, switch exercises, or toggle the flashlight.")
-            }
-        }
-    }
-
-    private fun handleDirectWorkoutActions(q: String): String? {
-        return when {
-            // Start set / start workout
-            q.contains("start workout") || q.contains("start training") || q.contains("start set") || q.contains("begin set") || q.contains("start") -> {
+        when (val intent = parsed.intent) {
+            is VoiceCommandParser.VoiceIntent.StartWorkout -> {
+                if (intent.targetExerciseId != null && intent.mode != null) {
+                    CoachModeHolder.setPending(intent.targetExerciseId, intent.mode)
+                }
                 onNavigateToDestination("COACH")
                 CoachModeHolder.triggerStartRecording++
-                "Starting workout now! Calibrate your position and 3, 2, 1, Go!"
+                speakAndComplete(parsed.feedbackSpeech)
             }
 
-            // Stop set / finish workout
-            q.contains("stop set") || q.contains("end set") || q.contains("finish set") || q.contains("stop workout") || q.contains("pause set") -> {
+            is VoiceCommandParser.VoiceIntent.StopWorkout -> {
                 CoachModeHolder.triggerStopRecording++
-                "Stopping set. Great effort!"
+                speakAndComplete(parsed.feedbackSpeech)
             }
 
-            // Flashlight / Torch
-            q.contains("torch") || q.contains("flashlight") || q.contains("flash") -> {
+            is VoiceCommandParser.VoiceIntent.SwitchExercise -> {
+                onNavigateToDestination("COACH")
+                CoachModeHolder.setPending(intent.exerciseId, intent.mode)
+                speakAndComplete(parsed.feedbackSpeech)
+            }
+
+            is VoiceCommandParser.VoiceIntent.ToggleTorch -> {
                 CoachModeHolder.triggerToggleTorch++
-                "Toggling camera flashlight."
+                speakAndComplete(parsed.feedbackSpeech)
             }
 
-            // Ghost shadow form guide
-            q.contains("ghost") || q.contains("shadow") || q.contains("hologram") || q.contains("ar form") -> {
+            is VoiceCommandParser.VoiceIntent.ToggleGhostShadow -> {
                 val current = CoachPreferences.isGhostShadowEnabled(context)
-                val target = !current
+                val target = intent.explicitEnable ?: !current
                 CoachPreferences.setGhostShadowEnabled(context, target)
-                if (target) "Ghost shadow AR form guide enabled." else "Ghost shadow turned off."
+                val reply = if (target) "Ghost shadow AR form guide enabled." else "Ghost shadow turned off."
+                speakAndComplete(reply)
             }
 
-            // Hands-Free auto start
-            q.contains("hands free") || q.contains("auto start") || q.contains("countdown") -> {
+            is VoiceCommandParser.VoiceIntent.ToggleHandsFree -> {
                 val current = CoachPreferences.isHandsFreeStartEnabled(context)
-                val target = !current
+                val target = intent.explicitEnable ?: !current
                 CoachPreferences.setHandsFreeStartEnabled(context, target)
-                if (target) "Hands-free countdown auto-start enabled." else "Hands-free auto-start disabled."
+                val reply = if (target) "Hands-free countdown auto-start enabled." else "Hands-free auto-start disabled."
+                speakAndComplete(reply)
             }
 
-            // Tempo metronome presets
-            q.contains("tempo") -> {
-                when {
-                    q.contains("3 1 1") || q.contains("hypertrophy") -> {
-                        CoachPreferences.setTempoPreset(context, "3-1-1")
-                        "Tempo set to 3-1-1 Hypertrophy TUT."
-                    }
-                    q.contains("2 1 2") || q.contains("beginner") -> {
-                        CoachPreferences.setTempoPreset(context, "2-1-2")
-                        "Tempo set to 2-1-2 Beginner Control."
-                    }
-                    q.contains("2 0 1") || q.contains("power") || q.contains("explosive") -> {
-                        CoachPreferences.setTempoPreset(context, "2-0-1")
-                        "Tempo set to 2-0-1 Athletic Power."
-                    }
-                    q.contains("4 2 1") || q.contains("slow") -> {
-                        CoachPreferences.setTempoPreset(context, "4-2-1")
-                        "Tempo set to 4-2-1 Slow Burn."
-                    }
-                    q.contains("off") || q.contains("disable") || q.contains("stop") -> {
-                        CoachPreferences.setTempoPreset(context, "OFF")
-                        "Tempo metronome turned off."
-                    }
-                    else -> {
-                        CoachPreferences.setTempoPreset(context, "2-1-2")
-                        "Tempo metronome set to 2-1-2."
+            is VoiceCommandParser.VoiceIntent.SetTempo -> {
+                CoachPreferences.setTempoPreset(context, intent.preset)
+                speakAndComplete(parsed.feedbackSpeech)
+            }
+
+            is VoiceCommandParser.VoiceIntent.Navigate -> {
+                onNavigateToDestination(intent.destination)
+                speakAndComplete(parsed.feedbackSpeech)
+            }
+
+            is VoiceCommandParser.VoiceIntent.AskAi -> {
+                scope.launch {
+                    try {
+                        val aiResponse = TrackAiService.processMessage(context, intent.cleanQuery)
+                        speakAndComplete(aiResponse.replyMessage)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Track AI reasoning error", e)
+                        speakAndComplete("I'm ready! You can tell me to start a set, switch exercises, or toggle the flashlight.")
                     }
                 }
             }
-
-            // Switch exercises
-            q.contains("push up") || q.contains("pushup") -> {
-                onNavigateToDestination("COACH")
-                CoachModeHolder.setPending("push_up_standard", ExerciseFramingMode.PUSH_UP)
-                "Switched to Standard Push-ups."
-            }
-            q.contains("squat") -> {
-                onNavigateToDestination("COACH")
-                CoachModeHolder.setPending("squat_standard", ExerciseFramingMode.SQUAT)
-                "Switched to Bodyweight Squats."
-            }
-            q.contains("plank") -> {
-                onNavigateToDestination("COACH")
-                CoachModeHolder.setPending("plank_standard", ExerciseFramingMode.PLANK)
-                "Switched to Plank Hold."
-            }
-            q.contains("dip") -> {
-                onNavigateToDestination("COACH")
-                CoachModeHolder.setPending("dips_standard", ExerciseFramingMode.PUSH_UP)
-                "Switched to Dips."
-            }
-            q.contains("pull up") || q.contains("pullup") -> {
-                onNavigateToDestination("COACH")
-                CoachModeHolder.setPending("pull_up_standard", ExerciseFramingMode.PULL_UP)
-                "Switched to Pull-ups."
-            }
-
-            else -> null
-        }
-    }
-
-    private fun handleDirectNavigation(q: String): String? {
-        return when {
-            q.contains("go to history") || q.contains("show history") || q.contains("view history") || q.contains("my records") -> {
-                onNavigateToDestination("HISTORY")
-                "Opening your workout history and records."
-            }
-            q.contains("go to library") || q.contains("show exercises") || q.contains("exercise catalog") -> {
-                onNavigateToDestination("EXERCISE_LIBRARY")
-                "Opening the exercise library."
-            }
-            q.contains("go to coach") || q.contains("open coach") || q.contains("open camera") -> {
-                onNavigateToDestination("COACH")
-                "Opening AI Vision Coach."
-            }
-            q.contains("go to settings") || q.contains("open settings") || q.contains("go to profile") || q.contains("change theme") -> {
-                onNavigateToDestination("PROFILE")
-                "Opening profile and settings."
-            }
-            q.contains("go to home") || q.contains("go to today") || q.contains("home screen") -> {
-                onNavigateToDestination("HOME")
-                "Navigating to Today's screen."
-            }
-            q.contains("edit routine") || q.contains("swap routine") || q.contains("routine editor") -> {
-                onNavigateToDestination("EDIT_ROUTINE")
-                "Opening the routine customizer."
-            }
-            else -> null
         }
     }
 

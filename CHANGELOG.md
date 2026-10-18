@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.3 - High-Accuracy Multi-Hypothesis Speech Recognition & Phonetic Voice Command Parser](#v133---2026-10-18)
 - [v1.3.2 - Authentic Gemini Bottom Capsule Pill, Inward Delicate Rim Glow & Voice Reactivation Controls](#v132---2026-10-17)
 - [v1.3.1 - 'Track' Wake Word Voice Assistant, Google Gemini Edge Glow & Floating Bottom Capsule](#v131---2026-10-17)
 - [v1.3.0 - Hands-Free Countdown Auto-Start, AR Ghost Shadow Form Overlay & Tempo Cadence Metronome](#v130---2026-10-17)
@@ -48,6 +49,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.3] - 2026-10-18
+
+### Added & Enhanced (High-Accuracy Voice Recognition & Intelligent Phonetic Parser)
+- **High-Accuracy Multi-Candidate Hypothesis Evaluation**:
+  - Configured `EXTRA_MAX_RESULTS = 5` in `SpeechRecognizer` to evaluate all candidate acoustic hypotheses rather than solely relying on the single top result.
+  - Significantly reduces command drops in loud or ambient gym environments where acoustic variations occur.
+- **Accent-Resilient & Regional Language Recognition**:
+  - Replaced hardcoded `en_US` with dynamic `Locale.getDefault().toLanguageTag()` along with `EXTRA_LANGUAGE_PREFERENCE`.
+  - Ensures seamless speech-to-text accuracy across diverse English accents (US, UK, Canadian, Australian, African, Indian, etc.) without bias.
+- **Intelligent Phonetic Voice Command Parser (`VoiceCommandParser.kt`)**:
+  - **Acoustic Homophone Resilience**: Automatically recognizes common speech-to-text mishearings and phonetic variants (*"push ops"*, *"bush up"*, *"press ups"* -> Standard Push-ups; *"squad"*, *"squating"* -> Bodyweight Squats; *"plant"*, *"core hold"* -> Plank; *"pull ops"*, *"chin up"* -> Pull-ups; *"deeps"* -> Dips).
+  - **Compound Workout Action Resolution**: Understands combined utterances like *"Track, start push-ups"* or *"Let's do squats"*, seamlessly switching the active exercise and initiating workout tracking in a single step.
+  - **Conversational Prefix & Punctuation Stripping**: Cleans away filler prefixes (*"please"*, *"can you"*, *"hey track"*, *"let's"*) and punctuation.
+  - **Standby Wake-Word Sound-Alike Tolerance**: Responds reliably to wake-word acoustics including *"track"*, *"truck"*, *"trek"*, *"trax"*, *"track rep"*, and *"hey track"*.
+- **Speech Timeout & Silence Endpointing Padding**:
+  - Added `EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS` (2500ms), `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` (1800ms), and `EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS` (1200ms) to give the athlete natural thinking and formulation pauses without cutting off mid-sentence.
+- **Partial Transcript Recovery Fallback**:
+  - Caches live partial speech transcripts so that if background noise causes silence termination, the recognized speech is safely parsed and executed instead of displaying *"Didn't catch that"*.
 
 ## [v1.3.2] - 2026-10-17
 
