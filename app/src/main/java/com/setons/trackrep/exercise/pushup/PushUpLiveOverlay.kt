@@ -43,6 +43,7 @@ import com.setons.trackrep.theme.SuccessGreen
 fun PushUpLiveOverlay(
     telemetry: PushUpLiveTelemetry,
     modifier: Modifier = Modifier,
+    exerciseId: String = "push_up_standard",
     setNumber: Int = 1,
     elapsedSeconds: Int = 0,
     fatigueLevel: FatigueLevel = FatigueLevel.FRESH
@@ -50,6 +51,9 @@ fun PushUpLiveOverlay(
     val minutes = elapsedSeconds / 60
     val seconds = elapsedSeconds % 60
     val formattedTimer = "%02d:%02d".format(minutes, seconds)
+    val isGluteBridge = exerciseId in listOf("glute_bridge", "single_leg_bridge")
+    val isBirdDog = exerciseId == "bird_dog"
+
     Box(modifier = modifier.fillMaxSize()) {
         // UNIFIED ATHLETIC TOP HUD STRIP: Left Pill (Reps & Phase) + Right Pill (Depth Meter & Angle)
         Row(
@@ -109,10 +113,26 @@ fun PushUpLiveOverlay(
                         }
 
                         val (phaseColor, phaseLabel) = when (telemetry.currentPhase) {
-                            PushUpPhase.BOTTOM_DEPTH -> SuccessGreen to "FULL DEPTH"
-                            PushUpPhase.DESCENDING -> DarkSecondaryGold to "LOWERING"
-                            PushUpPhase.ASCENDING -> DarkSecondaryGold to "PRESSING"
-                            PushUpPhase.PLANK_READY -> DarkPrimaryGold to "PLANK / READY"
+                            PushUpPhase.BOTTOM_DEPTH -> when {
+                                isGluteBridge -> SuccessGreen to "PEAK BRIDGE"
+                                isBirdDog -> SuccessGreen to "FULL REACH"
+                                else -> SuccessGreen to "FULL DEPTH"
+                            }
+                            PushUpPhase.DESCENDING -> when {
+                                isGluteBridge -> DarkSecondaryGold to "BRIDGING UP"
+                                isBirdDog -> DarkSecondaryGold to "EXTENDING"
+                                else -> DarkSecondaryGold to "LOWERING"
+                            }
+                            PushUpPhase.ASCENDING -> when {
+                                isGluteBridge -> DarkSecondaryGold to "LOWERING"
+                                isBirdDog -> DarkSecondaryGold to "RETURNING"
+                                else -> DarkSecondaryGold to "PRESSING"
+                            }
+                            PushUpPhase.PLANK_READY -> when {
+                                isGluteBridge -> DarkPrimaryGold to "REST / READY"
+                                isBirdDog -> DarkPrimaryGold to "TABLETOP READY"
+                                else -> DarkPrimaryGold to "PLANK / READY"
+                            }
                             PushUpPhase.UNKNOWN -> Color.White.copy(alpha = 0.6f) to "READY"
                         }
 
@@ -142,7 +162,7 @@ fun PushUpLiveOverlay(
                                         FatigueLevel.MODERATE -> DarkPrimaryGold.copy(alpha = 0.25f)
                                         FatigueLevel.HIGH -> Color(0xFFFF7043).copy(alpha = 0.25f)
                                         FatigueLevel.EXHAUSTED -> Color(0xFFEF5350).copy(alpha = 0.25f)
-                                        else -> Color.Transparent
+                                        FatigueLevel.FRESH -> Color.Transparent
                                     }
                                 ) {
                                     Text(
@@ -151,7 +171,7 @@ fun PushUpLiveOverlay(
                                             FatigueLevel.MODERATE -> DarkPrimaryGold
                                             FatigueLevel.HIGH -> Color(0xFFFF7043)
                                             FatigueLevel.EXHAUSTED -> Color(0xFFEF5350)
-                                            else -> Color.White
+                                            FatigueLevel.FRESH -> Color.White
                                         },
                                         fontSize = 7.sp,
                                         fontWeight = FontWeight.Bold,
@@ -180,8 +200,13 @@ fun PushUpLiveOverlay(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val meterTitle = when {
+                            isGluteBridge -> "HIP EXTENSION"
+                            isBirdDog -> "LIMB REACH"
+                            else -> "DEPTH"
+                        }
                         Text(
-                            text = "DEPTH",
+                            text = meterTitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White.copy(alpha = 0.7f),
                             fontWeight = FontWeight.Bold,

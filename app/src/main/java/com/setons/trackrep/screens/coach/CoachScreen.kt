@@ -936,6 +936,7 @@ fun CoachScreen(
                 ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                     PushUpLiveOverlay(
                         telemetry = livePushUpTelemetry,
+                        exerciseId = activeExercise.id,
                         setNumber = setManager.setNumber,
                         elapsedSeconds = setManager.activeElapsedSeconds,
                         fatigueLevel = fatigueDetector.currentFatigueLevel,
@@ -1727,6 +1728,7 @@ fun CoachScreen(
                             ExerciseFramingMode.PUSH_UP, ExerciseFramingMode.PULL_UP -> {
                                 PushUpLiveOverlay(
                                     telemetry = livePushUpTelemetry,
+                                    exerciseId = activeExercise.id,
                                     setNumber = setManager.setNumber,
                                     elapsedSeconds = setManager.activeElapsedSeconds,
                                     fatigueLevel = fatigueDetector.currentFatigueLevel,

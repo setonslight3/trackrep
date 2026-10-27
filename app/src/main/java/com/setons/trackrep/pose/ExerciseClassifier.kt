@@ -118,15 +118,26 @@ class ExerciseClassifier {
             maxE - minE
         } else 0.0
 
-        // 1. INVERTED POSE (Shoulders lower than hips)
-        if (shoulderY > hipY + 0.08f) {
-            return "pike_push_up"
+        // 1. INVERTED POSE OR ELEVATED GLUTE BRIDGE (Shoulders lower than hips in screen coords)
+        if (shoulderY > hipY + 0.05f) {
+            // Glute Bridge: Lying supine with bent knees (< 120 deg) and hips bridged upward
+            if (minKnee < 120.0) {
+                return "glute_bridge"
+            }
+            if (shoulderY > hipY + 0.08f) {
+                return "pike_push_up"
+            }
         }
 
         // 2. HORIZONTAL / FLOOR POSE (Torso angle < 40 degrees from horizontal)
         if (torsoAngleDeg < 40f) {
-            // Check if hips are thrust upward higher than shoulders (Glute Bridge)
-            if (hipY < shoulderY - 0.08f && minKnee < 120.0) {
+            // Bird Dog: Tabletop quadruped with one leg extended backward (knee > 140°) while other knee is bent (< 120°)
+            if (minKnee < 120.0 && maxOf(leftKnee, rightKnee) > 140.0) {
+                return "bird_dog"
+            }
+
+            // Glute Bridge: Supine floor posture with knees bent (< 120°) and hips thrust upward
+            if (minKnee < 120.0 && (hipY < shoulderY - 0.05f || (leftKnee < 125.0 && rightKnee < 125.0 && minElbow > 150.0))) {
                 return "glute_bridge"
             }
 

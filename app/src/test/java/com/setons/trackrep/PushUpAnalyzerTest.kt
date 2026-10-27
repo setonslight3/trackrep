@@ -220,4 +220,173 @@ class PushUpAnalyzerTest {
         assertEquals(1, completedTimestamps.size)
         assertEquals(2400L, completedTimestamps[0])
     }
+
+    private fun mockBirdDogPose(leftKnee: Double, rightKnee: Double, hipAngle: Double = 180.0): TrackedPose {
+        return TrackedPose(
+            landmarks = emptyMap(),
+            imageWidth = 720,
+            imageHeight = 1280,
+            isTrackingValid = true,
+            leftElbowAngle = 170.0,
+            rightElbowAngle = 170.0,
+            leftKneeAngle = leftKnee,
+            rightKneeAngle = rightKnee,
+            hipAlignmentAngle = hipAngle
+        )
+    }
+
+    private fun mockGluteBridgePose(hipExtensionAngle: Double): TrackedPose {
+        return TrackedPose(
+            landmarks = emptyMap(),
+            imageWidth = 720,
+            imageHeight = 1280,
+            isTrackingValid = true,
+            leftElbowAngle = 170.0,
+            rightElbowAngle = 170.0,
+            leftKneeAngle = 90.0,
+            rightKneeAngle = 90.0,
+            torsoLeanAngle = hipExtensionAngle,
+            hipAlignmentAngle = hipExtensionAngle
+        )
+    }
+
+    @Test
+    fun testBirdDogFullValidRepCycle() {
+        analyzer.activeExerciseId = "bird_dog"
+        var t = 1000L
+
+        // 1. Establish Tabletop Ready (knees bent at 90 deg)
+        var telemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 90.0), t)
+        assertEquals(PushUpPhase.PLANK_READY, telemetry.currentPhase)
+
+        // 2. Extending right leg (knee angle reaches 135 deg > 130 deg trigger)
+        t += 200
+        telemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 135.0), t)
+        assertEquals(PushUpPhase.DESCENDING, telemetry.currentPhase)
+
+        // 3. Peak extension (right leg fully straight at 165 deg >= 152 deg target)
+        t += 300
+        telemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 165.0), t)
+        assertEquals(PushUpPhase.BOTTOM_DEPTH, telemetry.currentPhase)
+        assertTrue("Extension progress should be 100%", telemetry.depthProgress >= 0.99f)
+
+        // 4. Returning to tabletop (knee bending back to 135 deg)
+        t += 300
+        telemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 135.0), t)
+        assertEquals(PushUpPhase.ASCENDING, telemetry.currentPhase)
+
+        // 5. Complete rep at tabletop (knee bent <= 120 deg) with duration = 1200ms >= 500ms
+        t += 400
+        telemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 95.0), t)
+
+        assertEquals(1, telemetry.validRepCount)
+        assertEquals(0, telemetry.partialRepCount)
+        assertEquals(PushUpPhase.PLANK_READY, telemetry.currentPhase)
+        assertNotNull(telemetry.lastCompletedRep)
+        assertTrue(telemetry.lastCompletedRep!!.isValid)
+        assertEquals(165.0, telemetry.lastCompletedRep!!.maxElbowAngle, 0.1)
+
+        // 6. Next rep extending left leg (contralateral alternation)
+        t += 200
+        analyzer.processPose(mockBirdDogPose(leftKnee = 135.0, rightKnee = 90.0), t)
+        t += 300
+        analyzer.processPose(mockBirdDogPose(leftKnee = 162.0, rightKnee = 90.0), t)
+        t += 300
+        analyzer.processPose(mockBirdDogPose(leftKnee = 130.0, rightKnee = 90.0), t)
+        t += 400
+        val finalTelemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 95.0, rightKnee = 90.0), t)
+
+        assertEquals(2, finalTelemetry.validRepCount)
+    }
+
+    @Test
+    fun testBirdDogPartialRepRejectionOnIncompleteExtension() {
+        analyzer.activeExerciseId = "bird_dog"
+        var t = 1000L
+
+        // Tabletop
+        analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 90.0), t)
+
+        // Extend partially to only 138 deg (does not reach 148 deg threshold)
+        t += 200
+        analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 135.0), t)
+        t += 200
+        analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 138.0), t)
+
+        // Returns early
+        t += 200
+        analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 124.0), t)
+        t += 400
+        val finalTelemetry = analyzer.processPose(mockBirdDogPose(leftKnee = 90.0, rightKnee = 95.0), t)
+
+        assertEquals(0, finalTelemetry.validRepCount)
+        assertEquals(1, finalTelemetry.partialRepCount)
+        assertNotNull(finalTelemetry.lastCompletedRep)
+        assertFalse(finalTelemetry.lastCompletedRep!!.isValid)
+        assertTrue(finalTelemetry.lastCompletedRep!!.flawReason!!.contains("Incomplete reach"))
+    }
+
+    @Test
+    fun testGluteBridgeFullValidRepCycle() {
+        analyzer.activeExerciseId = "glute_bridge"
+        var t = 1000L
+
+        // 1. Establish Supine Rest (hip angle flexed at 120 deg <= 136 deg)
+        var telemetry = analyzer.processPose(mockGluteBridgePose(120.0), t)
+        assertEquals(PushUpPhase.PLANK_READY, telemetry.currentPhase)
+
+        // 2. Drive hips upward (angle reaches 145 deg >= 140 deg trigger)
+        t += 200
+        telemetry = analyzer.processPose(mockGluteBridgePose(145.0), t)
+        assertEquals(PushUpPhase.DESCENDING, telemetry.currentPhase)
+
+        // 3. Reach peak bridge (hip extension at 168 deg >= 158 deg target)
+        t += 300
+        telemetry = analyzer.processPose(mockGluteBridgePose(168.0), t)
+        assertEquals(PushUpPhase.BOTTOM_DEPTH, telemetry.currentPhase)
+        assertTrue("Bridge progress should be 100%", telemetry.depthProgress >= 0.99f)
+
+        // 4. Lower hips back down (dropping below peak by > 7 deg)
+        t += 300
+        telemetry = analyzer.processPose(mockGluteBridgePose(148.0), t)
+        assertEquals(PushUpPhase.ASCENDING, telemetry.currentPhase)
+
+        // 5. Complete rep at floor level (<= 136 deg) with duration = 1200ms >= 500ms
+        t += 400
+        telemetry = analyzer.processPose(mockGluteBridgePose(122.0), t)
+
+        assertEquals(1, telemetry.validRepCount)
+        assertEquals(0, telemetry.partialRepCount)
+        assertEquals(PushUpPhase.PLANK_READY, telemetry.currentPhase)
+        assertNotNull(telemetry.lastCompletedRep)
+        assertTrue(telemetry.lastCompletedRep!!.isValid)
+        assertEquals(168.0, telemetry.lastCompletedRep!!.maxElbowAngle, 0.1)
+    }
+
+    @Test
+    fun testGluteBridgePartialRepRejectionOnIncompleteExtension() {
+        analyzer.activeExerciseId = "glute_bridge"
+        var t = 1000L
+
+        // Supine rest
+        analyzer.processPose(mockGluteBridgePose(120.0), t)
+
+        // Lift partially to only 144 deg (fails 152 deg threshold)
+        t += 200
+        analyzer.processPose(mockGluteBridgePose(142.0), t)
+        t += 200
+        analyzer.processPose(mockGluteBridgePose(144.0), t)
+
+        // Lowers early
+        t += 200
+        analyzer.processPose(mockGluteBridgePose(135.0), t)
+        t += 400
+        val finalTelemetry = analyzer.processPose(mockGluteBridgePose(122.0), t)
+
+        assertEquals(0, finalTelemetry.validRepCount)
+        assertEquals(1, finalTelemetry.partialRepCount)
+        assertNotNull(finalTelemetry.lastCompletedRep)
+        assertFalse(finalTelemetry.lastCompletedRep!!.isValid)
+        assertTrue(finalTelemetry.lastCompletedRep!!.flawReason!!.contains("Incomplete hip extension"))
+    }
 }

@@ -508,9 +508,14 @@ object VoiceCommandParser {
             return ExerciseInfo("lunge_reverse", ExerciseFramingMode.SQUAT, "Reverse Lunges")
         }
 
+        // Bird Dog
+        if (t.containsAny("bird dog", "bird dogs", "birddog", "birddogs", "bird-dog", "bird-dogs")) {
+            return ExerciseInfo("bird_dog", ExerciseFramingMode.PUSH_UP, "Bird Dog")
+        }
+
         // Glute Bridge
-        if (t.containsAny("glute bridge", "glute bridges", "hip thrust", "hip thrusts")) {
-            return ExerciseInfo("glute_bridge", ExerciseFramingMode.PLANK, "Glute Bridges")
+        if (t.containsAny("glute bridge", "glute bridges", "glutebridge", "glutebridges", "glute-bridge", "glute-bridges", "hip thrust", "hip thrusts", "bridge", "bridges")) {
+            return ExerciseInfo("glute_bridge", ExerciseFramingMode.PUSH_UP, "Glute Bridges")
         }
 
         // V-ups

@@ -194,4 +194,38 @@ class ExerciseClassifierTest {
         }
         assertTrue("Sustained floor push-up posture should auto-switch", pushUpDetected)
     }
+
+    @Test
+    fun testClassifyFloorBirdDogPose() {
+        // Tabletop horizontal pose with one knee bent (90 deg) and one leg extended straight (165 deg)
+        val birdDogPose = createPose(
+            shoulderY = 0.70f,
+            hipY = 0.70f,
+            shoulderX = 0.35f,
+            hipX = 0.60f,
+            leftElbowAngle = 170.0,
+            rightElbowAngle = 170.0,
+            leftKneeAngle = 90.0,
+            rightKneeAngle = 165.0
+        )
+        val classification = classifier.classifySinglePose(birdDogPose)
+        assertEquals("bird_dog", classification)
+    }
+
+    @Test
+    fun testClassifyFloorGluteBridgePose() {
+        // Supine horizontal pose with both knees bent (95 deg) and hips elevated upward
+        val bridgePose = createPose(
+            shoulderY = 0.75f,
+            hipY = 0.65f, // Elevated hips (smaller y than shoulder)
+            shoulderX = 0.35f,
+            hipX = 0.55f,
+            leftElbowAngle = 170.0,
+            rightElbowAngle = 170.0,
+            leftKneeAngle = 95.0,
+            rightKneeAngle = 95.0
+        )
+        val classification = classifier.classifySinglePose(bridgePose)
+        assertEquals("glute_bridge", classification)
+    }
 }

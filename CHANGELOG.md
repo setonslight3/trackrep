@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## 📑 Table of Contents
 
+- [v1.3.9 - Bird Dog & Glute Bridge Biomechanical Movement Tracking Fix](#v139---2026-10-27)
 - [v1.3.8 - Music Command Disambiguation & Set Interception Fix](#v138---2026-10-18)
 - [v1.3.7 - Gemini Capsule Quick Music Button & Configurable Default Workout Music in Settings](#v137---2026-10-18)
 - [v1.3.6 - Track AI & Voice Unification, Chat Speech-to-Text Button & Live Music Controls](#v136---2026-10-18)
@@ -54,6 +55,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - [v0.1.0 - Project Foundation, Design Language & Navigation 3](#v010---2026-09-12)
 
 > **Versioning Policy**: Minor/patch updates increment up to `.20` (e.g., `1.3.1` through `1.3.20`) before rolling over, while major feature releases bump the minor version directly (`1.3.0`, `1.4.0`, etc.).
+
+## [v1.3.9] - 2026-10-27
+
+### Fixed & Enhanced (Bird Dog & Glute Bridge Biomechanical Movement Tracking Fix)
+- **Resolved Bird Dog Rep Registration**:
+  - Root Cause: `bird_dog` was routed through the push-up engine, which strictly demanded elbow flexion to 92° while maintaining locked 180° knees in a horizontal plank. In a Bird Dog, the athlete remains on hands and knees (quadruped tabletop) with arms extended, straightening one leg backward and reaching the opposite arm forward. Elbows never bend, preventing any reps from counting.
+  - Implemented dedicated on-device sub-engine `processBirdDog` inside `PushUpAnalyzer`:
+    - Tracks contralateral knee extension from quadruped tabletop (knees bent <= 120°) to full reach (knee extending >= 152° parallel to the floor).
+    - Supports alternating contralateral reps (left leg + right arm, then right leg + left arm) with seamless continuous rep counting.
+    - Added partial rep inflection detection when extension is cut short (< 148°).
+    - Real-time form coaching: warns against pelvic tilt or torso twisting when hips dip below 135°.
+- **Resolved Glute Bridge Rep Registration**:
+  - Root Cause: `glute_bridge` was previously routed either to isometric plank hold timers or push-up elbow flexion. In Glute Bridges, the athlete lies supine on their back with knees bent and drives their pelvis upward toward the ceiling without bending their elbows.
+  - Implemented dedicated on-device sub-engine `processGluteBridge` inside `PushUpAnalyzer`:
+    - Calculates true anatomical hip extension angle at the hip joint formed by Shoulder - Hip - Knee (`PoseLandmark.SHOULDER`, `PoseLandmark.HIP`, `PoseLandmark.KNEE`).
+    - Accurately tracks the dynamic movement cycle: Bottom Rest (hip angle flexed <= 136°) → Bridging Up (trigger >= 140°) → Peak Bridge Lockout (hip extension >= 158°, thighs and torso straight) → Lowering → Completed Rep on return to floor.
+    - Added partial rep detection for incomplete bridges (< 152°) and warnings against lumbar hyperextension (> 188°).
+- **Dynamic HUD Overlays & Biomechanical Progress Meters**:
+  - Enhanced `PushUpLiveOverlay` to dynamically adapt UI labels based on `activeExerciseId`:
+    - For Glute Bridge: displays phase badges (`REST / READY` → `BRIDGING UP` → `PEAK BRIDGE` → `LOWERING`) and target joint meter as `"HIP EXTENSION (155°-180°)"`.
+    - For Bird Dog: displays phase badges (`TABLETOP READY` → `EXTENDING` → `FULL REACH` → `RETURNING`) and target joint meter as `"LIMB REACH (150°-180°)"`.
+- **Voice Commands & Pose Auto-Classification Alignment**:
+  - Added `"bird_dog"` to `VoiceCommandParser.resolveExercise` (supporting *"bird dog"*, *"bird dogs"*, *"birddog"*, *"bird-dog"*).
+  - Aligned `glute_bridge` framing mode to `ExerciseFramingMode.PUSH_UP` across `VoiceCommandParser` and `ExerciseCatalog`.
+  - Added single-pose kinematic classification for `bird_dog` and fixed `glute_bridge` distinction against inverted pike push-ups based on knee flexion geometry in `ExerciseClassifier`.
+- **Automated Test Coverage**:
+  - Added comprehensive test suites in `PushUpAnalyzerTest`, `VoiceCommandParserTest`, and `ExerciseClassifierTest` verifying rep state machines, partial rep rejections, voice commands, and posture classifications.
 
 ## [v1.3.8] - 2026-10-18
 

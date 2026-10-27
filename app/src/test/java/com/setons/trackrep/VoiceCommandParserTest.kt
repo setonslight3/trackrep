@@ -107,5 +107,17 @@ class VoiceCommandParserTest {
         assertTrue(parsedPushups.intent is VoiceIntent.StartWorkout)
         val startIntent = parsedPushups.intent as VoiceIntent.StartWorkout
         assertEquals("push_up_standard", startIntent.targetExerciseId)
+
+        val parsedBirdDog = VoiceCommandParser.parseSingle("start bird dog")
+        assertTrue(parsedBirdDog.intent is VoiceIntent.StartWorkout)
+        val birdDogIntent = parsedBirdDog.intent as VoiceIntent.StartWorkout
+        assertEquals("bird_dog", birdDogIntent.targetExerciseId)
+        assertEquals("Starting Bird Dog! Calibrate your position and 3, 2, 1, Go!", parsedBirdDog.feedbackSpeech)
+
+        val parsedGluteBridge = VoiceCommandParser.parseSingle("start glute bridge")
+        assertTrue(parsedGluteBridge.intent is VoiceIntent.StartWorkout)
+        val bridgeIntent = parsedGluteBridge.intent as VoiceIntent.StartWorkout
+        assertEquals("glute_bridge", bridgeIntent.targetExerciseId)
+        assertEquals("Starting Glute Bridges! Calibrate your position and 3, 2, 1, Go!", parsedGluteBridge.feedbackSpeech)
     }
 }
